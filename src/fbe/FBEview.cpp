@@ -48,6 +48,27 @@ static bool IsSecondSetExternalFaultEnabled()
 	return faultLength == 19 && _wcsicmp(fault, L"second-set-external") == 0;
 }
 
+// Runtime regressions sometimes need the DOM produced by MSHTML before the
+// editor's post-paste normalizer runs.  This is deliberately inert outside
+// the named test scenario and is not an editor-facing diagnostics API.
+static void CaptureClipboardTitlePasteDomForTest(MSHTML::IHTMLDocument2Ptr document)
+{
+	wchar_t mode[4] = {}, scenario[64] = {}, tracePath[MAX_PATH] = {};
+	if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) != 1 || mode[0] != L'1' ||
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) != wcslen(L"clipboard-title-paste") ||
+		wcscmp(scenario, L"clipboard-title-paste") != 0 ||
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_PASTE_TRACE", tracePath, _countof(tracePath)) == 0)
+		return;
+	MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+	if (!editable) return;
+	const CStringA utf8(CW2A(static_cast<LPCWSTR>(editable->innerHTML), CP_UTF8));
+	HANDLE trace = ::CreateFile(tracePath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (trace == INVALID_HANDLE_VALUE) return;
+	DWORD written = 0;
+	::WriteFile(trace, static_cast<LPCSTR>(utf8), static_cast<DWORD>(utf8.GetLength()), &written, NULL);
+	::CloseHandle(trace);
+}
+
 // normalization helpers
 static void NotifyTableStructureChanged(HWND frame, HWND view);
 
@@ -1672,10 +1693,13 @@ MSHTML::IHTMLDOMNodePtr CFBEView::ResolveNormalizationScope()
 
 void CFBEView::NormalizeScope(MSHTML::IHTMLDOMNodePtr dom)
 {
-	Normalize(dom);
+	// OnPaste already owns the user-visible undo unit.  Keeping normalization
+	// inside it makes one Undo restore the pre-paste DOM.
+	NormalizeWithoutUndo(dom);
 }
 
-void  CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom) {
+void CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom)
+{
   try {
 	MSHTML::IHTMLDOMNodePtr el(dom);
 	MSHTML::IHTMLElementPtr scope(el);
@@ -1696,9 +1720,6 @@ void  CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom) {
 	const bool fullNormalization = U::scmp(scope->id, L"fbw_body") == 0;
 	g_normalizationDiagnostics.Record(fullNormalization);
 
-    // wrap in an undo unit
-    m_mk_srv->BeginUndoUnit(L"Normalize");
-
     // remove unsupported elements
 	RemoveUnk(scopeNode,Document());
 
@@ -1706,12 +1727,16 @@ void  CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom) {
 	FbeVisualDom::NormalizeStructure(Document(), scopeNode);
     // fixup links
 	FixupLinks(scopeNode);
-
-    m_mk_srv->EndUndoUnit();
   }
   catch (_com_error& e) {
     U::ReportError(e);
   }
+}
+
+void CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom)
+{
+	FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Normalize");
+	NormalizeWithoutUndo(dom);
 }
 
 LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
@@ -1738,6 +1763,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
 		if (m_normalize)
 			normalizationScope = ResolveNormalizationScope();
 		IOleCommandTargetPtr(m_browser)->Exec(&CGID_MSHTML, IDM_PASTE, 0, NULL, NULL);
+		CaptureClipboardTitlePasteDomForTest(Document());
 		pasteEnabled.Close();
 		if(m_normalize)
 			NormalizeScope(normalizationScope);

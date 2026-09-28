@@ -6,6 +6,55 @@ namespace FbeVisualDom {
 static bool IsNativeTableBlockName(const _bstr_t &name) {
   return U::scmp(name, L"TABLE") == 0;
 }
+static bool HasDivClass(MSHTML::IHTMLDOMNode *node, const wchar_t *className) {
+  MSHTML::IHTMLElementPtr element(node);
+  return element && U::scmp(element->tagName, L"DIV") == 0 &&
+         U::scmp(element->className, className) == 0;
+}
+// MSHTML preserves the DIV.title wrapper when a complete title is copied and
+// pasted into another title.  FB2 title containers cannot nest, so unwrap the
+// inner container in place rather than deleting it (and its user content).
+static void FlattenNestedTitles(MSHTML::IHTMLDOMNodePtr node) {
+  if (!node || node->nodeType != 1)
+    return;
+  for (MSHTML::IHTMLDOMNodePtr current(node->firstChild); current;) {
+    MSHTML::IHTMLDOMNodePtr next = current->nextSibling;
+    FlattenNestedTitles(current);
+    if (HasDivClass(node, L"title") && HasDivClass(current, L"title")) {
+      while ((bool)current->firstChild)
+        node->insertBefore(current->firstChild, current.GetInterfacePtr());
+      current->removeNode(VARIANT_TRUE);
+    }
+    current = next;
+  }
+}
+static MSHTML::IHTMLDOMNodePtr FindContainingSection(MSHTML::IHTMLDOMNodePtr node) {
+  for (MSHTML::IHTMLDOMNodePtr current(node); current; current = current->parentNode)
+    if (HasDivClass(current, L"section"))
+      return current;
+  return MSHTML::IHTMLDOMNodePtr();
+}
+// A paste at a title boundary can also make MSHTML produce two direct title
+// children.  Keep the first title and append every later title's nodes, so the
+// author-visible text and inline formatting remain intact.
+static void MergeDirectSectionTitles(MSHTML::IHTMLDOMNodePtr section) {
+  if (!HasDivClass(section, L"section"))
+    return;
+  MSHTML::IHTMLDOMNodePtr firstTitle;
+  for (MSHTML::IHTMLDOMNodePtr current(section->firstChild); current;) {
+    MSHTML::IHTMLDOMNodePtr next = current->nextSibling;
+    if (HasDivClass(current, L"title")) {
+      if (!firstTitle)
+        firstTitle = current;
+      else {
+        while ((bool)current->firstChild)
+          firstTitle->appendChild(current->firstChild);
+        current->removeNode(VARIANT_TRUE);
+      }
+    }
+    current = next;
+  }
+}
 static bool IsEmptyNode(MSHTML::IHTMLDOMNode *node) {
   if (!node || node->nodeType != 1)
     return false;
@@ -140,6 +189,11 @@ void SplitBRs(MSHTML::IHTMLElement2Ptr element) {
 }
 void NormalizeStructure(MSHTML::IHTMLDocument2Ptr document,
                         MSHTML::IHTMLDOMNodePtr root) {
+	FlattenNestedTitles(root);
+	// A title is itself a valid normalization scope.  Still repair the one
+	// enclosing section when needed, rather than escalating a title paste to
+	// a BODY-wide pass.
+	MergeDirectSectionTitles(FindContainingSection(root));
   RelocateParagraphs(root);
   RemoveEmptyNodes(root);
   PackText(MSHTML::IHTMLElement2Ptr(root), document);

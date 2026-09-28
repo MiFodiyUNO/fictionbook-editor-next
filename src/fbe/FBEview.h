@@ -806,7 +806,7 @@ public:
 	void __stdcall OnDrop(IDispatch*)
 	{
 		if(m_normalize) {
-			NormalizeScope(m_pending_drop_normalization_scope ? m_pending_drop_normalization_scope : ResolveNormalizationScope());
+			Normalize(m_pending_drop_normalization_scope ? m_pending_drop_normalization_scope : ResolveNormalizationScope());
 			m_pending_drop_normalization_scope = nullptr;
 		}
 	}
@@ -833,6 +833,7 @@ public:
 	void SyncSearchOptionsToOpenDialogs(FRBase* source);
 
 private:
+	void NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom);
 	// added by SeNS
 	int m_startMatch, m_endMatch;
 };

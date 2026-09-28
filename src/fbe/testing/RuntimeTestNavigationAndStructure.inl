@@ -93,12 +93,163 @@
 			row.Format("%S\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t1\t%s\r\n", testCase.name, countElements(L"P"), emptyDivs, countElements(L"BR"), exactParagraphs, emptyLine, nbsp, formatting, passed ? "pass" : "fail");
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
 		}
+		// Title containers have their own structural invariant: a title cannot
+		// contain a title and a section cannot have competing direct titles.
+		// Exercise the production normalizer twice to keep this rule idempotent.
+		struct TitleNormalizerCase { const wchar_t* name; const wchar_t* html; const wchar_t* first; const wchar_t* second; };
+		const TitleNormalizerCase titleCases[] = {
+			{ L"title-single", L"<DIV class='section'><DIV class='title'><P>Single <STRONG>strong</STRONG> <EM>em</EM> <A href='#single'>link</A></P></DIV><P>Body</P></DIV>", L"Single strong em link", L"" },
+			{ L"title-nested", L"<DIV class='section'><DIV class='title'><P>First <STRONG>strong</STRONG></P><DIV class='title'><P>Second <EM>em</EM> <A href='#nested'>link</A></P></DIV></DIV><P>Body</P></DIV>", L"First strong", L"Second em link" },
+			{ L"title-direct-merge", L"<DIV class='section'><DIV class='title'><P>First <STRONG>strong</STRONG></P></DIV><DIV class='title'><P>Second <EM>em</EM> <A href='#direct'>link</A></P></DIV><P>Body</P></DIV>", L"First strong", L"Second em link" }
+		};
+		for (const TitleNormalizerCase& testCase : titleCases)
+		{
+			editable->innerHTML = testCase.html;
+			MSHTML::IHTMLElementCollectionPtr sections(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
+			MSHTML::IHTMLElementPtr section(sections && sections->length ? sections->item(0L) : MSHTML::IHTMLElementPtr());
+			FbeVisualDom::NormalizeStructure(document, MSHTML::IHTMLDOMNodePtr(section));
+			editable = document->all->item(L"fbw_body");
+			section = editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr();
+			const CString once(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+			FbeVisualDom::NormalizeStructure(document, MSHTML::IHTMLDOMNodePtr(section));
+			editable = document->all->item(L"fbw_body");
+			const CString twice(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+			section = editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr();
+			long directTitles = 0, nestedTitles = 0;
+			for (MSHTML::IHTMLDOMNodePtr child(section ? MSHTML::IHTMLDOMNodePtr(section)->firstChild : MSHTML::IHTMLDOMNodePtr()); child; child = child->nextSibling) {
+				MSHTML::IHTMLElementPtr element(child); if (element && U::scmp(element->tagName, L"DIV") == 0 && U::scmp(element->className, L"title") == 0) ++directTitles;
+			}
+			MSHTML::IHTMLElementCollectionPtr titles(section ? MSHTML::IHTMLElement2Ptr(section)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+			for (long index = 0; titles && index < titles->length; ++index) {
+				MSHTML::IHTMLElementPtr title(titles->item(_variant_t(index), _variant_t())); MSHTML::IHTMLElementPtr parent(title ? title->parentElement : MSHTML::IHTMLElementPtr());
+				if (title && parent && U::scmp(title->className, L"title") == 0 && U::scmp(parent->className, L"title") == 0) ++nestedTitles;
+			}
+			MSHTML::IHTMLElementPtr title(titles && titles->length ? titles->item(0L) : MSHTML::IHTMLElementPtr());
+			const CString text(title ? static_cast<LPCWSTR>(title->innerText) : L"");
+			const bool order = text.Find(testCase.first) >= 0 && (!*testCase.second || text.Find(testCase.second) > text.Find(testCase.first));
+			const bool formatting = title && MSHTML::IHTMLElement2Ptr(title)->getElementsByTagName(L"STRONG")->length == 1 && MSHTML::IHTMLElement2Ptr(title)->getElementsByTagName(L"EM")->length == 1 && MSHTML::IHTMLElement2Ptr(title)->getElementsByTagName(L"A")->length == 1;
+			const bool idempotent = once == twice;
+			const bool passed = directTitles == 1 && nestedTitles == 0 && order && formatting && idempotent;
+			allPassed = allPassed && passed;
+			CStringA row; row.Format("%S\t0\t0\t0\t%d\t%d\t%d\t%d\t%d\t%s\r\n", testCase.name, order ? 1 : 0, nestedTitles == 0 ? 1 : 0, idempotent ? 1 : 0, formatting ? 1 : 0, directTitles == 1 ? 1 : 0, passed ? "pass" : "fail");
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+		}
 		// Restore the fixture before exercising the ordinary production save path.
 		editable->innerHTML = originalHtml.AllocSysString();
 		int validationLine = 0, validationColumn = 0;
 		const bool saved = m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
 		output.Flush(); output.Close();
 		::PostQuitMessage(allPassed && saved ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"clipboard-title-paste"))
+	{
+		CStringA header("case\tnormalized_nested_title\tnormalized_direct_titles\ttext_order\tformatting\tneighbor_unchanged\tundo\tredo\tvalidate\tvalidation_line\tvalidation_column\tsave\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+		if (!body || !editable) { output.Close(); ::PostQuitMessage(1); return 0; }
+		ShowView(BODY);
+		wchar_t pasteCaseBuffer[64] = {};
+		const DWORD pasteCaseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TITLE_PASTE_CASE", pasteCaseBuffer, _countof(pasteCaseBuffer));
+		const CString pasteCase(pasteCaseLength && pasteCaseLength < _countof(pasteCaseBuffer) ? pasteCaseBuffer : L"full-title-nonempty");
+
+		// The loaded FB2 fixture has three sections and keeps strong/em/link
+		// children in the source title.  This tests the real document conversion,
+		// rather than a synthetic innerHTML assignment which cannot prove Save.
+		auto byId = [&](const wchar_t* id) -> MSHTML::IHTMLElementPtr { return document->all->item(id); };
+		auto selectElement = [&](MSHTML::IHTMLElementPtr element, bool collapseAtEnd) -> bool {
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+			if (!range || !element) return false;
+			range->moveToElementText(element); if (collapseAtEnd) range->collapse(VARIANT_FALSE); range->select(); return true;
+		};
+		auto countNestedTitle = [&](MSHTML::IHTMLElementPtr root) -> long {
+			long count = 0; MSHTML::IHTMLElementCollectionPtr divs(root ? MSHTML::IHTMLElement2Ptr(root)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+			for (long index = 0; divs && index < divs->length; ++index) {
+				MSHTML::IHTMLElementPtr current(divs->item(_variant_t(index), _variant_t()));
+				MSHTML::IHTMLElementPtr parent(current ? current->parentElement : MSHTML::IHTMLElementPtr());
+				if (current && parent && U::scmp(current->className, L"title") == 0 && U::scmp(parent->tagName, L"DIV") == 0 && U::scmp(parent->className, L"title") == 0) ++count;
+			}
+			return count;
+		};
+		auto countDirectTitles = [&](MSHTML::IHTMLElementPtr section) -> long {
+			MSHTML::IHTMLDOMNodePtr sectionNode(section);
+			long count = 0; for (MSHTML::IHTMLDOMNodePtr child(sectionNode ? sectionNode->firstChild : MSHTML::IHTMLDOMNodePtr()); child; child = child->nextSibling) {
+				MSHTML::IHTMLElementPtr element(child); if (element && U::scmp(element->tagName, L"DIV") == 0 && U::scmp(element->className, L"title") == 0) ++count;
+			}
+			return count;
+		};
+		bool normalizedNested = false, normalizedDuplicate = false;
+		bool textOrder = false, formatting = false, neighborUnchanged = false, undo = false, redo = false, validated = false, saved = false;
+		int validationLine = 0, validationColumn = 0;
+		try {
+			MSHTML::IHTMLElementPtr sourceTitle(byId(L"title-source") ? MSHTML::IHTMLElement2Ptr(byId(L"title-source"))->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr sourceParagraphs(sourceTitle ? MSHTML::IHTMLElement2Ptr(sourceTitle)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr sourceFirst(sourceParagraphs && sourceParagraphs->length ? sourceParagraphs->item(0L) : MSHTML::IHTMLElementPtr());
+			const bool emptyTarget = pasteCase == L"full-title-empty-target";
+			const bool multipleParagraphs = pasteCase == L"multiple-title-paragraphs" || pasteCase == L"full-title-empty-target" || pasteCase == L"full-title-nonempty" || pasteCase == L"ctrl-v-command";
+			MSHTML::IHTMLElementPtr targetSection(byId(emptyTarget ? L"title-target-empty" : L"title-target"));
+			MSHTML::IHTMLElementPtr targetTitle(targetSection ? MSHTML::IHTMLElement2Ptr(targetSection)->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr neighbor(byId(L"title-neighbor"));
+			const CString before(static_cast<LPCWSTR>(editable->innerHTML));
+			const CString neighborBefore(neighbor ? static_cast<LPCWSTR>(neighbor->outerHTML) : L"");
+			BOOL handled = FALSE;
+			m_doc->m_body.SetFocus();
+			if (!sourceTitle || !sourceFirst) throw _com_error(E_FAIL);
+			if (pasteCase == L"text-only" || pasteCase == L"text-paragraph-end") {
+				MSHTML::IHTMLTxtRangePtr sourceRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+				if (!sourceRange) throw _com_error(E_FAIL);
+				sourceRange->moveToElementText(sourceFirst);
+				if (pasteCase == L"text-only") sourceRange->moveEnd(L"character", -1);
+				else sourceRange->moveStart(L"character", 1);
+				sourceRange->select();
+			} else if (!selectElement(multipleParagraphs ? sourceTitle : sourceFirst, false)) throw _com_error(E_FAIL);
+			MSHTML::IHTMLTxtRangePtr copiedRange(document->selection->createRange());
+			const CString copiedText(copiedRange ? static_cast<LPCWSTR>(copiedRange->text) : L"");
+			if (copiedText.IsEmpty()) throw _com_error(E_FAIL);
+			m_doc->m_body.OnCopy(0, ID_EDIT_COPY, m_doc->m_body, handled);
+			if (!selectElement(targetTitle, true)) throw _com_error(E_FAIL);
+			// Exercise the normal Ctrl+V route: MSHTML raises onpaste, OnRealPaste
+			// routes it through WM_COMMAND, and the editor runs CFBEView::OnPaste.
+			document->execCommand(L"Paste", VARIANT_FALSE, _variant_t());
+			editable = document->all->item(L"fbw_body"); targetSection = byId(emptyTarget ? L"title-target-empty" : L"title-target");
+			normalizedNested = countNestedTitle(targetSection) > 0;
+			normalizedDuplicate = countDirectTitles(targetSection) > 1;
+			MSHTML::IHTMLElementPtr normalizedTitle(targetSection ? MSHTML::IHTMLElement2Ptr(targetSection)->getElementsByTagName(L"DIV")->item(0L) : MSHTML::IHTMLElementPtr());
+			const CString titleText(normalizedTitle ? static_cast<LPCWSTR>(normalizedTitle->innerText) : L"");
+			const int copiedAt = titleText.Find(copiedText);
+			textOrder = copiedAt >= 0 && (emptyTarget || copiedAt > titleText.Find(L"Target existing")) && (!multipleParagraphs || titleText.Find(L"Source second") > titleText.Find(L"Source strong em link"));
+			formatting = normalizedTitle && MSHTML::IHTMLElement2Ptr(normalizedTitle)->getElementsByTagName(L"STRONG")->length == 1 && MSHTML::IHTMLElement2Ptr(normalizedTitle)->getElementsByTagName(L"EM")->length == 1 && MSHTML::IHTMLElement2Ptr(normalizedTitle)->getElementsByTagName(L"A")->length == 1;
+			neighbor = byId(L"title-neighbor"); neighborUnchanged = neighbor && CString(static_cast<LPCWSTR>(neighbor->outerHTML)) == neighborBefore;
+			const CString normalized(static_cast<LPCWSTR>(editable->innerHTML));
+			const CString normalizedTrace(AU::_ARGS.source_memory_benchmark_path + L".after-normalization.html");
+			const CStringA normalizedTraceUtf8(CW2A(normalized, CP_UTF8));
+			WritePortableStateTestText(normalizedTrace, normalizedTraceUtf8);
+			m_doc->m_body.SetFocus();
+			::SetFocus(m_doc->m_body);
+			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
+			MSHTML::IHTMLElementPtr undoEditable(document->all->item(L"fbw_body"));
+			undo = undoEditable && CString(static_cast<LPCWSTR>(undoEditable->innerHTML)) == before;
+			const CString undoTrace(AU::_ARGS.source_memory_benchmark_path + L".after-undo.html");
+			const CStringA undoTraceUtf8(CW2A(undoEditable ? static_cast<LPCWSTR>(undoEditable->innerHTML) : L"", CP_UTF8));
+			WritePortableStateTestText(undoTrace, undoTraceUtf8);
+			m_doc->m_body.SetFocus();
+			::SetFocus(m_doc->m_body);
+			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
+			MSHTML::IHTMLElementPtr redoEditable(document->all->item(L"fbw_body"));
+			redo = redoEditable && CString(static_cast<LPCWSTR>(redoEditable->innerHTML)) == normalized;
+			validated = redo && m_doc->Validate(validationLine, validationColumn); saved = validated && m_doc->Save();
+			ShowView(SOURCE);
+			const sptr_t sourceLength = m_source.SendMessage(SCI_GETLENGTH);
+			std::vector<char> source(static_cast<size_t>(sourceLength) + 1);
+			m_source.SendMessage(SCI_GETTEXT, sourceLength + 1, reinterpret_cast<LPARAM>(source.data()));
+			WritePortableStateTestText(AU::_ARGS.source_memory_benchmark_path + L".serialized.xml", source.data());
+			ShowView(BODY);
+		}
+		catch (const _com_error&) {}
+		const bool passed = !normalizedNested && !normalizedDuplicate && textOrder && formatting && neighborUnchanged && undo && redo && validated && saved;
+		CStringA row; row.Format("%S\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", static_cast<LPCWSTR>(pasteCase), normalizedNested ? 1 : 0, normalizedDuplicate ? 1 : 0, textOrder ? 1 : 0, formatting ? 1 : 0, neighborUnchanged ? 1 : 0, undo ? 1 : 0, redo ? 1 : 0, validated ? 1 : 0, validationLine, validationColumn, saved ? 1 : 0, passed ? "pass" : "fail");
+		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"link-navigation-runtime"))
 	{

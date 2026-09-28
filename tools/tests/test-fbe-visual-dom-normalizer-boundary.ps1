@@ -17,7 +17,7 @@ foreach($forbidden in @('CFBEView', 'CMainFrame', 'FBEview.h', 'mainfrm.h', 'Set
     }
 }
 
-foreach($required in @('NormalizeStructure', 'PackText', 'RelocateParagraphs', 'FixupParagraphs', 'KillDivs', 'KillStyles', 'RemoveEmptyNodes', 'SplitBRs', 'BubbleUp')) {
+foreach($required in @('NormalizeStructure', 'PackText', 'RelocateParagraphs', 'FixupParagraphs', 'KillDivs', 'KillStyles', 'RemoveEmptyNodes', 'SplitBRs', 'BubbleUp', 'FlattenNestedTitles', 'MergeDirectSectionTitles')) {
     if($normalizer -notmatch ("\b" + [regex]::Escape($required) + "\b")) { throw "VisualDomNormalizer не содержит $required" }
 }
 
