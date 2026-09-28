@@ -8,7 +8,6 @@
 #include "..\\version.h"
 
 #include <vector>
-#include <regex>
 
 namespace {
 
@@ -61,25 +60,6 @@ bool LoadUtf8TextFile(const CString& filename, CString& text)
 	}
 	text.ReleaseBuffer(length);
 	return true;
-}
-
-void RemoveServiceMarkers(IXMLDOMDocument2Ptr source)
-{
-	IXMLDOMNodeListPtr textNodes;
-	CheckError(source->selectNodes(bstr_t(L"//text()[contains(., '{')]"), &textNodes));
-	long length = 0;
-	CheckError(textNodes->get_length(&length));
-	const std::wregex marker(L"-?\\{[0-9]+\\}");
-	for (long index = 0; index < length; ++index) {
-		IXMLDOMNodePtr node;
-		CheckError(textNodes->get_item(index, &node));
-		CComBSTR value;
-		CheckError(node->get_text(&value));
-		std::wstring original(value, value.Length());
-		std::wstring cleaned = std::regex_replace(original, marker, L"");
-		if (cleaned != original)
-			CheckError(node->put_text(CComBSTR(cleaned.c_str())));
-	}
 }
 
 }
@@ -253,7 +233,8 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		CheckError(tmpl->createProcessor(&proc));
 
 		// * setup input
-		RemoveServiceMarkers(source);
+		// ExportHTML cannot reliably distinguish editor markers from legitimate
+		// book text such as "{2026}", so it never strips brace-delimited text.
 		CheckError(proc->put_input(variant_t((IDispatch*)source)));
 
 		// * install template parameters

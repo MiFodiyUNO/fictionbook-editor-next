@@ -72,7 +72,14 @@
 	  <X:value-of select="$customcss" disable-output-escaping="yes"/>
 	</style>
 	<title>
-		<X:value-of select="/F:FictionBook/F:description/F:title-info/F:book-title"/>
+		<X:variable name="authors" select="/F:FictionBook/F:description/F:title-info/F:author"/>
+		<X:variable name="book-title" select="normalize-space(/F:FictionBook/F:description/F:title-info/F:book-title)"/>
+		<X:choose>
+		  <X:when test="$authors and $book-title"><X:for-each select="$authors"><X:if test="position() &gt; 1"><X:text>, </X:text></X:if><X:call-template name="author-title"/></X:for-each><X:text> &#x2014; </X:text><X:value-of select="$book-title"/></X:when>
+		  <X:when test="$book-title"><X:value-of select="$book-title"/></X:when>
+		  <X:when test="$authors"><X:for-each select="$authors"><X:if test="position() &gt; 1"><X:text>, </X:text></X:if><X:call-template name="author-title"/></X:for-each></X:when>
+		  <X:otherwise>FictionBook</X:otherwise>
+		</X:choose>
 	</title>
 	<!-- include some metainfo -->
 	<X:for-each select="/F:FictionBook/F:description/F:title-info/F:author">
@@ -186,10 +193,12 @@
       </X:if>
       <X:apply-templates/>
       <X:if test="(@id or @F:id) and key('note-ref', concat('#', @id | @F:id))">
-        <a class="note-back">
-          <X:attribute name="href"><X:text>#_note_ref_</X:text><X:value-of select="generate-id(key('note-ref', concat('#', @id | @F:id))[1])"/></X:attribute>
-	  <X:text>&#x21A9;</X:text>
-        </a>
+        <X:for-each select="key('note-ref', concat('#', @id | @F:id))">
+          <a class="note-back">
+            <X:attribute name="href"><X:text>#_note_ref_</X:text><X:value-of select="generate-id()"/></X:attribute>
+	    <X:text>&#x21A9;</X:text><X:if test="last() &gt; 1"><X:value-of select="position()"/></X:if>
+          </a><X:if test="position() != last()"><X:text> </X:text></X:if>
+        </X:for-each>
       </X:if>
     </section>
   </X:template>
@@ -524,6 +533,12 @@
     <X:if test="F:email">
       <X:text> &lt;</X:text><X:value-of select="F:email"/>&gt;
     </X:if>
+  </X:template>
+
+  <X:template name="author-title">
+    <X:for-each select="F:first-name | F:middle-name | F:last-name | F:nickname">
+      <X:if test="position() &gt; 1"><X:text> </X:text></X:if><X:value-of select="normalize-space(.)"/>
+    </X:for-each>
   </X:template>
 
   <!-- table of contents generator -->
