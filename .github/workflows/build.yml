@@ -169,11 +169,11 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/build-provenance.ps1 -Action Write -Kind Runtime -Configuration Release -ProfileDirectory out/editor-runtime -BatchDirectory out/target-batches -PlatformToolset v143
-      - name: Ensure NSIS 3.12
+      - name: Ensure NSIS 3.13
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          choco upgrade nsis --version=3.12.0 --no-progress --yes
+          choco upgrade nsis --version=3.13.0 --no-progress --yes
           ./tools/build/resolve-nsis.ps1 | Out-Null
       - name: Verify universal release binaries and Dark Theme stabilization runtime
         shell: pwsh
@@ -248,11 +248,11 @@ jobs:
         with:
           name: FictionBookEditorNext-${{ github.sha }}-compiled
           path: out
-      - name: Ensure NSIS 3.12
+      - name: Ensure NSIS 3.13
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          choco upgrade nsis --version=3.12.0 --no-progress --yes
+          choco upgrade nsis --version=3.13.0 --no-progress --yes
           ./tools/build/resolve-nsis.ps1 | Out-Null
       - name: Create release artifacts without compiling
         shell: pwsh

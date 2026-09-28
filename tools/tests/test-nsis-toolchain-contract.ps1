@@ -12,7 +12,7 @@ $installer = Get-Content -Raw -LiteralPath (Join-Path $root 'packaging\nsis\Inst
 
 if (-not (Test-Path -LiteralPath $resolver -PathType Leaf)) { throw 'Не найден общий NSIS resolver.' }
 $resolverText = Get-Content -Raw -LiteralPath $resolver
-foreach ($fragment in @("[version]'3.12'", 'FBE_MAKENSIS', 'NSIS\makensis.exe', 'Plugins\x86-unicode\UAC.dll')) {
+foreach ($fragment in @("[version]'3.13'", 'FBE_MAKENSIS', 'NSIS\makensis.exe', 'Plugins\x86-unicode\UAC.dll')) {
     if ($resolverText.IndexOf($fragment, [StringComparison]::Ordinal) -lt 0) { throw "Resolver не содержит контракт: $fragment" }
 }
 if ($installer -notmatch '(?m)^Unicode true\s*$') { throw 'MakeInstaller.nsi обязан явно включать Unicode true.' }

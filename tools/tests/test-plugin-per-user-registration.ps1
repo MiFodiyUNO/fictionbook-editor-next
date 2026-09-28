@@ -26,7 +26,7 @@ if ($pluginHost -match 'CoCreateInstance|RegEnumKeyEx|DiscoverLegacyPlugins') { 
 
 Assert-Contains $installer 'resolve-nsis.ps1' 'Единый резолвер NSIS'
 Assert-Contains $installer '/X"!addplugindir /x86-unicode %NSIS_INCLUDE_DIR%"' 'Unicode-каталог NSIS plugins'
-Assert-Contains $nsisResolver "[version]'3.12'" 'Минимальная версия NSIS'
+Assert-Contains $nsisResolver "[version]'3.13'" 'Минимальная версия NSIS'
 Assert-Contains $nsisResolver 'FBE_MAKENSIS' 'Явно заданный путь makensis'
 Assert-Contains $nsisResolver 'Plugins\x86-unicode\UAC.dll' 'Обязательный Unicode UAC plugin'
 if ($installer.IndexOf('NSIS\Unicode\makensis.exe', [StringComparison]::OrdinalIgnoreCase) -ge 0) {

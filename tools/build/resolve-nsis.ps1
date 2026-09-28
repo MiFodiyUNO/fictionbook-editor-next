@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$minimumVersion = [version]'3.12'
+$minimumVersion = [version]'3.13'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
 $candidates = @(
