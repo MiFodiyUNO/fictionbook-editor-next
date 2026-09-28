@@ -13,6 +13,7 @@ struct HtmlExportSettings
 	CString externalImagesFolderName;
 	bool usingCustomTemplate = false;
 	bool includeToc = true;
+	bool includeMetadata = true;
 	bool includeDescription = true;
 	bool includeAnnotation = true;
 	bool includeTitleInfo = true;

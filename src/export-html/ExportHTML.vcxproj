@@ -185,6 +185,11 @@
     <ClCompile Include="ExportHTMLPlugin.cpp" />
     <ClCompile Include="HtmlExportResourceAudit.cpp" />
     <ClCompile Include="HtmlExportSettings.cpp" />
+    <ClCompile Include="HtmlExportOptionsDialogV2.cpp" />
+    <ClCompile Include="HtmlExportGeneralPage.cpp" />
+    <ClCompile Include="HtmlExportAppearancePage.cpp" />
+    <ClCompile Include="HtmlExportImagesPage.cpp" />
+    <ClCompile Include="HtmlExportNotesMetadataPage.cpp" />
     <ClCompile Include="RuntimeLocalization.cpp" />
     <ClCompile Include="ExportHTML_i.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -207,6 +212,11 @@
     <ClInclude Include="HtmlExportOptionsDialog.h" />
     <ClInclude Include="HtmlExportResourceAudit.h" />
     <ClInclude Include="HtmlExportSettings.h" />
+    <ClInclude Include="HtmlExportOptionsDialogV2.h" />
+    <ClInclude Include="HtmlExportGeneralPage.h" />
+    <ClInclude Include="HtmlExportAppearancePage.h" />
+    <ClInclude Include="HtmlExportImagesPage.h" />
+    <ClInclude Include="HtmlExportNotesMetadataPage.h" />
     <ClInclude Include="dllmain.h" />
     <ClInclude Include="ExportHTMLPlugin.h" />
     <ClInclude Include="ExportHTML_i.h" />

@@ -46,6 +46,7 @@ void HtmlExportSettingsStore::Load(CRegKey& registry, HtmlExportSettings& settin
 	DWORD metadataValue = 0;
 	const bool hasMetadataSettings = registry.QueryDWORDValue(L"IncludeAnnotation", metadataValue) == ERROR_SUCCESS;
 	const bool legacyIncludeDescription = ReadBool(registry, L"IncludeDesc", true);
+	settings.includeMetadata = ReadBool(registry, L"IncludeMetadata", legacyIncludeDescription);
 	settings.includeDescription = ReadBool(registry, L"IncludeDescription", legacyIncludeDescription);
 	settings.includeAnnotation = ReadBool(registry, L"IncludeAnnotation", legacyIncludeDescription);
 	settings.includeTitleInfo = ReadBool(registry, L"IncludeTitleInfo", legacyIncludeDescription);
@@ -92,6 +93,7 @@ void HtmlExportSettingsStore::Save(CRegKey& registry, const HtmlExportSettings& 
 	else registry.DeleteValue(L"Template");
 	registry.SetStringValue(L"CustomCss", settings.customCss);
 	WriteBool(registry, L"IncludeToc", settings.includeToc);
+	WriteBool(registry, L"IncludeMetadata", settings.includeMetadata);
 	WriteInt(registry, L"TOCDepth", max(1, min(10, settings.tocDepth)));
 	WriteInt(registry, L"ImageMaxWidth", max(0, min(10000, settings.imageMaxWidth)));
 	WriteInt(registry, L"ImageMaxHeight", max(0, min(10000, settings.imageMaxHeight)));

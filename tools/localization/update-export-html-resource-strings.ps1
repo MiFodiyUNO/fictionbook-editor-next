@@ -98,11 +98,11 @@ foreach ($language in $languageResources.Keys) {
     foreach ($entry in $entries) {
         $resourceId = [string]$entry.Value.resourceId
         $translation = $entry.Value.translations.PSObject.Properties[$language]
-        if (-not $translation) {
-            throw "У ключа $($entry.Name) отсутствует перевод для $language."
-        }
-
-        $text = ConvertTo-RcStringLiteral -Text ([string]$translation.Value)
+        # New ExportHTML UI strings must at minimum have RU and EN text.  Other
+        # runtime languages deliberately inherit the catalog source until a
+        # native translation is supplied; generated resources stay complete.
+        $textValue = if ($translation) { [string]$translation.Value } else { [string]$entry.Value.source }
+        $text = ConvertTo-RcStringLiteral -Text $textValue
         $lines.Add(("    {0} L""{1}""" -f $resourceId.PadRight(36), $text))
     }
 

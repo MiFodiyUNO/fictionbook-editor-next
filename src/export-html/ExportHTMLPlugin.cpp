@@ -2,7 +2,7 @@
 #include "ExportHTMLPlugin.h"
 
 #include "utils.h"
-#include "HtmlExportOptionsDialog.h"
+#include "HtmlExportOptionsDialogV2.h"
 #include "HtmlExportResourceAudit.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "RuntimeLocalization.h"
@@ -181,13 +181,13 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			dlg.m_template = U::GetProgDirFile(L"html.xsl");
 			dlg.m_usingCustomTemplate = false;
 		} else {
-			CHtmlExportOptionsDialog options;
+			CHtmlExportOptionsDialogV2 options;
 			options.LoadSettings();
 			std::vector<CString> filterLabels, filterPatterns;
 			std::vector<COMDLG_FILTERSPEC> filters;
 			BuildHtmlModernFileTypes(LoadExportHtmlString(IDS_SAVE_FILE_FILTER), filterLabels, filterPatterns, filters);
-			CComObject<CHtmlFileDialogEvents>* rawEvents = nullptr;
-			HRESULT eventHr = CComObject<CHtmlFileDialogEvents>::CreateInstance(&rawEvents);
+			CComObject<CHtmlFileDialogEventsV2>* rawEvents = nullptr;
+			HRESULT eventHr = CComObject<CHtmlFileDialogEventsV2>::CreateInstance(&rawEvents);
 			if (FAILED(eventHr) || !rawEvents) return FAILED(eventHr) ? eventHr : E_FAIL;
 			rawEvents->AddRef();
 			rawEvents->owner = (HWND)hWnd;
@@ -203,7 +203,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			request.customize = [](IFileDialogCustomize* customize) {
 				CString button = LoadExportHtmlString(IDS_HTML_EXPORT_OPTIONS_TITLE);
 				button += L"...";
-				return customize->AddPushButton(CHtmlFileDialogEvents::SettingsButtonId,
+				return customize->AddPushButton(CHtmlFileDialogEventsV2::SettingsButtonId,
 					button);
 			};
 			const ModernFileDialog::Result result = ModernFileDialog::Show((HWND)hWnd, request);
@@ -212,8 +212,8 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 				FbeDiagnostic::HResult(L"file-dialog", L"FD203", result.error, L"Export HTML save dialog");
 				return FAILED(result.error) ? result.error : E_FAIL;
 			}
-			dlg.m_template = options.m_template; dlg.m_customCss = options.m_customCss; dlg.m_usingCustomTemplate = options.m_usingCustomTemplate;
-			dlg.m_includedesc = options.m_includedesc; dlg.m_tocdepth = options.m_tocdepth; dlg.m_imageMaxWidth = options.m_imageMaxWidth; dlg.m_imageMaxHeight = options.m_imageMaxHeight;
+			dlg.m_template = options.m_settings.templatePath; dlg.m_customCss = options.m_settings.customCss; dlg.m_usingCustomTemplate = options.m_settings.usingCustomTemplate;
+			dlg.m_includedesc = options.m_settings.includeDescription; dlg.m_tocdepth = options.m_settings.tocDepth; dlg.m_imageMaxWidth = options.m_settings.imageMaxWidth; dlg.m_imageMaxHeight = options.m_settings.imageMaxHeight;
 			options.Persist();
 			dlg.m_ofn.nFilterIndex = result.filterIndex;
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), result.paths.front().c_str(), _TRUNCATE);
