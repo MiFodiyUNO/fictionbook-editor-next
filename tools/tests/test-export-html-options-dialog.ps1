@@ -4,7 +4,7 @@ $source = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportOptionsDi
 $resource = Get-Content -Raw (Join-Path $root 'src\export-html\ExportHTML.rc')
 $plugin = Get-Content -Raw (Join-Path $root 'src\export-html\ExportHTMLPlugin.cpp')
 $allSource = $source + $resource + $plugin
-foreach ($token in @('class CHtmlExportOptionsDialog : public CDialogImpl', 'COMMAND_ID_HANDLER(IDOK, OnOk)', 'COMMAND_ID_HANDLER(IDCANCEL, OnCancel)', 'void Persist() const', 'SetStringValue(_T("CustomCss")')) { if (-not $source.Contains($token)) { throw "Standalone HTML options dialog is missing: $token" } }
+foreach ($token in @('class CHtmlExportOptionsDialog : public CDialogImpl', 'COMMAND_ID_HANDLER(IDOK, OnOk)', 'COMMAND_ID_HANDLER(IDCANCEL, OnCancel)', 'void Persist()', 'HtmlExportSettingsStore::Save')) { if (-not $source.Contains($token)) { throw "Standalone HTML options dialog is missing: $token" } }
 foreach ($token in @('IDS_HTML_EXPORT_OPTIONS_TITLE', 'InitTooltips()', 'ModernFileDialog::Show', 'options.Persist()')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "HTML modern options regression: $token" } }
 if ($resource -notmatch 'IDD_HTML_EXPORT_OPTIONS DIALOGEX') { throw 'Standalone HTML options resource is missing.' }
 foreach ($token in @('BuildHtmlModernFileTypes', 'IDS_SAVE_FILE_FILTER', 'IDS_OPEN_TEMPLATE_FILTER', 'IDS_OPEN_CSS_FILTER', 'Outcome::Failed', 'FbeDiagnostic::HResult')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "HTML modern dialog regression: $token" } }

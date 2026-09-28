@@ -42,6 +42,9 @@
     <ClCompile Include="HtmlExportResourceAudit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="HtmlExportSettings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ExportHTML.def">
@@ -81,6 +84,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HtmlExportResourceAudit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HtmlExportSettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
