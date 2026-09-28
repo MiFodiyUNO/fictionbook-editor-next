@@ -241,6 +241,7 @@ public:
 	void DestroyScriptToolbarRuntimeControls();
 	void DestroyScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
 	bool PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
+	UINT AllocateScriptToolbarBandId() const;
 	bool CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
 	bool NormalizeScriptToolbarRuntimeBand(ScriptToolbarRuntime& runtime);
 	bool SetScriptToolbarRuntimeVisible(ScriptToolbarRuntime& runtime, bool visible);

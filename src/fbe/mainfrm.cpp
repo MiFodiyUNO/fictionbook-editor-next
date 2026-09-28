@@ -66,6 +66,8 @@ static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 static const UINT RECOVERY_TYPING_DEBOUNCE_MS = 3 * 1000;
+static const UINT SCRIPT_TOOLBAR_BAND_ID_FIRST = 0x6000;
+static const UINT SCRIPT_TOOLBAR_BAND_ID_LAST = 0x6FFF;
 static SourceEditorConfig BuildSourceEditorConfig();
 typedef FbeArchive::ResolvedDocument ResolvedOpenDocument;
 
@@ -2867,6 +2869,24 @@ bool CMainFrame::PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 	return true;
 }
 
+UINT CMainFrame::AllocateScriptToolbarBandId() const
+{
+	std::vector<UINT> occupied;
+	for(int band = 0; band < m_rebar.GetBandCount(); ++band)
+	{
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID;
+		if(m_rebar.GetBandInfo(band, &info)) occupied.push_back(info.wID);
+	}
+	for(UINT candidate = SCRIPT_TOOLBAR_BAND_ID_FIRST; candidate <= SCRIPT_TOOLBAR_BAND_ID_LAST; ++candidate)
+	{
+		bool used = false;
+		for(size_t index = 0; index < occupied.size(); ++index)
+			if(occupied[index] == candidate) { used = true; break; }
+		if(!used) return candidate;
+	}
+	return 0;
+}
+
 bool CMainFrame::CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 {
 	if(runtime.definition.id == L"scripts-main" || !runtime.definition.visible) return runtime.window != NULL;
@@ -2879,7 +2899,8 @@ bool CMainFrame::CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 	if(!InitToolBar(toolbar, IDR_SCRIPTS) || !UIAddToolBar(toolbar) || !PopulateScriptToolbarRuntime(runtime))
 		{ DestroyScriptToolbarRuntime(runtime); return false; }
 	ToolbarFactory::AutoSizeToolbar(runtime.window);
-	if(!AddSimpleReBarBand(toolbar, 0, TRUE, 0, FALSE)) { DestroyScriptToolbarRuntime(runtime); return false; }
+	const UINT bandId = AllocateScriptToolbarBandId();
+	if(bandId == 0 || !AddSimpleReBarBandCtrl(m_rebar, toolbar, static_cast<int>(bandId), NULL, TRUE, 0, FALSE)) { DestroyScriptToolbarRuntime(runtime); return false; }
 	for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band)
 	{
 		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_ID;

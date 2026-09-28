@@ -115,13 +115,29 @@ void CMainFrame::RunPortableStateTestScenario()
 		std::vector<ScriptToolbarDefinition> current = currentDefinitions();
 		for(size_t index = 0; index < current.size(); ++index) if(current[index].id == L"runtime-size-1") { PortableToolbarItem item = {}; item.scriptUid = L"runtime-size-missing-uid"; current[index].items.push_back(item); break; }
 		const bool added = created && ApplyScriptToolbarDefinitions(definitions, current) && oneRow();
+		auto runtimeBandId = [&](const CString& id) { ScriptToolbarRuntime* runtime = m_scriptToolbars.Find(id); return runtime == NULL ? 0U : runtime->rebarBandId; };
+		auto duplicateBandIds = [&]() {
+			std::vector<UINT> ids;
+			int duplicates = 0;
+			for(int band = 0; band < m_rebar.GetBandCount(); ++band) {
+				REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID;
+				if(!m_rebar.GetBandInfo(band, &info)) continue;
+				for(size_t index = 0; index < ids.size(); ++index) if(ids[index] == info.wID) { ++duplicates; break; }
+				ids.push_back(info.wID);
+			}
+			return duplicates;
+		};
+		const UINT bandBefore = runtimeBandId(L"runtime-size-2");
 		std::vector<ScriptToolbarDefinition> hidden = current;
 		for(size_t index = 0; index < hidden.size(); ++index) if(hidden[index].id == L"runtime-size-2") { hidden[index].visible = false; break; }
 		const bool hiddenOk = added && ApplyScriptToolbarDefinitions(current, hidden);
-		const bool shown = hiddenOk && ApplyScriptToolbarDefinitions(hidden, current) && oneRow();
-		const bool restarted = shown && InitializeScripts() && oneRow();
-		const bool passed = created && added && hiddenOk && shown && restarted;
-		CStringA report; report.Format("phase=script-toolbar-runtime-size\ncreated=%d\nadd-script=%d\nhide-show=%d\nrestart=%d\nresult=%s\n", created, added, hiddenOk && shown, restarted, passed ? "pass" : "fail");
+		const bool shown = hiddenOk && ApplyScriptToolbarDefinitions(hidden, current);
+		const bool showOneRow = shown && oneRow();
+		const UINT bandAfter = runtimeBandId(L"runtime-size-2");
+		const int duplicateIds = duplicateBandIds();
+		const bool restarted = showOneRow && duplicateIds == 0 && InitializeScripts() && oneRow();
+		const bool passed = created && added && hiddenOk && shown && showOneRow && bandBefore != 0 && bandAfter != 0 && duplicateIds == 0 && restarted;
+		CStringA report; report.Format("phase=script-toolbar-runtime-size\ncreated=%d\nadd-script=%d\nhide-result=%d\nshow-result=%d\nshow-one-row=%d\nband-before=%u\nband-after=%u\nduplicate-band-ids=%d\nhide-show=%d\nrestart=%d\nresult=%s\n", created, added, hiddenOk, shown, showOneRow, bandBefore, bandAfter, duplicateIds, hiddenOk && shown, restarted, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationScriptsReloadRuntime)
