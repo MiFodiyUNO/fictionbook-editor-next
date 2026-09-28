@@ -1,19 +1,19 @@
 #include "stdafx.h"
-#include "HtmlExportOptionsDialogV2.h"
+#include "HtmlExportOptionsDialog.h"
 #include "RuntimeLocalization.h"
 #include "TemplateResolver.h"
 #include "resource.h"
 
-void CHtmlExportOptionsDialogV2::LoadSettings()
+void CHtmlExportOptionsDialog::LoadSettings()
 {
     HtmlExportSettingsStore::Load(_Settings, m_settings);
     m_workingSettings=m_settings;
 }
-void CHtmlExportOptionsDialogV2::Persist()
+void CHtmlExportOptionsDialog::Persist()
 {
     HtmlExportSettingsStore::Save(_Settings,m_settings);
 }
-LRESULT CHtmlExportOptionsDialogV2::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
+LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
     SetWindowText(LoadExportHtmlString(IDS_HTML_EXPORT_OPTIONS_TITLE));
     CTabCtrl tabs = GetDlgItem(IDC_OPTIONS_TABS);
@@ -37,22 +37,25 @@ LRESULT CHtmlExportOptionsDialogV2::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
     SelectPage(0);
     return TRUE;
 }
-LRESULT CHtmlExportOptionsDialogV2::OnSize(UINT, WPARAM, LPARAM, BOOL&)
+LRESULT CHtmlExportOptionsDialog::OnSize(UINT, WPARAM, LPARAM, BOOL&)
 {
     LayoutPages();
     return 0;
 }
-LRESULT CHtmlExportOptionsDialogV2::OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&)
+LRESULT CHtmlExportOptionsDialog::OnDpiChanged(UINT, WPARAM, LPARAM lParam, BOOL&)
 {
+    const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
+    if (suggested)
+        SetWindowPos(NULL, suggested->left, suggested->top, suggested->right - suggested->left, suggested->bottom - suggested->top, SWP_NOZORDER | SWP_NOACTIVATE);
     LayoutPages();
     return 0;
 }
-LRESULT CHtmlExportOptionsDialogV2::OnTabChanged(int, LPNMHDR, BOOL&)
+LRESULT CHtmlExportOptionsDialog::OnTabChanged(int, LPNMHDR, BOOL&)
 {
     SelectPage(CTabCtrl(GetDlgItem(IDC_OPTIONS_TABS)).GetCurSel());
     return 0;
 }
-void CHtmlExportOptionsDialogV2::LayoutPages()
+void CHtmlExportOptionsDialog::LayoutPages()
 {
     CTabCtrl tabs = GetDlgItem(IDC_OPTIONS_TABS);
     if (!tabs.IsWindow()) return;
@@ -64,7 +67,7 @@ void CHtmlExportOptionsDialogV2::LayoutPages()
     for (size_t index = 0; index < _countof(pages); ++index)
         if (pages[index]) ::SetWindowPos(pages[index], NULL, page.left, page.top, page.Width(), page.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
 }
-void CHtmlExportOptionsDialogV2::SelectPage(int page)
+void CHtmlExportOptionsDialog::SelectPage(int page)
 {
     if (page < 0 || page > 3) return;
     m_currentPage = page;
@@ -73,7 +76,7 @@ void CHtmlExportOptionsDialogV2::SelectPage(int page)
     for (int index = 0; index < static_cast<int>(_countof(pages)); ++index)
         if (pages[index]) ::ShowWindow(pages[index], index == page ? SW_SHOW : SW_HIDE);
 }
-LRESULT CHtmlExportOptionsDialogV2::OnOk(WORD, WORD, HWND, BOOL&)
+LRESULT CHtmlExportOptionsDialog::OnOk(WORD, WORD, HWND, BOOL&)
 {
     HtmlExportSettings candidate = m_workingSettings;
     CString error;
@@ -86,8 +89,8 @@ LRESULT CHtmlExportOptionsDialogV2::OnOk(WORD, WORD, HWND, BOOL&)
     EndDialog(IDOK);
     return 0;
 }
-LRESULT CHtmlExportOptionsDialogV2::OnCancel(WORD, WORD, HWND, BOOL&) { EndDialog(IDCANCEL); return 0; }
-STDMETHODIMP CHtmlFileDialogEventsV2::OnButtonClicked(IFileDialogCustomize* customize, DWORD id)
+LRESULT CHtmlExportOptionsDialog::OnCancel(WORD, WORD, HWND, BOOL&) { EndDialog(IDCANCEL); return 0; }
+STDMETHODIMP CHtmlFileDialogEvents::OnButtonClicked(IFileDialogCustomize* customize, DWORD id)
 {
     if (id==SettingsButtonId && options) { HWND h=owner; CComPtr<IOleWindow> w; if(customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&w)))) w->GetWindow(&h); options->DoModal(h); }
     return S_OK;

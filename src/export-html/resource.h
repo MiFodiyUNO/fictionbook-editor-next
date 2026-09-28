@@ -3,8 +3,7 @@
 // Used by ExportHTML.rc
 //
 #define IDR_EXPORTHTML                  101
-#define IDD_HTML_EXPORT_OPTIONS         103
-#define IDD_HTML_EXPORT_OPTIONS_V2      104
+#define IDD_HTML_EXPORT_OPTIONS         104
 #define IDD_HTML_EXPORT_GENERAL_PAGE    105
 #define IDD_HTML_EXPORT_APPEARANCE_PAGE 106
 #define IDD_HTML_EXPORT_IMAGES_PAGE     107
@@ -48,7 +47,6 @@
 #define IDS_OPTIONS_FORMAT               137
 #define IDS_OPTIONS_ENCODING             138
 #define IDS_OPTIONS_INCLUDE_TOC          139
-#define IDS_OPTIONS_DOCUMENT_STRUCTURE   140
 #define IDS_OPTIONS_TEMPLATE             141
 #define IDS_OPTIONS_STYLE                142
 #define IDS_OPTIONS_FONT                 143
@@ -97,9 +95,13 @@
 #define IDS_OPTIONS_ERROR_IMAGE_SIZE      186
 #define IDS_OPTIONS_ERROR_IMAGE_DIRECTORY 187
 #define IDS_OPTIONS_ERROR_WARNING         188
+#define IDS_OPTIONS_VALUE_LINE_120         189
+#define IDS_OPTIONS_VALUE_LINE_150         190
+#define IDS_OPTIONS_VALUE_NARROW           191
+#define IDS_OPTIONS_VALUE_WIDE             192
+#define IDS_OPTIONS_ERROR_FONT_SIZE        193
 #define IDC_OPTIONS_TABS                 1014
 #define IDC_INCLUDE_TOC                  1015
-#define IDC_STRUCTURE                    1016
 #define IDC_FORMAT_VALUE                 1017
 #define IDC_ENCODING_VALUE               1018
 #define IDC_STYLE                        1019
@@ -126,7 +128,6 @@
 #define IDC_METADATA_AUTHORS             1040
 #define IDC_METADATA_TRANSLATORS         1041
 #define IDC_METADATA_CUSTOM              1042
-#define IDC_STRUCTURE_LABEL              1043
 #define IDC_STYLE_LABEL                  1044
 #define IDC_FONT_LABEL                   1045
 #define IDC_FONT_SIZE_LABEL              1046
@@ -142,7 +143,6 @@
 #define IDC_NOTE_PLACEMENT_LABEL         1056
 #define IDC_BROWSE                      1001
 #define IDC_TEMPLATE                    1002
-#define IDC_DOCINFO                     1003
 #define IDC_TOCDEPTH                    1004
 #define IDC_TEMPLATE_LABEL              1005
 #define IDC_TOC_DEPTH_LABEL             1006

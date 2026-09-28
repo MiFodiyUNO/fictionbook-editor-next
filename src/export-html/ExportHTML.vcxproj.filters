@@ -45,7 +45,7 @@
     <ClCompile Include="HtmlExportSettings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="HtmlExportOptionsDialogV2.cpp">
+    <ClCompile Include="HtmlExportOptionsDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HtmlExportGeneralPage.cpp">
@@ -104,7 +104,7 @@
     <ClInclude Include="HtmlExportSettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HtmlExportOptionsDialogV2.h">
+    <ClInclude Include="HtmlExportOptionsDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HtmlExportGeneralPage.h">

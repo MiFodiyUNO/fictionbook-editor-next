@@ -58,8 +58,8 @@ void HtmlExportAppearancePage::LoadFromSettings()
     if (!m_settings) return;
     const UINT styles[] = { IDS_OPTIONS_VALUE_CLASSIC, IDS_OPTIONS_VALUE_BOOK, IDS_OPTIONS_VALUE_MINIMAL };
     const UINT fonts[] = { IDS_OPTIONS_VALUE_SERIF, IDS_OPTIONS_VALUE_SANS, IDS_OPTIONS_VALUE_SYSTEM, IDS_OPTIONS_VALUE_CUSTOM };
-    const UINT defaults[] = { IDS_OPTIONS_VALUE_DEFAULT, IDS_OPTIONS_VALUE_NORMAL, IDS_OPTIONS_VALUE_READING };
-    const UINT margins[] = { IDS_OPTIONS_VALUE_DEFAULT, IDS_OPTIONS_VALUE_NORMAL, IDS_OPTIONS_VALUE_READING };
+    const UINT defaults[] = { IDS_OPTIONS_VALUE_DEFAULT, IDS_OPTIONS_VALUE_LINE_120, IDS_OPTIONS_VALUE_LINE_150 };
+    const UINT margins[] = { IDS_OPTIONS_VALUE_NARROW, IDS_OPTIONS_VALUE_NORMAL, IDS_OPTIONS_VALUE_WIDE };
     const UINT text[] = { IDS_OPTIONS_VALUE_LEFT, IDS_OPTIONS_VALUE_JUSTIFIED };
     const UINT headings[] = { IDS_OPTIONS_VALUE_CENTER, IDS_OPTIONS_VALUE_LEFT };
     FillCombo(IDC_STYLE, styles, _countof(styles), m_settings->style);
@@ -79,7 +79,7 @@ bool HtmlExportAppearancePage::SaveToSettings(HtmlExportSettings& candidate, CSt
 {
     BOOL translated = FALSE;
     const int fontSize = static_cast<int>(GetDlgItemInt(IDC_FONT_SIZE, &translated, FALSE));
-    if (!translated || fontSize < 0 || fontSize > 72) { ::SetFocus(GetDlgItem(IDC_FONT_SIZE)); error = LoadExportHtmlString(IDS_OPTIONS_ERROR_IMAGE_SIZE); return false; }
+    if (!translated || fontSize < 0 || fontSize > 72) { ::SetFocus(GetDlgItem(IDC_FONT_SIZE)); error = LoadExportHtmlString(IDS_OPTIONS_ERROR_FONT_SIZE); return false; }
     const int width = static_cast<int>(GetDlgItemInt(IDC_CONTENT_WIDTH, &translated, FALSE));
     if (!translated || width < 0 || width > 10000) { ::SetFocus(GetDlgItem(IDC_CONTENT_WIDTH)); error = LoadExportHtmlString(IDS_OPTIONS_ERROR_IMAGE_SIZE); return false; }
     candidate.style = max(0, min(2, CComboBox(GetDlgItem(IDC_STYLE)).GetCurSel()));
@@ -121,8 +121,12 @@ LRESULT HtmlExportAppearancePage::OnBrowseCss(WORD, WORD, HWND, BOOL&)
     request.filters = filters.data();
     request.filterCount = static_cast<UINT>(filters.size());
     const ModernFileDialog::Result result = ModernFileDialog::Show(m_hWnd, request);
-    if (result.outcome == ModernFileDialog::Outcome::Accepted && !result.paths.empty())
-        SetDlgItemText(IDC_CUSTOM_CSS, result.paths.front().c_str());
+    if (result.outcome == ModernFileDialog::Outcome::Cancelled) return 0;
+    if (result.outcome == ModernFileDialog::Outcome::Failed) {
+        FbeDiagnostic::HResult(L"file-dialog", L"FD205", result.error, L"Browse HTML CSS file");
+        return 0;
+    }
+    if (!result.paths.empty()) SetDlgItemText(IDC_CUSTOM_CSS, result.paths.front().c_str());
     return 0;
 }
 

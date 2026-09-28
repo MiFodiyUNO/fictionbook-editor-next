@@ -2,7 +2,7 @@
 #include "ExportHTMLPlugin.h"
 
 #include "utils.h"
-#include "HtmlExportOptionsDialogV2.h"
+#include "HtmlExportOptionsDialog.h"
 #include "HtmlExportResourceAudit.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "RuntimeLocalization.h"
@@ -181,13 +181,13 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			dlg.m_template = U::GetProgDirFile(L"html.xsl");
 			dlg.m_usingCustomTemplate = false;
 		} else {
-			CHtmlExportOptionsDialogV2 options;
+			CHtmlExportOptionsDialog options;
 			options.LoadSettings();
 			std::vector<CString> filterLabels, filterPatterns;
 			std::vector<COMDLG_FILTERSPEC> filters;
 			BuildHtmlModernFileTypes(LoadExportHtmlString(IDS_SAVE_FILE_FILTER), filterLabels, filterPatterns, filters);
-			CComObject<CHtmlFileDialogEventsV2>* rawEvents = nullptr;
-			HRESULT eventHr = CComObject<CHtmlFileDialogEventsV2>::CreateInstance(&rawEvents);
+			CComObject<CHtmlFileDialogEvents>* rawEvents = nullptr;
+			HRESULT eventHr = CComObject<CHtmlFileDialogEvents>::CreateInstance(&rawEvents);
 			if (FAILED(eventHr) || !rawEvents) return FAILED(eventHr) ? eventHr : E_FAIL;
 			rawEvents->AddRef();
 			rawEvents->owner = (HWND)hWnd;
@@ -203,7 +203,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			request.customize = [](IFileDialogCustomize* customize) {
 				CString button = LoadExportHtmlString(IDS_HTML_EXPORT_OPTIONS_TITLE);
 				button += L"...";
-				return customize->AddPushButton(CHtmlFileDialogEventsV2::SettingsButtonId,
+				return customize->AddPushButton(CHtmlFileDialogEvents::SettingsButtonId,
 					button);
 			};
 			const ModernFileDialog::Result result = ModernFileDialog::Show((HWND)hWnd, request);

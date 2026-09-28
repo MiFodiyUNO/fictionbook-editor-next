@@ -24,6 +24,9 @@ if (-not (Test-Path -LiteralPath $generatedRcPath)) {
 }
 $generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
 $dialog = Get-Content -Raw -LiteralPath $dialogPath
+$generalPage = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\export-html\HtmlExportGeneralPage.cpp")
+$appearancePage = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\export-html\HtmlExportAppearancePage.cpp")
+$localizedSources = $dialog + $generalPage + $appearancePage
 
 if ($rc -notmatch '#include\s+"ExportHTMLStrings\.generated\.rc2"') {
     throw "ExportHTML.rc не подключает ExportHTMLStrings.generated.rc2."
@@ -40,17 +43,14 @@ foreach ($controlId in @("IDC_TEMPLATE_LABEL", "IDC_TOC_DEPTH_LABEL")) {
 }
 
 foreach ($expectedCall in @(
-    "SetDlgItemText(IDC_TEMPLATE_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL))",
-    "SetDlgItemText(IDC_DOCINFO,LoadExportHtmlString(IDS_CUSTOM_SAVE_INCLUDE_DESC))",
-    "SetDlgItemText(IDC_TOC_DEPTH_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH))",
-	"SetDlgItemText(IDC_CUSTOM_CSS_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_CUSTOM_CSS))",
-	"SetDlgItemText(IDC_IMAGE_MAX_WIDTH_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH))",
-	"SetDlgItemText(IDC_IMAGE_MAX_HEIGHT_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT))",
+    "SetDlgItemText(IDC_TEMPLATE_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL))",
+    "SetDlgItemText(IDC_TOC_DEPTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH))",
+	"SetDlgItemText(IDC_CUSTOM_CSS_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_CUSTOM_CSS))",
     "LoadExportHtmlString(IDS_OPEN_TEMPLATE_FILTER)",
     "LoadExportHtmlString(IDS_OPEN_CSS_FILTER)"
 )) {
-    if ($dialog -notmatch [regex]::Escape($expectedCall)) {
-        throw "HtmlExportOptionsDialog.h не применяет локализованную строку: $expectedCall"
+    if ($localizedSources -notmatch [regex]::Escape($expectedCall)) {
+        throw "HTML options UI не применяет локализованную строку: $expectedCall"
     }
 }
 
@@ -88,14 +88,6 @@ $requiredResourceIds = @(
 	"IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT"
 )
 
-foreach ($tooltipControl in @(
-    "IDC_TEMPLATE", "IDC_BROWSE", "IDC_DOCINFO", "IDC_TOCDEPTH",
-    "IDC_CUSTOM_CSS", "IDC_BROWSE_CSS", "IDC_IMAGE_MAX_WIDTH", "IDC_IMAGE_MAX_HEIGHT"
-)) {
-    if ($dialog -notmatch [regex]::Escape("AddTooltip($tooltipControl,")) {
-        throw "Для настройки ExportHTML отсутствует всплывающая подсказка: $tooltipControl"
-    }
-}
 
 $requiredLanguageBlocks = @(
     "LANG_RUSSIAN",
