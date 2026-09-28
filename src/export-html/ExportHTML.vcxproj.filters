@@ -39,6 +39,9 @@
     <ClCompile Include="RuntimeLocalization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="HtmlExportResourceAudit.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ExportHTML.def">
@@ -75,6 +78,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RuntimeLocalization.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HtmlExportResourceAudit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

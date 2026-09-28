@@ -3,6 +3,7 @@
 
 #include "utils.h"
 #include "HtmlExportOptionsDialog.h"
+#include "HtmlExportResourceAudit.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "RuntimeLocalization.h"
 #include "..\\version.h"
@@ -60,6 +61,25 @@ bool LoadUtf8TextFile(const CString& filename, CString& text)
 	}
 	text.ReleaseBuffer(length);
 	return true;
+}
+
+std::wstring ReadUtf8Stream(IStream* stream)
+{
+	STATSTG stat = {};
+	CheckError(stream->Stat(&stat, STATFLAG_NONAME));
+	LARGE_INTEGER start = {};
+	CheckError(stream->Seek(start, STREAM_SEEK_SET, NULL));
+	std::vector<char> bytes(static_cast<size_t>(stat.cbSize.QuadPart));
+	ULONG read = 0;
+	if (!bytes.empty()) CheckError(stream->Read(&bytes[0], static_cast<ULONG>(bytes.size()), &read));
+	if (read != bytes.size()) throw _com_error(E_FAIL);
+	const int length = bytes.empty() ? 0 : ::MultiByteToWideChar(CP_UTF8, 0,
+		&bytes[0], static_cast<int>(bytes.size()), NULL, 0);
+	if (!bytes.empty() && length == 0) throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
+	std::wstring text(static_cast<size_t>(length), L'\0');
+	if (length > 0) ::MultiByteToWideChar(CP_UTF8, 0, &bytes[0],
+		static_cast<int>(bytes.size()), &text[0], length);
+	return text;
 }
 
 }
@@ -249,14 +269,16 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		// 3 = HTML without images, 4 = self-contained HTML with data: URIs.
 		CString dfile(dlg.m_szFileName);
 
-		// * open the file
-		hOut = ::CreateFile(dlg.m_szFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-		if (hOut == INVALID_HANDLE_VALUE)
-		{
+		// Self-contained output is first transformed in memory and audited before
+		// touching the selected target.  Other modes preserve the historic writer.
+		if (!fEmbeddedImages) {
+			hOut = ::CreateFile(dlg.m_szFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+			if (hOut == INVALID_HANDLE_VALUE) {
 			CString openErrorMessage;
 			openErrorMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
 			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)openErrorMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
 			return E_FAIL;
+			}
 		}
 
 		// * construct images directory
@@ -360,9 +382,32 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		}
 
 		// * transform
-		CheckError(proc->put_output(variant_t((IUnknown*)U::NewStream(hOut, !fMIME))));
+		CComPtr<IStream> standaloneOutput;
+		if (fEmbeddedImages) {
+			CheckError(::CreateStreamOnHGlobal(NULL, TRUE, &standaloneOutput));
+			CheckError(proc->put_output(variant_t((IUnknown*)standaloneOutput)));
+		} else {
+			CheckError(proc->put_output(variant_t((IUnknown*)U::NewStream(hOut, !fMIME))));
+		}
 		VARIANT_BOOL Done = VARIANT_FALSE;
 		CheckError(proc->transform(&Done));
+		if (fEmbeddedImages) {
+			const std::vector<std::wstring> dependencies = HtmlExportResourceAudit::FindExternalDependencies(ReadUtf8Stream(standaloneOutput));
+			if (!dependencies.empty() && ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML,
+				FormatExportHtmlString(IDS_WARNING_EXTERNAL_RESOURCES, static_cast<int>(dependencies.size())), NULL,
+				TDCBF_YES_BUTTON | TDCBF_NO_BUTTON, TD_WARNING_ICON) != IDYES)
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			hOut = ::CreateFile(dlg.m_szFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+			if (hOut == INVALID_HANDLE_VALUE) {
+				CString openErrorMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
+				ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)openErrorMessage, NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+				return E_FAIL;
+			}
+			LARGE_INTEGER start = {};
+			CheckError(standaloneOutput->Seek(start, STREAM_SEEK_SET, NULL));
+			ULARGE_INTEGER written = {};
+			CheckError(standaloneOutput->CopyTo(U::NewStream(hOut, true), ULARGE_INTEGER{ 0xFFFFFFFF, 0x7FFFFFFF }, NULL, &written));
+		}
 
 		// * save images
 		if (fExternalImages || fMIME) {

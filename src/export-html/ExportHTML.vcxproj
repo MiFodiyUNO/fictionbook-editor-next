@@ -183,6 +183,7 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="ExportHTML.cpp" />
     <ClCompile Include="ExportHTMLPlugin.cpp" />
+    <ClCompile Include="HtmlExportResourceAudit.cpp" />
     <ClCompile Include="RuntimeLocalization.cpp" />
     <ClCompile Include="ExportHTML_i.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -203,6 +204,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HtmlExportOptionsDialog.h" />
+    <ClInclude Include="HtmlExportResourceAudit.h" />
     <ClInclude Include="dllmain.h" />
     <ClInclude Include="ExportHTMLPlugin.h" />
     <ClInclude Include="ExportHTML_i.h" />

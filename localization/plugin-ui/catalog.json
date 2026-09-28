@@ -542,6 +542,25 @@
         "bg-BG": "Избраният XSL шаблон не поддържа вградени изображения за самостоятелен HTML. Изберете вградения шаблон или друг съвместим формат за експортиране."
       }
     },
+    "export_html.runtime.warning_external_resources": {
+      "source": "Self-contained HTML contains %d external resource dependencies. Choose Yes to save anyway, or No to cancel and change export settings.",
+      "component": "export-html.runtime",
+      "resourceId": "IDS_WARNING_EXTERNAL_RESOURCES",
+      "translations": {
+        "en-US": "Self-contained HTML contains %d external resource dependencies. Choose Yes to save anyway, or No to cancel and change export settings.",
+        "ru-RU": "Автономный HTML содержит внешние зависимости ресурсов: %d. Выберите «Да», чтобы сохранить файл, или «Нет», чтобы отменить экспорт и изменить настройки.",
+        "uk-UA": "Автономний HTML містить зовнішні залежності ресурсів: %d. Виберіть «Так», щоб зберегти файл, або «Ні», щоб скасувати експорт і змінити налаштування.",
+        "de-DE": "Eigenständiges HTML enthält %d externe Ressourcenabhängigkeiten. Wählen Sie Ja zum Speichern oder Nein zum Abbrechen und Ändern der Exporteinstellungen.",
+        "fr-FR": "Le HTML autonome contient %d dépendances de ressources externes. Choisissez Oui pour enregistrer ou Non pour annuler et modifier les paramètres d’exportation.",
+        "es-ES": "El HTML autónomo contiene %d dependencias de recursos externos. Elija Sí para guardar o No para cancelar y cambiar la configuración de exportación.",
+        "it-IT": "L'HTML autonomo contiene %d dipendenze da risorse esterne. Scegliere Sì per salvare oppure No per annullare e modificare le impostazioni di esportazione.",
+        "pl-PL": "Samodzielny HTML zawiera %d zewnętrznych zależności zasobów. Wybierz Tak, aby zapisać, albo Nie, aby anulować i zmienić ustawienia eksportu.",
+        "pt-PT": "O HTML autónomo contém %d dependências de recursos externas. Escolha Sim para guardar ou Não para cancelar e alterar as definições de exportação.",
+        "nl-NL": "Zelfstandige HTML bevat %d externe afhankelijkheden van bronnen. Kies Ja om toch op te slaan of Nee om te annuleren en de exportinstellingen te wijzigen.",
+        "cs-CZ": "Samostatné HTML obsahuje %d závislostí na externích zdrojích. Zvolte Ano pro uložení nebo Ne pro zrušení a změnu nastavení exportu.",
+        "bg-BG": "Самостоятелният HTML съдържа %d външни зависимости от ресурси. Изберете Да за записване или Не за отказ и промяна на настройките за експортиране."
+      }
+    },
     "export_epub.runtime.unknown_error": {
       "source": "Unknown error",
       "component": "export-epub.runtime",

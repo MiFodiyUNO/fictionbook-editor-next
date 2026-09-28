@@ -44,6 +44,7 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
 	{ IDS_UNKNOWN_ERROR, L"export_html.runtime.unknown_error" },
     { IDS_ERROR_EMBEDDED_IMAGES_TEMPLATE, L"export_html.runtime.error_embedded_images_template" },
     { IDS_HTML_EXPORT_OPTIONS_TITLE, L"export_html.dialog.options.title" },
+    { IDS_WARNING_EXTERNAL_RESOURCES, L"export_html.runtime.warning_external_resources" },
 };
 
 static std::map<UINT, CStringW> g_runtimeStrings;
