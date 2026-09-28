@@ -6,7 +6,7 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "wtl")]
+    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "aom", "wtl")]
     [string]$Dependency,
 
     [string]$SourcePath,
@@ -147,6 +147,29 @@ function Invoke-HunspellPipeline {
     }
 }
 
+function Invoke-AomPipeline {
+    Invoke-ScriptStep -Label "Раскладка обновления libaom" -Action { Invoke-ApplyStep }
+
+    if ($script:IsWhatIfMode) {
+        Write-Host "WhatIf активен: сборка libheif и native smoke пропущены."
+        return
+    }
+
+    Invoke-ScriptStep -Label "Сборка libaom и libheif" -Action {
+        & (Join-Path $PSScriptRoot "build-libheif.ps1") -Configuration $Configuration
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+    }
+
+    Invoke-ScriptStep -Label "Native smoke ImageImport" -Action {
+        & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") -Configuration $Configuration
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+    }
+}
+
 function Invoke-WtlPipeline {
     Invoke-ScriptStep -Label (Get-ThirdPartyText -Base64 "0KDQsNC30LLRkdGA0YLRi9Cy0LDQvdC40LUg0L7QsdC90L7QstC70LXQvdC40Y8=") -Action { Invoke-ApplyStep }
 
@@ -175,6 +198,7 @@ switch ($Dependency) {
     "lexilla" { Invoke-ScintillaPipeline }
     "pcre2" { Invoke-Pcre2Pipeline }
     "hunspell" { Invoke-HunspellPipeline }
+    "aom" { Invoke-AomPipeline }
     "wtl" { Invoke-WtlPipeline }
     default { throw (Format-ThirdPartyText "0J3QtdC40LfQstC10YHRgtC90YvQuSBvcmNoZXN0cmF0b3Ig0LTQu9GPINC30LDQstC40YHQuNC80L7RgdGC0LggezB9" $Dependency) }
 }

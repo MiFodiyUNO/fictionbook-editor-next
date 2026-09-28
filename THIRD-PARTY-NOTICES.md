@@ -7,10 +7,10 @@ is needed to build the project but is not shipped as a separate component.
 
 | Component | Version in this tree | License | Use | Upstream |
 | --- | --- | --- | --- | --- |
-| Scintilla | 5.6.6 | Scintilla License (permissive) | XML source editor; `Scintilla.dll` is bundled | <https://www.scintilla.org/> |
-| Lexilla | 5.5.3 | Scintilla License (permissive) | Lexers for Scintilla; `Lexilla.dll` is bundled | <https://www.scintilla.org/Lexilla.html> |
+| Scintilla | 5.6.7 | Scintilla License (permissive) | XML source editor; `Scintilla.dll` is bundled | <https://www.scintilla.org/> |
+| Lexilla | 5.5.4 | Scintilla License (permissive) | Lexers for Scintilla; `Lexilla.dll` is bundled | <https://www.scintilla.org/Lexilla.html> |
 | PCRE2 | 10.48 | BSD-3-Clause with PCRE2 exception | Regular-expression backend, statically linked into FBE | <https://github.com/PCRE2Project/pcre2> |
-| Hunspell | 1.7.3 | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later | Spell checking, statically linked into FBE | <https://github.com/hunspell/hunspell> |
+| Hunspell | 1.7.4 | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later | Spell checking, statically linked into FBE | <https://github.com/hunspell/hunspell> |
 | English Speller Database / SCOWL | 2026.02.25 | SCOWL permissive license; BSD license for the affix file | Bundled English (`en_US`) spell-check dictionary | <https://github.com/en-wl/wordlist> |
 | igerman98 / frami German Hunspell Dictionary | 20161207+frami20170109 | GPL-2.0 OR GPL-3.0 | Bundled German (`de_DE`) spell-check dictionary | <https://github.com/LibreOffice/dictionaries> |
 | Goudron Russian Hunspell Dictionary | 1.0.8 | MPL-2.0 | Bundled Russian (`ru_RU`) spell-check dictionary | <https://github.com/Goudron/ru-spelling-dictionary> |
@@ -19,7 +19,7 @@ is needed to build the project but is not shipped as a separate component.
 | OpenJPEG | 2.5.4 | BSD-2-Clause | JPEG 2000 decoder build input for FBE | <https://github.com/uclouvain/openjpeg> |
 | libheif | 1.23.5 | LGPL-2.1-or-later | Static ISO-BMFF/HEIF container reader in FBE; AVIF/HEIC/HEIF decoding only | <https://github.com/strukturag/libheif> |
 | libde265 | 1.1.3 | LGPL-2.1-or-later | Static HEVC decoder used by bundled libheif | <https://github.com/strukturag/libde265> |
-| libaom | 3.15.0 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
+| libaom | 3.15.1 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
 | zlib | 1.3.2 | zlib License | Static DEFLATE backend used by libarchive | <https://github.com/madler/zlib> |
 | libarchive | 3.8.9 | BSD-2-Clause | Static ZIP/RAR/RAR5 reader and ZIP writer linked into FBE | <https://github.com/libarchive/libarchive> |
 | Windows Template Library (WTL) | 10.01 | MS-PL | UI and Windows shell components, compiled into FBE, FBV, and FBShell | <https://sourceforge.net/projects/wtl/> |

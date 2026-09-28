@@ -569,8 +569,8 @@ foreach ($entry in $requiredFileDescriptions.GetEnumerator()) {
 }
 
 $editorVersions = @{
-    "Scintilla.dll" = "5.6.6"
-    "Lexilla.dll" = "5.5.3"
+    "Scintilla.dll" = "5.6.7"
+    "Lexilla.dll" = "5.5.4"
 }
 foreach ($name in $editorVersions.Keys) {
     $path = Join-Path $outputDir $name

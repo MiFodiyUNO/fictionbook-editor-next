@@ -58,7 +58,7 @@ Integration задаётся в `packaging/package-manifest.json`. `stage-core.p
 `THIRD-PARTY-NOTICES.md` и соответствующая лицензия; заменять их без отдельной
 проверки происхождения нельзя.
 
-Редактор исходного кода использует Scintilla 5.6.6 и Lexilla 5.5.3 из
+Редактор исходного кода использует Scintilla 5.6.7 и Lexilla 5.5.4 из
 `third_party`. Скрипт `tools/build/build-scintilla.ps1` собирает их x86 DLL с
 статическим C++ runtime до сборки solution и выкладывает их в `runtime`.
 Скрипт `tools/tests/test-scintilla.ps1` проверяет загрузку Lexilla и синтаксис
@@ -76,6 +76,7 @@ Integration задаётся в `packaging/package-manifest.json`. `stage-core.p
 .\tools\build\apply-third-party-update.ps1 -Dependency scintilla
 .\tools\build\apply-third-party-update-and-test.ps1 -Dependency pcre2
 .\tools\build\build-hunspell.ps1
+.\tools\build\update-third-party-dependency.ps1 -Dependency aom
 ```
 
 Первый сценарий показывает локальную и удалённую версии и сообщает, где

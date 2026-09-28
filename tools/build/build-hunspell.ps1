@@ -129,6 +129,7 @@ function New-HunspellBuildProject {
     <ClCompile Include="$(SolutionDir)third_party\hunspell\src\hunspell\filemgr.cxx" />
     <ClCompile Include="$(SolutionDir)third_party\hunspell\src\hunspell\hashmgr.cxx" />
     <ClCompile Include="$(SolutionDir)third_party\hunspell\src\hunspell\hunspell.cxx" />
+    <ClCompile Include="$(SolutionDir)third_party\hunspell\src\hunspell\hunspelltrace.cxx" />
     <ClCompile Include="$(SolutionDir)third_party\hunspell\src\hunspell\hunzip.cxx" />
     <ClCompile Include="$(SolutionDir)third_party\hunspell\src\hunspell\phonet.cxx" />
     <ClCompile Include="$(SolutionDir)third_party\hunspell\src\hunspell\replist.cxx" />
@@ -147,8 +148,9 @@ if (-not (Test-Path -LiteralPath $projectPath)) {
     Write-Host "Проект сборки Hunspell не найден, создаю: $projectPath"
     New-HunspellBuildProject -Path $projectPath -Toolset $PlatformToolset
 }
-elseif (-not (Test-Path -LiteralPath $hunvisapiPath)) {
-    Write-Host "Заголовок Hunspell visibility не найден, обновляю служебные файлы сборки."
+elseif (-not (Test-Path -LiteralPath $hunvisapiPath) -or
+    -not (Get-Content -Raw -LiteralPath $projectPath).Contains('hunspelltrace.cxx')) {
+    Write-Host "Служебный проект Hunspell устарел, обновляю его."
     New-HunspellBuildProject -Path $projectPath -Toolset $PlatformToolset
 }
 
