@@ -2872,7 +2872,7 @@ bool CMainFrame::PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 UINT CMainFrame::AllocateScriptToolbarBandId() const
 {
 	std::vector<UINT> occupied;
-	for(int band = 0; band < m_rebar.GetBandCount(); ++band)
+	for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band)
 	{
 		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID;
 		if(m_rebar.GetBandInfo(band, &info)) occupied.push_back(info.wID);

@@ -119,7 +119,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		auto duplicateBandIds = [&]() {
 			std::vector<UINT> ids;
 			int duplicates = 0;
-			for(int band = 0; band < m_rebar.GetBandCount(); ++band) {
+			for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band) {
 				REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID;
 				if(!m_rebar.GetBandInfo(band, &info)) continue;
 				for(size_t index = 0; index < ids.size(); ++index) if(ids[index] == info.wID) { ++duplicates; break; }

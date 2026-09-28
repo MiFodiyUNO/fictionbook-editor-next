@@ -4,6 +4,8 @@ $source = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportOptionsDi
 $implementation = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportOptionsDialog.cpp')
 $resource = Get-Content -Raw (Join-Path $root 'src\export-html\ExportHTML.rc')
 $plugin = Get-Content -Raw (Join-Path $root 'src\export-html\ExportHTMLPlugin.cpp')
+$project = Get-Content -Raw (Join-Path $root 'src\export-html\ExportHTML.vcxproj')
+$filters = Get-Content -Raw (Join-Path $root 'src\export-html\ExportHTML.vcxproj.filters')
 $pages = @('HtmlExportGeneralPage', 'HtmlExportAppearancePage', 'HtmlExportImagesPage', 'HtmlExportNotesMetadataPage')
 $allSource = $source + $implementation + $resource + $plugin
 foreach ($token in @('class CHtmlExportOptionsDialog : public CDialogImpl', 'IDD_HTML_EXPORT_OPTIONS', 'NOTIFY_HANDLER(IDC_OPTIONS_TABS, TCN_SELCHANGE', 'MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)', 'COMMAND_ID_HANDLER(IDOK, OnOk)', 'COMMAND_ID_HANDLER(IDCANCEL, OnCancel)', 'void Persist()')) { if (-not $source.Contains($token)) { throw "HTML options dialog is missing: $token" } }
@@ -18,6 +20,7 @@ foreach ($token in @('IDD_HTML_EXPORT_OPTIONS DIALOGEX', 'IDD_HTML_EXPORT_GENERA
 foreach ($token in @('m_workingSettings=m_settings', 'HtmlExportSettings candidate = m_workingSettings', 'm_workingSettings = candidate', 'SelectPage(0)', 'SelectPage(1)', 'SelectPage(2)', 'SelectPage(3)', 'LayoutPages()', 'options.Persist()')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "V2 HTML transactional or lifecycle regression: $token" } }
 foreach ($token in @('BuildHtmlModernFileTypes', 'IDS_SAVE_FILE_FILTER', 'IDS_OPEN_CSS_FILTER', 'Outcome::Failed', 'FbeDiagnostic::HResult')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "HTML modern dialog regression: $token" } }
 foreach ($token in @('IDS_OPEN_TEMPLATE_FILTER', 'templatePath', 'usingCustomTemplate', 'ExportHtmlPathsEqual', 'ModernFileDialog', 'FD204')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "Custom XSL regression: $token" } }
+foreach ($token in @('IDS_OPTIONS_ERROR_TEMPLATE', 'GetFileAttributes', 'FILE_ATTRIBUTE_DIRECTORY', 'includeToc && (!translated || depth < 1 || depth > 10)')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "Template or disabled TOC validation regression: $token" } }
 $appearanceSource = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportAppearancePage.cpp')
 foreach ($token in @('Outcome::Cancelled', 'Outcome::Failed', 'FD205', 'Browse HTML CSS file')) { if ($appearanceSource -notmatch [regex]::Escape($token)) { throw "CSS browse regression: $token" } }
 if ($allSource.Contains('OutputDebugStringW')) { throw 'Modern file dialog errors must use persistent logging.' }
@@ -26,4 +29,6 @@ if ($plugin -notmatch 'Outcome::Cancelled[\s\S]*Outcome::Failed[\s\S]*options\.P
 if ($implementation -match 'OnInitDialog[^{]*\{[^}]*HtmlExportSettingsStore::Load') { throw 'HTML options OnInitDialog must not reload persistent settings.' }
 if ($plugin -notmatch 'options\.LoadSettings\(\);[\s\S]*ModernFileDialog::Show') { throw 'HTML options must load settings once before opening Save dialog.' }
 if ($implementation -notmatch 'OnCancel[\s\S]*EndDialog\(IDCANCEL\)') { throw 'Nested HTML options Cancel must leave the current object unchanged.' }
+if (([regex]::Matches($project, '<ClInclude Include="HtmlExportOptionsDialog\.h"').Count) -ne 1) { throw 'ExportHTML.vcxproj must contain one final options-dialog header entry.' }
+if (([regex]::Matches($filters, '<ClInclude Include="HtmlExportOptionsDialog\.h"').Count) -ne 1) { throw 'ExportHTML.vcxproj.filters must contain one final options-dialog header entry.' }
 Write-Host 'HTML export options dialog contract passed.'

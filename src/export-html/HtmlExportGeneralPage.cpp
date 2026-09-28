@@ -53,17 +53,19 @@ bool HtmlExportGeneralPage::SaveToSettings(HtmlExportSettings& candidate, CStrin
 {
     BOOL translated = FALSE;
     const int depth = static_cast<int>(GetDlgItemInt(IDC_TOCDEPTH, &translated, FALSE));
-    if (!translated || depth < 1 || depth > 10) {
+    const bool includeToc = IsDlgButtonChecked(IDC_INCLUDE_TOC) == BST_CHECKED;
+    if (includeToc && (!translated || depth < 1 || depth > 10)) {
         ::SetFocus(GetDlgItem(IDC_TOCDEPTH));
         error = LoadExportHtmlString(IDS_OPTIONS_ERROR_TOC_DEPTH);
         return false;
     }
-    candidate.includeToc = IsDlgButtonChecked(IDC_INCLUDE_TOC) == BST_CHECKED;
-    candidate.tocDepth = depth;
+    candidate.includeToc = includeToc;
+    if (includeToc) candidate.tocDepth = depth;
     candidate.templatePath = U::GetWindowText(GetDlgItem(IDC_TEMPLATE));
-    if (candidate.templatePath.IsEmpty() || !::PathFileExists(candidate.templatePath)) {
+    const DWORD attributes = candidate.templatePath.IsEmpty() ? INVALID_FILE_ATTRIBUTES : ::GetFileAttributes(candidate.templatePath);
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
         ::SetFocus(GetDlgItem(IDC_TEMPLATE));
-        error = LoadExportHtmlString(IDS_ERROR_OPEN_FILE);
+        error = LoadExportHtmlString(IDS_OPTIONS_ERROR_TEMPLATE);
         return false;
     }
     candidate.usingCustomTemplate = !ExportHtmlPathsEqual(candidate.templatePath, U::GetProgDirFile(L"html.xsl"));

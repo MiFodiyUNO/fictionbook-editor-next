@@ -104,9 +104,6 @@
     <ClInclude Include="HtmlExportSettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HtmlExportOptionsDialog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="HtmlExportGeneralPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>

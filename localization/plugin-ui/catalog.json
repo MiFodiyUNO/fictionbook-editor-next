@@ -617,6 +617,7 @@
     "export_html.dialog.value.narrow": { "source": "Narrow", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_NARROW", "translations": { "en-US": "Narrow", "ru-RU": "Узкие" } },
     "export_html.dialog.value.wide": { "source": "Wide", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_WIDE", "translations": { "en-US": "Wide", "ru-RU": "Широкие" } },
     "export_html.dialog.error.font_size": { "source": "Font size must be between 0 and 72.", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_ERROR_FONT_SIZE", "translations": { "en-US": "Font size must be between 0 and 72.", "ru-RU": "Размер шрифта должен быть от 0 до 72." } },
+    "export_html.dialog.error.template": { "source": "Please specify an existing XSL file.", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_ERROR_TEMPLATE", "translations": { "en-US": "Please specify an existing XSL file.", "ru-RU": "Укажите существующий XSL-файл." } },
     "export_epub.runtime.unknown_error": {
       "source": "Unknown error",
       "component": "export-epub.runtime",

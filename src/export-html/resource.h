@@ -100,6 +100,7 @@
 #define IDS_OPTIONS_VALUE_NARROW           191
 #define IDS_OPTIONS_VALUE_WIDE             192
 #define IDS_OPTIONS_ERROR_FONT_SIZE        193
+#define IDS_OPTIONS_ERROR_TEMPLATE         194
 #define IDC_OPTIONS_TABS                 1014
 #define IDC_INCLUDE_TOC                  1015
 #define IDC_FORMAT_VALUE                 1017

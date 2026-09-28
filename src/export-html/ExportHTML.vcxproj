@@ -212,7 +212,6 @@
     <ClInclude Include="HtmlExportOptionsDialog.h" />
     <ClInclude Include="HtmlExportResourceAudit.h" />
     <ClInclude Include="HtmlExportSettings.h" />
-    <ClInclude Include="HtmlExportOptionsDialog.h" />
     <ClInclude Include="HtmlExportGeneralPage.h" />
     <ClInclude Include="HtmlExportAppearancePage.h" />
     <ClInclude Include="HtmlExportImagesPage.h" />
