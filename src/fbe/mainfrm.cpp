@@ -2602,15 +2602,24 @@ bool CMainFrame::CompleteToolbarQuickCustomize(HWND toolbar, POINT point)
 	RECT client = {};
 	::GetClientRect(toolbar, &client);
 	if(!::PtInRect(&client, point)) return false;
-	int destination = static_cast<int>(::SendMessage(toolbar, TB_HITTEST, 0, reinterpret_cast<LPARAM>(&point)));
-	if(destination < 0) destination = static_cast<int>(items.size());
-	if(destination == source) return true;
+	const int destination = static_cast<int>(::SendMessage(toolbar, TB_HITTEST, 0, reinterpret_cast<LPARAM>(&point)));
+	int insertionPoint = static_cast<int>(items.size());
+	if(destination >= 0)
+	{
+		CToolBarCtrl control = toolbar;
+		RECT targetRect = {};
+		if(!control.GetItemRect(destination, &targetRect)) return false;
+		const int midpoint = targetRect.left + (targetRect.right - targetRect.left) / 2;
+		const bool afterTarget = point.x > midpoint || (point.x == midpoint && destination > source);
+		insertionPoint = destination + (afterTarget ? 1 : 0);
+	}
+	if(insertionPoint == source || insertionPoint == source + 1) return true;
 	PortableToolbarItem moved = items[source];
 	items.erase(items.begin() + source);
-	if(destination > source) --destination;
-	if(destination < 0) destination = 0;
-	if(static_cast<size_t>(destination) > items.size()) destination = static_cast<int>(items.size());
-	items.insert(items.begin() + destination, moved);
+	if(source < insertionPoint) --insertionPoint;
+	if(insertionPoint < 0) insertionPoint = 0;
+	if(static_cast<size_t>(insertionPoint) > items.size()) insertionPoint = static_cast<int>(items.size());
+	items.insert(items.begin() + insertionPoint, moved);
 	return ApplyToolbarQuickCustomizeItems(toolbar, items);
 }
 
