@@ -50,6 +50,7 @@ LRESULT HtmlExportAppearancePage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
     SetDlgItemText(IDC_CUSTOM_CSS_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_CUSTOM_CSS));
     SetDlgItemText(IDC_CLEAR_CSS, LoadExportHtmlString(IDS_OPTIONS_CSS_CLEAR));
     LoadFromSettings();
+    InitTooltips();
     return TRUE;
 }
 
@@ -133,5 +134,28 @@ LRESULT HtmlExportAppearancePage::OnBrowseCss(WORD, WORD, HWND, BOOL&)
 LRESULT HtmlExportAppearancePage::OnFontFamily(WORD, WORD, HWND, BOOL&)
 {
     UpdateEnabledState();
+    return 0;
+}
+
+void HtmlExportAppearancePage::InitTooltips()
+{
+    m_tooltip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+    if (!m_tooltip) return;
+    const UINT controls[] = { IDC_STYLE, IDC_FONT_FAMILY, IDC_CUSTOM_FONT, IDC_FONT_SIZE, IDC_LINE_HEIGHT, IDC_CONTENT_WIDTH, IDC_PAGE_MARGINS, IDC_TEXT_ALIGNMENT, IDC_HEADING_ALIGNMENT, IDC_CUSTOM_CSS, IDC_BROWSE_CSS, IDC_CLEAR_CSS };
+    for (size_t index = 0; index < _countof(controls); ++index) AddTooltip(controls[index], IDS_TOOLTIP_OPTION_VALUE);
+}
+
+void HtmlExportAppearancePage::AddTooltip(UINT id, UINT textId)
+{
+    HWND control = GetDlgItem(id); if (!control) return;
+    m_tooltipTexts.push_back(LoadExportHtmlString(textId)); CString& text = m_tooltipTexts.back(); if (text.IsEmpty()) return;
+    TOOLINFO info = {}; info.cbSize = sizeof(info); info.uFlags = TTF_IDISHWND | TTF_SUBCLASS; info.hwnd = m_hWnd; info.uId = reinterpret_cast<UINT_PTR>(control); info.lpszText = const_cast<LPTSTR>(static_cast<LPCTSTR>(text));
+    ::SendMessage(m_tooltip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&info));
+}
+
+LRESULT HtmlExportAppearancePage::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
+{
+    if (m_tooltip) { ::DestroyWindow(m_tooltip); m_tooltip = NULL; }
     return 0;
 }

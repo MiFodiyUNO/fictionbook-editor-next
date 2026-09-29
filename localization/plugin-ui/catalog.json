@@ -561,7 +561,25 @@
         "bg-BG": "Самостоятелният HTML съдържа %d външни зависимости от ресурси. Изберете Да за записване или Не за отказ и промяна на настройките за експортиране."
       }
     },
-    "export_html.dialog.tab.general": { "source": "General", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_TAB_GENERAL", "translations": {"en-US": "General", "ru-RU": "Основные", "uk-UA": "Основні", "de-DE": "Allgemein", "fr-FR": "Général", "es-ES": "General", "it-IT": "Generale", "pl-PL": "Ogólne", "pt-PT": "Geral", "nl-NL": "Algemeen", "cs-CZ": "Obecné", "bg-BG": "Общи"} },
+    "export_html.runtime.warning_standalone_size": {
+      "source": "The standalone HTML is larger than %d MiB. Save it?",
+      "component": "export-html.runtime",
+      "resourceId": "IDS_WARNING_STANDALONE_SIZE",
+      "translations": {
+        "en-US": "The standalone HTML is larger than %d MiB. Save it?",
+        "ru-RU": "Автономный HTML больше %d МиБ. Сохранить его?",
+        "uk-UA": "Автономний HTML більший за %d МіБ. Зберегти його?",
+        "de-DE": "Das eigenständige HTML ist größer als %d MiB. Speichern?",
+        "fr-FR": "Le HTML autonome dépasse %d Mio. L’enregistrer ?",
+        "es-ES": "El HTML autónomo supera %d MiB. ¿Guardarlo?",
+        "it-IT": "L'HTML autonomo supera %d MiB. Salvarlo?",
+        "pl-PL": "Samodzielny HTML jest większy niż %d MiB. Zapisać?",
+        "pt-PT": "O HTML autónomo é maior do que %d MiB. Guardar?",
+        "nl-NL": "De zelfstandige HTML is groter dan %d MiB. Opslaan?",
+        "cs-CZ": "Samostatné HTML je větší než %d MiB. Uložit?",
+        "bg-BG": "Самостоятелният HTML е по-голям от %d MiB. Да се запише?"
+      }
+    },    "export_html.dialog.tab.general": { "source": "General", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_TAB_GENERAL", "translations": {"en-US": "General", "ru-RU": "Основные", "uk-UA": "Основні", "de-DE": "Allgemein", "fr-FR": "Général", "es-ES": "General", "it-IT": "Generale", "pl-PL": "Ogólne", "pt-PT": "Geral", "nl-NL": "Algemeen", "cs-CZ": "Obecné", "bg-BG": "Общи"} },
     "export_html.dialog.tab.appearance": { "source": "Appearance", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_TAB_APPEARANCE", "translations": {"en-US": "Appearance", "ru-RU": "Оформление", "uk-UA": "Оформлення", "de-DE": "Darstellung", "fr-FR": "Apparence", "es-ES": "Apariencia", "it-IT": "Aspetto", "pl-PL": "Wygląd", "pt-PT": "Aspeto", "nl-NL": "Weergave", "cs-CZ": "Vzhled", "bg-BG": "Изглед"} },
     "export_html.dialog.tab.images": { "source": "Images", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_TAB_IMAGES", "translations": {"en-US": "Images", "ru-RU": "Изображения", "uk-UA": "Зображення", "de-DE": "Bilder", "fr-FR": "Images", "es-ES": "Imágenes", "it-IT": "Immagini", "pl-PL": "Obrazy", "pt-PT": "Imagens", "nl-NL": "Afbeeldingen", "cs-CZ": "Obrázky", "bg-BG": "Изображения"} },
     "export_html.dialog.tab.notes": { "source": "Notes and metadata", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_TAB_NOTES", "translations": {"en-US": "Notes and metadata", "ru-RU": "Примечания и метаданные", "uk-UA": "Примітки та метадані", "de-DE": "Anmerkungen und Metadaten", "fr-FR": "Notes et métadonnées", "es-ES": "Notas y metadatos", "it-IT": "Note e metadati", "pl-PL": "Przypisy i metadane", "pt-PT": "Notas e metadados", "nl-NL": "Notities en metadata", "cs-CZ": "Poznámky a metadata", "bg-BG": "Бележки и метаданни"} },
@@ -582,7 +600,7 @@
     "export_html.dialog.note_placement": { "source": "Note placement:", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_NOTE_PLACEMENT", "translations": {"en-US": "Note placement:", "ru-RU": "Размещение примечаний:", "uk-UA": "Розміщення приміток:", "de-DE": "Platzierung der Anmerkungen:", "fr-FR": "Placement des notes :", "es-ES": "Ubicación de notas:", "it-IT": "Posizione note:", "pl-PL": "Umieszczenie przypisów:", "pt-PT": "Posição das notas:", "nl-NL": "Plaatsing van notities:", "cs-CZ": "Umístění poznámek:", "bg-BG": "Разположение на бележките:"} },
     "export_html.dialog.metadata": { "source": "Include book information", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_INCLUDE_METADATA", "translations": {"en-US": "Include book information", "ru-RU": "Добавлять сведения о книге", "uk-UA": "Додавати відомості про книгу", "de-DE": "Buchinformationen einfügen", "fr-FR": "Inclure les informations du livre", "es-ES": "Incluir información del libro", "it-IT": "Includi informazioni sul libro", "pl-PL": "Dołącz informacje o książce", "pt-PT": "Incluir informações do livro", "nl-NL": "Boekinformatie opnemen", "cs-CZ": "Zahrnout informace o knize", "bg-BG": "Включване на информация за книгата"} },
     "export_html.dialog.metadata_annotation": { "source": "Annotation", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_METADATA_ANNOTATION", "translations": {"en-US": "Annotation", "ru-RU": "Аннотация", "uk-UA": "Анотація", "de-DE": "Annotation", "fr-FR": "Annotation", "es-ES": "Anotación", "it-IT": "Annotazione", "pl-PL": "Adnotacja", "pt-PT": "Anotação", "nl-NL": "Annotatie", "cs-CZ": "Anotace", "bg-BG": "Анотация"} },
-    "export_html.dialog.metadata_title": { "source": "Book information", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_METADATA_TITLE", "translations": {"en-US": "Book information", "ru-RU": "Сведения о книге", "uk-UA": "Відомості про книгу", "de-DE": "Buchinformationen", "fr-FR": "Informations du livre", "es-ES": "Información del libro", "it-IT": "Informazioni sul libro", "pl-PL": "Informacje o książce", "pt-PT": "Informações do livro", "nl-NL": "Boekinformatie", "cs-CZ": "Informace o knize", "bg-BG": "Информация за книгата"} },
+    "export_html.dialog.metadata_title": { "source": "Book information", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_METADATA_TITLE", "translations": {"en-US": "Book information", "ru-RU": "Основные сведения о книге", "uk-UA": "Відомості про книгу", "de-DE": "Buchinformationen", "fr-FR": "Informations du livre", "es-ES": "Información del libro", "it-IT": "Informazioni sul libro", "pl-PL": "Informacje o książce", "pt-PT": "Informações do livro", "nl-NL": "Boekinformatie", "cs-CZ": "Informace o knize", "bg-BG": "Информация за книгата"} },
     "export_html.dialog.metadata_document": { "source": "Document information", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_METADATA_DOCUMENT", "translations": {"en-US": "Document information", "ru-RU": "Сведения о документе", "uk-UA": "Відомості про документ", "de-DE": "Dokumentinformationen", "fr-FR": "Informations du document", "es-ES": "Información del documento", "it-IT": "Informazioni sul documento", "pl-PL": "Informacje o dokumencie", "pt-PT": "Informações do documento", "nl-NL": "Documentinformatie", "cs-CZ": "Informace o dokumentu", "bg-BG": "Информация за документа"} },
     "export_html.dialog.metadata_publish": { "source": "Publisher information", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_METADATA_PUBLISH", "translations": {"en-US": "Publisher information", "ru-RU": "Сведения об издании", "uk-UA": "Відомості про видання", "de-DE": "Verlagsinformationen", "fr-FR": "Informations sur l’édition", "es-ES": "Información de publicación", "it-IT": "Informazioni di pubblicazione", "pl-PL": "Informacje o wydaniu", "pt-PT": "Informações da publicação", "nl-NL": "Publicatiegegevens", "cs-CZ": "Informace o vydání", "bg-BG": "Информация за изданието"} },
     "export_html.dialog.metadata_history": { "source": "Document history", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_METADATA_HISTORY", "translations": {"en-US": "Document history", "ru-RU": "История документа", "uk-UA": "Історія документа", "de-DE": "Dokumentverlauf", "fr-FR": "Historique du document", "es-ES": "Historial del documento", "it-IT": "Cronologia del documento", "pl-PL": "Historia dokumentu", "pt-PT": "Histórico do documento", "nl-NL": "Documentgeschiedenis", "cs-CZ": "Historie dokumentu", "bg-BG": "История на документа"} },
@@ -600,7 +618,7 @@
     "export_html.dialog.value.left": { "source": "Left", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_LEFT", "translations": {"en-US": "Left", "ru-RU": "Слева", "uk-UA": "Ліворуч", "de-DE": "Links", "fr-FR": "À gauche", "es-ES": "Izquierda", "it-IT": "Sinistra", "pl-PL": "Do lewej", "pt-PT": "À esquerda", "nl-NL": "Links", "cs-CZ": "Vlevo", "bg-BG": "Вляво"} },
     "export_html.dialog.value.justified": { "source": "Justified", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_JUSTIFIED", "translations": {"en-US": "Justified", "ru-RU": "По ширине", "uk-UA": "За шириною", "de-DE": "Blocksatz", "fr-FR": "Justifié", "es-ES": "Justificado", "it-IT": "Giustificato", "pl-PL": "Wyjustowany", "pt-PT": "Justificado", "nl-NL": "Uitgevuld", "cs-CZ": "Do bloku", "bg-BG": "Двустранно"} },
     "export_html.dialog.value.center": { "source": "Center", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_CENTER", "translations": {"en-US": "Center", "ru-RU": "По центру", "uk-UA": "По центру", "de-DE": "Zentriert", "fr-FR": "Centré", "es-ES": "Centrado", "it-IT": "Centrato", "pl-PL": "Wyśrodkowany", "pt-PT": "Centrado", "nl-NL": "Gecentreerd", "cs-CZ": "Na střed", "bg-BG": "Центрирано"} },
-    "export_html.dialog.value.normal": { "source": "Normal", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_NORMAL", "translations": {"en-US": "Normal", "ru-RU": "Обычный", "uk-UA": "Звичайний", "de-DE": "Normal", "fr-FR": "Normal", "es-ES": "Normal", "it-IT": "Normale", "pl-PL": "Normalny", "pt-PT": "Normal", "nl-NL": "Normaal", "cs-CZ": "Normální", "bg-BG": "Нормален"} },
+    "export_html.dialog.value.normal": { "source": "Normal", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_NORMAL", "translations": {"en-US": "Normal", "ru-RU": "Обычные", "uk-UA": "Звичайний", "de-DE": "Normal", "fr-FR": "Normal", "es-ES": "Normal", "it-IT": "Normale", "pl-PL": "Normalny", "pt-PT": "Normal", "nl-NL": "Normaal", "cs-CZ": "Normální", "bg-BG": "Нормален"} },
     "export_html.dialog.value.reading": { "source": "Reading width", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_READING", "translations": {"en-US": "Reading width", "ru-RU": "Ширина чтения", "uk-UA": "Ширина читання", "de-DE": "Lesebreite", "fr-FR": "Largeur de lecture", "es-ES": "Ancho de lectura", "it-IT": "Larghezza di lettura", "pl-PL": "Szerokość czytania", "pt-PT": "Largura de leitura", "nl-NL": "Leesbreedte", "cs-CZ": "Šířka pro čtení", "bg-BG": "Ширина за четене"} },
     "export_html.dialog.value.viewport": { "source": "Viewport", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_VIEWPORT", "translations": {"en-US": "Viewport", "ru-RU": "Окно", "uk-UA": "Область перегляду", "de-DE": "Ansichtsfenster", "fr-FR": "Fenêtre d’affichage", "es-ES": "Ventana gráfica", "it-IT": "Area di visualizzazione", "pl-PL": "Obszar widoku", "pt-PT": "Área de visualização", "nl-NL": "Weergavevenster", "cs-CZ": "Výřez", "bg-BG": "Област за преглед"} },
     "export_html.dialog.value.automatic": { "source": "Automatic", "component": "export-html.dialog", "resourceId": "IDS_OPTIONS_VALUE_AUTOMATIC", "translations": {"en-US": "Automatic", "ru-RU": "Автоматически", "uk-UA": "Автоматично", "de-DE": "Automatisch", "fr-FR": "Automatique", "es-ES": "Automático", "it-IT": "Automatico", "pl-PL": "Automatycznie", "pt-PT": "Automático", "nl-NL": "Automatisch", "cs-CZ": "Automaticky", "bg-BG": "Автоматично"} },
@@ -635,6 +653,63 @@
         "nl-NL": "Onbekende fout",
         "cs-CZ": "Neznámá chyba",
         "bg-BG": "Неизвестна грешка"
+      }
+    },
+    "export_html.dialog.images_folder_name": {
+      "source": "Folder name:",
+      "component": "export-html.dialog.options",
+      "resourceId": "IDS_OPTIONS_IMAGES_FOLDER_NAME",
+      "translations": {
+        "en-US": "Folder name:",
+        "ru-RU": "Имя папки:",
+        "uk-UA": "Folder name:",
+        "de-DE": "Folder name:",
+        "fr-FR": "Folder name:",
+        "es-ES": "Folder name:",
+        "it-IT": "Folder name:",
+        "pl-PL": "Folder name:",
+        "pt-PT": "Folder name:",
+        "nl-NL": "Folder name:",
+        "cs-CZ": "Folder name:",
+        "bg-BG": "Folder name:"
+      }
+    },
+    "export_html.dialog.warning_mib": {
+      "source": "Warning threshold, MiB:",
+      "component": "export-html.dialog.options",
+      "resourceId": "IDS_OPTIONS_WARNING_MIB",
+      "translations": {
+        "en-US": "Warning threshold, MiB:",
+        "ru-RU": "Порог предупреждения, МиБ:",
+        "uk-UA": "Warning threshold, MiB:",
+        "de-DE": "Warning threshold, MiB:",
+        "fr-FR": "Warning threshold, MiB:",
+        "es-ES": "Warning threshold, MiB:",
+        "it-IT": "Warning threshold, MiB:",
+        "pl-PL": "Warning threshold, MiB:",
+        "pt-PT": "Warning threshold, MiB:",
+        "nl-NL": "Warning threshold, MiB:",
+        "cs-CZ": "Warning threshold, MiB:",
+        "bg-BG": "Warning threshold, MiB:"
+      }
+    },
+    "export_html.tooltip.option_value": {
+      "source": "Choose this export setting. Zero uses the default where applicable.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_OPTION_VALUE",
+      "translations": {
+        "en-US": "Choose this export setting. Zero uses the default where applicable.",
+        "ru-RU": "Выберите параметр экспорта. Ноль использует значение по умолчанию там, где это применимо.",
+        "uk-UA": "Choose this export setting. Zero uses the default where applicable.",
+        "de-DE": "Choose this export setting. Zero uses the default where applicable.",
+        "fr-FR": "Choose this export setting. Zero uses the default where applicable.",
+        "es-ES": "Choose this export setting. Zero uses the default where applicable.",
+        "it-IT": "Choose this export setting. Zero uses the default where applicable.",
+        "pl-PL": "Choose this export setting. Zero uses the default where applicable.",
+        "pt-PT": "Choose this export setting. Zero uses the default where applicable.",
+        "nl-NL": "Choose this export setting. Zero uses the default where applicable.",
+        "cs-CZ": "Choose this export setting. Zero uses the default where applicable.",
+        "bg-BG": "Choose this export setting. Zero uses the default where applicable."
       }
     },
     "export_epub.dialog.options.caption": {

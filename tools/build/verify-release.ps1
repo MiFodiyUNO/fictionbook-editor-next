@@ -321,6 +321,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-html-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-standalone.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-correctness.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-html-settings-xsl.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-resource-audit.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-settings-store.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-template-selection.ps1")

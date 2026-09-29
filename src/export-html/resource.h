@@ -101,6 +101,10 @@
 #define IDS_OPTIONS_VALUE_WIDE             192
 #define IDS_OPTIONS_ERROR_FONT_SIZE        193
 #define IDS_OPTIONS_ERROR_TEMPLATE         194
+#define IDS_WARNING_STANDALONE_SIZE        195
+#define IDS_OPTIONS_IMAGES_FOLDER_NAME     196
+#define IDS_OPTIONS_WARNING_MIB            197
+#define IDS_TOOLTIP_OPTION_VALUE           198
 #define IDC_OPTIONS_TABS                 1014
 #define IDC_INCLUDE_TOC                  1015
 #define IDC_FORMAT_VALUE                 1017

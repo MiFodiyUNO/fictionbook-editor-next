@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "resource.h"
 #include "RuntimeLocalization.h"
 #include "..\common\RuntimeLocalizationCommon.h"
@@ -45,6 +45,9 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
     { IDS_ERROR_EMBEDDED_IMAGES_TEMPLATE, L"export_html.runtime.error_embedded_images_template" },
     { IDS_HTML_EXPORT_OPTIONS_TITLE, L"export_html.dialog.options.title" },
     { IDS_WARNING_EXTERNAL_RESOURCES, L"export_html.runtime.warning_external_resources" },
+    { IDS_WARNING_STANDALONE_SIZE, L"export_html.runtime.warning_standalone_size" },
+    { IDS_OPTIONS_IMAGES_FOLDER_NAME, L"export_html.dialog.images_folder_name" }, { IDS_OPTIONS_WARNING_MIB, L"export_html.dialog.warning_mib" },
+    { IDS_TOOLTIP_OPTION_VALUE, L"export_html.tooltip.option_value" },
     { IDS_OPTIONS_TAB_GENERAL, L"export_html.dialog.tab.general" }, { IDS_OPTIONS_TAB_APPEARANCE, L"export_html.dialog.tab.appearance" }, { IDS_OPTIONS_TAB_IMAGES, L"export_html.dialog.tab.images" }, { IDS_OPTIONS_TAB_NOTES, L"export_html.dialog.tab.notes" },
     { IDS_OPTIONS_FORMAT, L"export_html.dialog.format" }, { IDS_OPTIONS_ENCODING, L"export_html.dialog.encoding" }, { IDS_OPTIONS_INCLUDE_TOC, L"export_html.dialog.include_toc" },
     { IDS_OPTIONS_STYLE, L"export_html.dialog.style" }, { IDS_OPTIONS_FONT, L"export_html.dialog.font" }, { IDS_OPTIONS_FONT_SIZE, L"export_html.dialog.font_size" }, { IDS_OPTIONS_LINE_HEIGHT, L"export_html.dialog.line_height" }, { IDS_OPTIONS_CONTENT_WIDTH, L"export_html.dialog.content_width" }, { IDS_OPTIONS_MARGINS, L"export_html.dialog.margins" }, { IDS_OPTIONS_TEXT_ALIGNMENT, L"export_html.dialog.text_alignment" }, { IDS_OPTIONS_HEADING_ALIGNMENT, L"export_html.dialog.heading_alignment" },

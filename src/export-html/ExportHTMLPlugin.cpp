@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "HtmlExportOptionsDialog.h"
 #include "HtmlExportResourceAudit.h"
+#include "HtmlExportXslParameters.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "RuntimeLocalization.h"
 #include "..\\version.h"
@@ -138,6 +139,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 
 	HANDLE  hOut = INVALID_HANDLE_VALUE;
 	CString strMessage;
+	HtmlExportSettings exportSettings;
 
 	try {
 		// * construct doc pointer
@@ -180,6 +182,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), testOutput, _TRUNCATE);
 			dlg.m_template = U::GetProgDirFile(L"html.xsl");
 			dlg.m_usingCustomTemplate = false;
+			exportSettings.templatePath = dlg.m_template;
 		} else {
 			CHtmlExportOptionsDialog options;
 			options.LoadSettings();
@@ -212,8 +215,9 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 				FbeDiagnostic::HResult(L"file-dialog", L"FD203", result.error, L"Export HTML save dialog");
 				return FAILED(result.error) ? result.error : E_FAIL;
 			}
-			dlg.m_template = options.m_settings.templatePath; dlg.m_customCss = options.m_settings.customCss; dlg.m_usingCustomTemplate = options.m_settings.usingCustomTemplate;
-			dlg.m_includedesc = options.m_settings.includeDescription; dlg.m_tocdepth = options.m_settings.tocDepth; dlg.m_imageMaxWidth = options.m_settings.imageMaxWidth; dlg.m_imageMaxHeight = options.m_settings.imageMaxHeight;
+			exportSettings = options.m_settings;
+			dlg.m_template = exportSettings.templatePath; dlg.m_customCss = exportSettings.customCss; dlg.m_usingCustomTemplate = exportSettings.usingCustomTemplate;
+			dlg.m_includedesc = exportSettings.includeDescription; dlg.m_tocdepth = exportSettings.tocDepth; dlg.m_imageMaxWidth = exportSettings.imageMaxWidth; dlg.m_imageMaxHeight = exportSettings.imageMaxHeight;
 			options.Persist();
 			dlg.m_ofn.nFilterIndex = result.filterIndex;
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), result.paths.front().c_str(), _TRUNCATE);
@@ -257,13 +261,8 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		// book text such as "{2026}", so it never strips brace-delimited text.
 		CheckError(proc->put_input(variant_t((IDispatch*)source)));
 
-		// * install template parameters
-		CheckError(proc->addParameter(bstr_t(L"includedesc"), variant_t(dlg.m_includedesc), _bstr_t()));
-		CheckError(proc->addParameter(bstr_t(L"tocdepth"), variant_t((long)dlg.m_tocdepth), _bstr_t()));
-		CheckError(proc->addParameter(bstr_t(L"imagemaxwidth"), variant_t((long)dlg.m_imageMaxWidth), _bstr_t()));
-		CheckError(proc->addParameter(bstr_t(L"imagemaxheight"), variant_t((long)dlg.m_imageMaxHeight), _bstr_t()));
-		if (!customCss.IsEmpty())
-			CheckError(proc->addParameter(bstr_t(L"customcss"), variant_t((LPCTSTR)customCss), _bstr_t()));
+		// Keep XSL parameters behind a value-model adapter; ExportCore remains a writer.
+		HtmlExportXslParameters::Apply(proc, exportSettings, customCss);
 
 		// 1 = HTML and an adjacent resource folder, 2 = MHT,
 		// 3 = HTML without images, 4 = self-contained HTML with data: URIs.
@@ -286,24 +285,23 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		if (cp >= 0)
 			dfile.Delete(cp, dfile.GetLength() - cp);
 		dfile += _T("_files");
+		if (fExternalImages && exportSettings.externalImagesFolderMode == 1 && !exportSettings.externalImagesFolderName.IsEmpty()) {
+			const int slash = dfile.ReverseFind(_T('\\'));
+			if (slash >= 0) dfile = dfile.Left(slash + 1) + exportSettings.externalImagesFolderName;
+			else dfile = exportSettings.externalImagesFolderName;
+		}
+		CString relpath;
 		if (fExternalImages) {
-			// construct a relative path
-			CString	relpath(dfile);
+			// Construct an HTML-relative resource path. MSXML BSTR parameters preserve Unicode.
+			relpath = dfile;
 			cp = relpath.ReverseFind(_T('\\'));
 			if (cp >= 0)
 				relpath.Delete(0, cp + 1);
 
-			// see if it is ascii only
-			bool fAscii = true;
-			for (int i = 0; i < relpath.GetLength(); ++i)
-				if (relpath[i] < 32 || relpath[i]>127) {
-					fAscii = false;
-					break;
-				}
 
-			if (fAscii && !fMIME) {
+
+			if (!fMIME) {
 				relpath += _T('/');
-				CheckError(proc->addParameter(bstr_t(L"imgprefix"), variant_t((const TCHAR *)relpath), _bstr_t()));
 
 				if (!::CreateDirectory(dfile, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) {
 					DWORD	de = ::GetLastError();
@@ -315,13 +313,10 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 				}
 			}
 			else
-				dfile.Delete(cp, dfile.GetLength() - cp);
+				dfile.Empty();
 
 		}
-		if (fImages)
-			CheckError(proc->addParameter(bstr_t(L"saveimages"), variant_t(true), _bstr_t()));
-		if (fEmbeddedImages)
-			CheckError(proc->addParameter(bstr_t(L"embedimages"), variant_t(true), _bstr_t()));
+		HtmlExportXslParameters::ApplyImageMode(proc, fImages, fEmbeddedImages, relpath);
 
 		char    boundary[256];
 
@@ -392,6 +387,14 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		VARIANT_BOOL Done = VARIANT_FALSE;
 		CheckError(proc->transform(&Done));
 		if (fEmbeddedImages) {
+			STATSTG standaloneStat = {};
+			CheckError(standaloneOutput->Stat(&standaloneStat, STATFLAG_NONAME));
+			const unsigned long long warningBytes = static_cast<unsigned long long>(exportSettings.standaloneWarningMiB) * 1024ULL * 1024ULL;
+			if (warningBytes != 0 && standaloneStat.cbSize.QuadPart > warningBytes &&
+				ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML,
+					FormatExportHtmlString(IDS_WARNING_STANDALONE_SIZE, exportSettings.standaloneWarningMiB), NULL,
+					TDCBF_YES_BUTTON | TDCBF_NO_BUTTON, TD_WARNING_ICON) != IDYES)
+				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 			const std::vector<std::wstring> dependencies = HtmlExportResourceAudit::FindExternalDependencies(ReadUtf8Stream(standaloneOutput));
 			if (!dependencies.empty() && ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML,
 				FormatExportHtmlString(IDS_WARNING_EXTERNAL_RESOURCES, static_cast<int>(dependencies.size())), NULL,

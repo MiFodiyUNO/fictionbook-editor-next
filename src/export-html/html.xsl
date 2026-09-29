@@ -19,7 +19,27 @@
   <X:param name="tocdepth" select="1"/>
   <X:param name="customcss" select="''"/>
   <X:param name="imagemaxwidth" select="0"/>
-  <X:param name="imagemaxheight" select="0"/>
+  <X:param name="imagemaxheight" select="0"/>  <X:param name="includetoc" select="1"/>
+  <X:param name="includemetadata" select="1"/>
+  <X:param name="includeannotation" select="1"/>
+  <X:param name="includetitleinfo" select="1"/>
+  <X:param name="includedocumentinfo" select="1"/>
+  <X:param name="includepublishinfo" select="1"/>
+  <X:param name="includehistory" select="1"/>
+  <X:param name="includeauthors" select="1"/>
+  <X:param name="includetranslators" select="1"/>
+  <X:param name="includecustominfo" select="1"/>
+  <X:param name="style" select="0"/>
+  <X:param name="fontfamily" select="0"/>
+  <X:param name="customfontfamily" select="''"/>
+  <X:param name="fontsize" select="0"/>
+  <X:param name="lineheight" select="0"/>
+  <X:param name="contentmaxwidth" select="0"/>
+  <X:param name="pagemargins" select="1"/>
+  <X:param name="textalignment" select="1"/>
+  <X:param name="headingalignment" select="0"/>
+  <X:param name="covermode" select="0"/>
+  <X:param name="noteplacement" select="0"/>
 
   <X:key name="binary-by-id" match="F:binary" use="@id"/>
   <X:key name="note-ref" match="F:a[@type='note' or @F:type='note']" use="@L:href"/>
@@ -37,17 +57,17 @@
 	<meta charset="utf-8"/>
 	<!-- stick in a simple html stylesheet -->
         <style type="text/css">
-	  body { font-family: serif; }
-	  h1,h2,h3,h4,h5,h6 { text-align: center; font-weight: bold; }
+	  body { font-family: <X:choose><X:when test="$fontfamily = 1">sans-serif</X:when><X:when test="$fontfamily = 2">system-ui, sans-serif</X:when><X:when test="$fontfamily = 3 and string-length(normalize-space($customfontfamily))">"<X:value-of select="$customfontfamily"/>"</X:when><X:otherwise>serif</X:otherwise></X:choose>;<X:if test="$fontsize &gt; 0"> font-size: <X:value-of select="$fontsize"/>px;</X:if><X:if test="$lineheight &gt; 0"> line-height: <X:value-of select="$lineheight div 100"/>;</X:if><X:if test="$contentmaxwidth &gt; 0"> max-width: <X:value-of select="$contentmaxwidth"/>px; margin-left: auto; margin-right: auto;</X:if><X:choose><X:when test="$pagemargins = 0"> margin: 0.5em;</X:when><X:when test="$pagemargins = 2"> margin: 3em;</X:when></X:choose> }
+	  h1,h2,h3,h4,h5,h6 { text-align: <X:choose><X:when test="$headingalignment = 1">left</X:when><X:otherwise>center</X:otherwise></X:choose>; font-weight: bold; }
 	  h1 { font-size: 200%; }
 	  h2 { font-size: 180%; }
 	  h3 { font-size: 160%; }
 	  h4 { font-size: 140%; }
 	  h5 { font-size: 120%; }
 	  h6 { font-size: 100%; }
-	  p { margin-top: 0pt; margin-bottom: 0.1em; text-indent: 3em; text-align: justify; }
+	  p { margin-top: 0pt; margin-bottom: 0.1em; text-indent: 3em; text-align: <X:choose><X:when test="$textalignment = 0">left</X:when><X:otherwise>justify</X:otherwise></X:choose>; }
 	  img { border: none; max-width: <X:choose><X:when test="$imagemaxwidth &gt; 0"><X:value-of select="$imagemaxwidth"/>px</X:when><X:otherwise>100%</X:otherwise></X:choose>; <X:if test="$imagemaxheight &gt; 0">max-height: <X:value-of select="$imagemaxheight"/>px; </X:if>height: auto; }
-	  .cover { display: block; margin: 0 auto; }
+	  .cover { display: block; margin: 0 auto;<X:if test="$covermode = 1"> max-width: 42em;</X:if><X:if test="$covermode = 2"> max-width: 100vw; max-height: 100vh;</X:if> }
 	  blockquote { margin-left: 1em; margin-right: 1em; color: rgb(228,175,0); }
           li { display: block; }
 	  .epigraph { max-width: 25em; float: right; margin: 0pt; font-size: smaller; }
@@ -69,6 +89,8 @@
 	  .propsec { text-align: center; font-weight: bolder; border: none !important }
 	  td p { text-indent: 0pt; }
 	  .center { text-align: center; }
+	  <X:if test="$style = 1">body { background: #f7f1e3; color: #2f2419; } .props td { border-color: #8b7355; }</X:if>
+	  <X:if test="$style = 2">body { max-width: 72em; } .props, .props td { border: none; } blockquote { color: inherit; }</X:if>
 	  <X:value-of select="$customcss" disable-output-escaping="yes"/>
 	</style>
 	<title>
@@ -81,25 +103,14 @@
 		  <X:otherwise>FictionBook</X:otherwise>
 		</X:choose>
 	</title>
-	<!-- include some metainfo -->
-	<X:for-each select="/F:FictionBook/F:description/F:title-info/F:author">
-	  <meta name="author">
-	    <X:attribute name="content">
-	      <X:call-template name="author-prop"/>
-	    </X:attribute>
-	  </meta>
-	</X:for-each>
-	<meta name="title">
-	  <X:attribute name="content">
-	    <X:value-of select="/F:FictionBook/F:description/F:title-info/F:book-title"/>
-	  </X:attribute>
-	</meta>
-	<X:if test="/F:FictionBook/F:description/F:title-info/F:annotation">
-	  <meta name="description">
-	    <X:attribute name="content"><X:value-of select="normalize-space(/F:FictionBook/F:description/F:title-info/F:annotation)"/></X:attribute>
-	  </meta>
-	</X:if>
-      </head>
+	<!-- optional FB2 metadata -->
+	<X:if test="$includemetadata and $includetitleinfo and $includeauthors"><X:for-each select="/F:FictionBook/F:description/F:title-info/F:author">
+	  <meta name="author"><X:attribute name="content"><X:call-template name="author-prop"/></X:attribute></meta>
+	</X:for-each></X:if>
+	<X:if test="$includemetadata and $includetitleinfo"><meta name="title"><X:attribute name="content"><X:value-of select="/F:FictionBook/F:description/F:title-info/F:book-title"/></X:attribute></meta></X:if>
+	<X:if test="$includemetadata and $includetitleinfo and $includeannotation and /F:FictionBook/F:description/F:title-info/F:annotation">
+	  <meta name="description"><X:attribute name="content"><X:value-of select="normalize-space(/F:FictionBook/F:description/F:title-info/F:annotation)"/></X:attribute></meta>
+	</X:if>      </head>
       <body>
         <X:if test="$saveimages">
         <X:choose>
@@ -131,12 +142,12 @@
 	<!-- title from the first body -->
 	<X:apply-templates select="/F:FictionBook/F:body[1]/F:title[1]" mode="first"/>
 	<!-- table of contents -->
-	<X:if test="//F:section/F:title">
+	<X:if test="$includetoc and //F:section/F:title">
 	  <h4>Table of contents</h4>
           <ul>
 	    <X:apply-templates mode="toc" select="/F:FictionBook/F:body/F:section"/>
 	    <!-- insert links to annotation and description -->
-	    <X:if test="$includedesc">
+	    <X:if test="$includemetadata and $includedesc">
 	      <X:if test="/F:FictionBook/F:description/F:title-info/F:annotation">
 		<li><p><a class="toclink" href="#_fbh_annotation">Annotation</a></p></li>
 	      </X:if>
@@ -147,17 +158,17 @@
 	<!-- main text -->
 	<X:apply-templates select="/F:FictionBook/F:body"/>
 	<!-- generate description -->
-	<X:if test="$includedesc">
+	<X:if test="$includemetadata and $includedesc">
 	  <hr/>
 	  <!-- annotation -->
-	  <X:apply-templates select="/F:FictionBook/F:description/F:title-info/F:annotation"/>
+	  <X:if test="$includeannotation"><X:apply-templates select="/F:FictionBook/F:description/F:title-info/F:annotation"/></X:if>
 	  <!-- description properties -->
 	  <a id="_fbh_description" name="_fbh_description"/>
 	  <table class="props">
-	    <X:apply-templates select="/F:FictionBook/F:description/F:title-info"/>
-	    <X:apply-templates select="/F:FictionBook/F:description/F:document-info"/>
-	    <X:apply-templates select="/F:FictionBook/F:description/F:publish-info"/>
-	    <X:if test="/F:FictionBook/F:description/F:custom-info">
+	    <X:if test="$includetitleinfo"><X:apply-templates select="/F:FictionBook/F:description/F:title-info"/></X:if>
+	    <X:if test="$includedocumentinfo"><X:apply-templates select="/F:FictionBook/F:description/F:document-info"/></X:if>
+	    <X:if test="$includepublishinfo"><X:apply-templates select="/F:FictionBook/F:description/F:publish-info"/></X:if>
+	    <X:if test="$includecustominfo and /F:FictionBook/F:description/F:custom-info">
 	      <tr><td class="propsec" colspan="2">Custom Info</td>
 		<X:apply-templates select="/F:FictionBook/F:description/F:custom-info"/>
 	      </tr>
@@ -440,7 +451,7 @@
     <X:if test="F:src-lang">
       <tr><td>Source Language</td><td><X:value-of select="F:src-lang"/></td></tr>
     </X:if>
-    <X:if test="F:translator">
+    <X:if test="$includetranslators and F:translator">
       <tr>
 	<td>Translator<X:if test="count(F:translator) &gt; 1">s</X:if></td>
 	<td>
@@ -483,7 +494,7 @@
     </X:if>
     <tr><td>ID</td><td><X:value-of select="F:id"/></td></tr>
     <tr><td>Version</td><td><X:value-of select="F:version"/></td></tr>
-    <X:if test="F:history">
+    <X:if test="$includehistory and F:history">
       <tr><td>History</td><td><X:apply-templates select="F:history/*"/></td></tr>
     </X:if>
   </X:template>

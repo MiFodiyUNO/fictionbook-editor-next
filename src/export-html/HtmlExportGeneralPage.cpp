@@ -111,6 +111,8 @@ void HtmlExportGeneralPage::InitTooltips()
     m_tooltip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
     if (!m_tooltip) return;
+    AddTooltip(IDC_INCLUDE_TOC, IDS_TOOLTIP_TOC_DEPTH);
+    AddTooltip(IDC_TOCDEPTH, IDS_TOOLTIP_TOC_DEPTH);
     AddTooltip(IDC_TEMPLATE, IDS_TOOLTIP_TEMPLATE);
     AddTooltip(IDC_BROWSE, IDS_TOOLTIP_BROWSE_TEMPLATE);
 }

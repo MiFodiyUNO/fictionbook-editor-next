@@ -61,6 +61,7 @@ jobs:
           ./tools/tests/test-ci-build-contract.ps1
           ./tools/tests/test-modern-file-dialog-contract.ps1
           ./tools/tests/test-export-html-options-dialog.ps1
+          ./tools/tests/test-export-html-settings-xsl.ps1
           ./tools/tests/test-export-docx-modern-file-dialog.ps1
           ./tools/tests/test-export-epub-modern-file-dialog.ps1
           ./tools/tests/test-import-epub-modern-file-dialog-owner.ps1

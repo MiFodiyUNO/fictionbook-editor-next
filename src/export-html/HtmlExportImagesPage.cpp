@@ -28,9 +28,10 @@ LRESULT HtmlExportImagesPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
     SetDlgItemText(IDC_IMAGE_MAX_HEIGHT_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT));
     SetDlgItemText(IDC_COVER_MODE_LABEL, LoadExportHtmlString(IDS_OPTIONS_COVER_MODE));
     SetDlgItemText(IDC_IMAGES_FOLDER_LABEL, LoadExportHtmlString(IDS_OPTIONS_IMAGES_FOLDER));
-    SetDlgItemText(IDC_IMAGES_FOLDER_NAME_LABEL, LoadExportHtmlString(IDS_OPTIONS_IMAGES_FOLDER));
-    SetDlgItemText(IDC_STANDALONE_WARNING_LABEL, LoadExportHtmlString(IDS_OPTIONS_STANDALONE_WARNING));
+    SetDlgItemText(IDC_IMAGES_FOLDER_NAME_LABEL, LoadExportHtmlString(IDS_OPTIONS_IMAGES_FOLDER_NAME));
+    SetDlgItemText(IDC_STANDALONE_WARNING_LABEL, LoadExportHtmlString(IDS_OPTIONS_WARNING_MIB));
     LoadFromSettings();
+    InitTooltips();
     return TRUE;
 }
 
@@ -84,5 +85,28 @@ void HtmlExportImagesPage::UpdateEnabledState()
 LRESULT HtmlExportImagesPage::OnFolderMode(WORD, WORD, HWND, BOOL&)
 {
     UpdateEnabledState();
+    return 0;
+}
+
+void HtmlExportImagesPage::InitTooltips()
+{
+    m_tooltip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+    if (!m_tooltip) return;
+    const UINT controls[] = { IDC_IMAGE_MAX_WIDTH, IDC_IMAGE_MAX_HEIGHT, IDC_COVER_MODE, IDC_IMAGES_FOLDER, IDC_IMAGES_FOLDER_NAME, IDC_STANDALONE_WARNING };
+    for (size_t index = 0; index < _countof(controls); ++index) AddTooltip(controls[index], IDS_TOOLTIP_OPTION_VALUE);
+}
+
+void HtmlExportImagesPage::AddTooltip(UINT id, UINT textId)
+{
+    HWND control = GetDlgItem(id); if (!control) return;
+    m_tooltipTexts.push_back(LoadExportHtmlString(textId)); CString& text = m_tooltipTexts.back(); if (text.IsEmpty()) return;
+    TOOLINFO info = {}; info.cbSize = sizeof(info); info.uFlags = TTF_IDISHWND | TTF_SUBCLASS; info.hwnd = m_hWnd; info.uId = reinterpret_cast<UINT_PTR>(control); info.lpszText = const_cast<LPTSTR>(static_cast<LPCTSTR>(text));
+    ::SendMessage(m_tooltip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&info));
+}
+
+LRESULT HtmlExportImagesPage::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
+{
+    if (m_tooltip) { ::DestroyWindow(m_tooltip); m_tooltip = NULL; }
     return 0;
 }

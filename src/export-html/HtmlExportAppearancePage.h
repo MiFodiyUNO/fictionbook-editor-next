@@ -3,6 +3,7 @@
 #include "HtmlExportSettings.h"
 #include "resource.h"
 #include <wtl/atlctrls.h>
+#include <vector>
 
 class HtmlExportAppearancePage : public CDialogImpl<HtmlExportAppearancePage>
 {
@@ -15,6 +16,7 @@ public:
 
     BEGIN_MSG_MAP(HtmlExportAppearancePage)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+        MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
         COMMAND_ID_HANDLER(IDC_CLEAR_CSS, OnClearCss)
         COMMAND_ID_HANDLER(IDC_BROWSE_CSS, OnBrowseCss)
         COMMAND_ID_HANDLER(IDC_FONT_FAMILY, OnFontFamily)
@@ -22,8 +24,13 @@ public:
 
 private:
     HtmlExportSettings* m_settings = NULL;
+    HWND m_tooltip = NULL;
+    std::vector<CString> m_tooltipTexts;
+    void InitTooltips();
+    void AddTooltip(UINT id, UINT textId);
     void FillCombo(UINT id, const UINT* strings, size_t count, int selection);
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnClearCss(WORD, WORD, HWND, BOOL&);
     LRESULT OnBrowseCss(WORD, WORD, HWND, BOOL&);
     LRESULT OnFontFamily(WORD, WORD, HWND, BOOL&);

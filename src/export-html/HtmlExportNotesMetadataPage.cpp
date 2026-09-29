@@ -15,6 +15,7 @@ LRESULT HtmlExportNotesMetadataPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
     SetDlgItemText(IDC_METADATA_TRANSLATORS, LoadExportHtmlString(IDS_OPTIONS_METADATA_TRANSLATORS));
     SetDlgItemText(IDC_METADATA_CUSTOM, LoadExportHtmlString(IDS_OPTIONS_METADATA_CUSTOM));
     LoadFromSettings();
+    InitTooltips();
     return TRUE;
 }
 
@@ -65,5 +66,28 @@ void HtmlExportNotesMetadataPage::UpdateEnabledState()
 LRESULT HtmlExportNotesMetadataPage::OnMetadata(WORD, WORD, HWND, BOOL&)
 {
     UpdateEnabledState();
+    return 0;
+}
+
+void HtmlExportNotesMetadataPage::InitTooltips()
+{
+    m_tooltip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+    if (!m_tooltip) return;
+    const UINT controls[] = { IDC_NOTE_PLACEMENT, IDC_METADATA, IDC_METADATA_ANNOTATION, IDC_METADATA_TITLE, IDC_METADATA_DOCUMENT, IDC_METADATA_PUBLISH, IDC_METADATA_HISTORY, IDC_METADATA_AUTHORS, IDC_METADATA_TRANSLATORS, IDC_METADATA_CUSTOM };
+    for (size_t index = 0; index < _countof(controls); ++index) AddTooltip(controls[index], IDS_TOOLTIP_OPTION_VALUE);
+}
+
+void HtmlExportNotesMetadataPage::AddTooltip(UINT id, UINT textId)
+{
+    HWND control = GetDlgItem(id); if (!control) return;
+    m_tooltipTexts.push_back(LoadExportHtmlString(textId)); CString& text = m_tooltipTexts.back(); if (text.IsEmpty()) return;
+    TOOLINFO info = {}; info.cbSize = sizeof(info); info.uFlags = TTF_IDISHWND | TTF_SUBCLASS; info.hwnd = m_hWnd; info.uId = reinterpret_cast<UINT_PTR>(control); info.lpszText = const_cast<LPTSTR>(static_cast<LPCTSTR>(text));
+    ::SendMessage(m_tooltip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&info));
+}
+
+LRESULT HtmlExportNotesMetadataPage::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
+{
+    if (m_tooltip) { ::DestroyWindow(m_tooltip); m_tooltip = NULL; }
     return 0;
 }

@@ -3,6 +3,7 @@
 #include "HtmlExportSettings.h"
 #include "resource.h"
 #include <wtl/atlctrls.h>
+#include <vector>
 
 class HtmlExportNotesMetadataPage : public CDialogImpl<HtmlExportNotesMetadataPage>
 {
@@ -15,11 +16,17 @@ public:
 
     BEGIN_MSG_MAP(HtmlExportNotesMetadataPage)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+        MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
         COMMAND_ID_HANDLER(IDC_METADATA, OnMetadata)
     END_MSG_MAP()
 
 private:
     HtmlExportSettings* m_settings = NULL;
+    HWND m_tooltip = NULL;
+    std::vector<CString> m_tooltipTexts;
+    void InitTooltips();
+    void AddTooltip(UINT id, UINT textId);
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnMetadata(WORD, WORD, HWND, BOOL&);
 };
