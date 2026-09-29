@@ -236,13 +236,8 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 	viewBarRect.left = clientRect.left;
 	viewBarRect.right = clientRect.right;
 
-	bool moved = false;
-
 	if(m_toolbarOrientation == CTreeWithToolBar::bottom)
 	{
-		if(rebarRect.top != clientRect.bottom - rebarHight)
-			moved = true;
-
 		rebarRect.top = clientRect.bottom - rebarHight;
 		
 		rebarRect.bottom = rebarRect.top + rebarHight;
@@ -264,12 +259,10 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		treeRect.bottom = clientRect.bottom;
 	}*/
 
-	if((rebarRect.right - rebarRect.left) > m_maxTbwidth || moved)
-	{
-		if(rebarVisible) ::MoveWindow(m_rebar, rebarRect.left, rebarRect.top, rebarRect.right - rebarRect.left, rebarRect.bottom - rebarRect.top, true);
-		if(viewBarVisible) ::MoveWindow(m_view_bar, viewBarRect.left, viewBarRect.top, viewBarRect.right - viewBarRect.left, viewBarRect.bottom - viewBarRect.top, true);
-		m_maxTbwidth = rebarRect.right - rebarRect.left;
-	}
+	// Both headers follow every pane resize, including a narrower splitter.
+	if(rebarVisible) ::MoveWindow(m_rebar, rebarRect.left, rebarRect.top, rebarRect.right - rebarRect.left, rebarRect.bottom - rebarRect.top, true);
+	if(viewBarVisible) ::MoveWindow(m_view_bar, viewBarRect.left, viewBarRect.top, viewBarRect.right - viewBarRect.left, viewBarRect.bottom - viewBarRect.top, true);
+	m_maxTbwidth = rebarRect.right - rebarRect.left;
 	::MoveWindow(m_tree, treeRect.left, treeRect.top, treeRect.right - treeRect.left, treeRect.bottom - treeRect.top, true);	
 
 	return 0;

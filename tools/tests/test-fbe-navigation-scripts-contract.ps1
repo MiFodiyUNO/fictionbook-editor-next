@@ -17,6 +17,8 @@ Must $frame 'm_document_tree\.SetScriptCatalog\(m_scripts\.Menu\(\)\.Items\(\)' 
 Must $tree 'BuildScriptChildren\(TVI_ROOT, CString\(\)\)' 'catalog descriptors are inserted directly at the tree root'
 if($tree -match 'InsertItem\(FbeLoadRuntimeStringByKey\(L"fbe\.document_tree\.scripts\.root"') { throw 'Scripts mode must not add a synthetic Scripts root item.' }
 Must $documentTree 'viewBarRect\.left = clientRect\.left;\s*viewBarRect\.right = clientRect\.right;' 'Elements view bar spans the full pane width after resize'
+Must $documentTree 'if\(rebarVisible\) ::MoveWindow\(m_rebar' 'Structural rebar resizes on both pane growth and shrink'
+Must $documentTree 'if\(viewBarVisible\) ::MoveWindow\(m_view_bar' 'View selector resizes on both pane growth and shrink'
 Must $tree 'if\(script\.parentId != parentId\) continue;' 'tree builds children by parentId without flat-order dependency'
 Must $tree 'BuildScriptChildren\(item, script\.id\)' 'tree supports arbitrary folder nesting'
 Must $tree 'ID_SCRIPT_BASE \+ script->commandId' 'script activation uses the existing command runtime path'

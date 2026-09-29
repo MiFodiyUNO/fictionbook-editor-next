@@ -2259,7 +2259,7 @@ bool CMainFrame::UpdateCommandToolbarItems(const std::vector<PortableToolbarItem
 		m_CmdToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
 	return true;
 }
-void CMainFrame::ShowScriptsToolbarCustomizeDialog()
+void CMainFrame::ShowScriptsToolbarCustomizeDialog(HWND selectedToolbar)
 {
 	if(!::IsWindow(m_ScriptsToolbar)) return;
 	TBBUTTONS catalog, defaults;
@@ -2300,7 +2300,8 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog()
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.uid == target.items[itemIndex].scriptUid && script.commandId > 0) { target.items[itemIndex].command = ID_SCRIPT_BASE + script.commandId; break; } }
 		panels.push_back(target);
 	}
-	CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar, commands, defaults, _Settings, panels, [this](const CString& id, const std::vector<PortableToolbarItem>& items) { return UpdateScriptToolbarItems(id, items); }, true, FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.caption", L"Настройка панели скриптов"));
+	const HWND selected = selectedToolbar != NULL && FindScriptToolbarRuntime(selectedToolbar) != NULL ? selectedToolbar : m_ScriptsToolbar;
+	CScriptsToolbarCustomizeDlg dialog(selected, commands, defaults, _Settings, panels, [this](const CString& id, const std::vector<PortableToolbarItem>& items) { return UpdateScriptToolbarItems(id, items); }, true, FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.caption", L"Настройка панели скриптов"));
 	dialog.DoModal(m_hWnd);
 }
 
@@ -2508,9 +2509,10 @@ LRESULT CMainFrame::OnViewScriptToolbarToggle(WORD, WORD command, HWND, BOOL&)
 
 LRESULT CMainFrame::OnToolbarDoubleClick(int, LPNMHDR hdr, BOOL& bHandled)
 {
-	if(hdr == NULL || (hdr->hwndFrom != m_CmdToolbar && hdr->hwndFrom != m_ScriptsToolbar)) { bHandled = FALSE; return 0; }
+	if(hdr == NULL) { bHandled = FALSE; return 0; }
 	if(hdr->hwndFrom == m_CmdToolbar) ShowCommandToolbarCustomizeDialog();
-	else ShowScriptsToolbarCustomizeDialog();
+	else if(hdr->hwndFrom == m_ScriptsToolbar || FindScriptToolbarRuntime(hdr->hwndFrom) != NULL) ShowScriptsToolbarCustomizeDialog(hdr->hwndFrom);
+	else { bHandled = FALSE; return 0; }
 	bHandled = TRUE;
 	return 0;
 }
@@ -2521,7 +2523,7 @@ LRESULT CALLBACK CMainFrame::ToolbarCustomizeSubclassProc(HWND window, UINT mess
 	if(frame != NULL && message == WM_LBUTTONDBLCLK)
 	{
 		if(window == frame->m_CmdToolbar) frame->ShowCommandToolbarCustomizeDialog();
-		else if(window == frame->m_ScriptsToolbar) frame->ShowScriptsToolbarCustomizeDialog();
+		else if(window == frame->m_ScriptsToolbar || frame->FindScriptToolbarRuntime(window) != NULL) frame->ShowScriptsToolbarCustomizeDialog(window);
 		return 0;
 	}
 	return ::DefSubclassProc(window, message, wParam, lParam);
@@ -2700,6 +2702,13 @@ void CMainFrame::DestroyScriptToolbarRuntimeControls()
 	if(::IsWindow(m_rebar)) { m_rebar.SendMessage(WM_SIZE); UpdateLayout(); }
 }
 
+ScriptToolbarRuntime* CMainFrame::FindScriptToolbarRuntime(HWND window)
+{
+	if(window == NULL) return NULL;
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+		if(m_scriptToolbars.Items()[index].window == window) return &m_scriptToolbars.Items()[index];
+	return NULL;
+}
 void CMainFrame::DestroyScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 {
 	if(runtime.definition.id == L"scripts-main") return;
@@ -2719,7 +2728,7 @@ void CMainFrame::DestroyScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 		UIRemoveToolBar(runtime.window);
 		const int catalog = m_aButtons.FindKey(runtime.window); if(catalog >= 0) m_aButtons.RemoveAt(catalog);
 		const int defaults = m_aDefaultButtons.FindKey(runtime.window); if(defaults >= 0) m_aDefaultButtons.RemoveAt(defaults);
-		if(::IsWindow(runtime.window)) ::DestroyWindow(runtime.window);
+		if(::IsWindow(runtime.window)) { ::RemoveWindowSubclass(runtime.window, ToolbarCustomizeSubclassProc, runtime.rebarBandId); ::DestroyWindow(runtime.window); }
 	}
 	runtime.window = NULL;
 	runtime.rebarBandId = 0;
@@ -2796,6 +2805,7 @@ bool CMainFrame::CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 	}
 	if(runtime.rebarBandId == 0) { DestroyScriptToolbarRuntime(runtime); return false; }
 	if(!NormalizeScriptToolbarRuntimeBand(runtime)) { DestroyScriptToolbarRuntime(runtime); return false; }
+	::SetWindowSubclass(runtime.window, ToolbarCustomizeSubclassProc, runtime.rebarBandId, reinterpret_cast<DWORD_PTR>(this));
 	if(m_testFailAfterCustomToolbarCreates > 0 && --m_testFailAfterCustomToolbarCreates == 0) { DestroyScriptToolbarRuntime(runtime); return false; }
 	return true;
 }

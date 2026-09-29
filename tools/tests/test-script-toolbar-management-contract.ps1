@@ -27,7 +27,7 @@ Must $frame 'ToolbarFactory::AutoSizeToolbar\(runtime\.window\)' 'dynamic toolba
 Must $frame 'NormalizeScriptToolbarRuntimeBand' 'dynamic toolbar band receives measured row metrics'
 if($frame -match 'bool CMainFrame::CreateScriptToolbarRuntime[\s\S]*?\n\}') {
     $creator = $Matches[0]
-    if($creator.IndexOf('ToolbarFactory::AutoSizeToolbar(runtime.window)') -gt $creator.IndexOf('AddSimpleReBarBand(toolbar')) { throw 'Dynamic toolbar must autosize before AddSimpleReBarBand.' }
+    if($creator.IndexOf('ToolbarFactory::AutoSizeToolbar(runtime.window)') -gt $creator.IndexOf('AddSimpleReBarBandCtrl(m_rebar, toolbar')) { throw 'Dynamic toolbar must autosize before AddSimpleReBarBand.' }
     Must $creator 'NormalizeScriptToolbarRuntimeBand\(runtime\)' 'dynamic toolbar normalizes its rebar band after insertion'
 }
 Must $frame 'TB_GETBUTTONSIZE' 'band height is derived from toolbar metrics'

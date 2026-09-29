@@ -240,6 +240,7 @@ public:
 	void SavePortableToolbarLayout();
 	void DestroyScriptToolbarRuntimeControls();
 	void DestroyScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
+	ScriptToolbarRuntime* FindScriptToolbarRuntime(HWND window);
 	bool PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
 	UINT AllocateScriptToolbarBandId() const;
 	bool CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
@@ -663,6 +664,7 @@ public:
 
 
   int m_selBandID;
+  HWND m_selToolbar;
 
   void ApplyRuntimeToolbarMenuLocalization(HMENU menu)
   {
@@ -692,20 +694,20 @@ public:
 	REBARBANDINFO rbi;
 	ZeroMemory((void*)&rbi, sizeof(rbi));
 	rbi.cbSize = sizeof(REBARBANDINFO);
-	rbi.fMask = RBBIM_ID;
-	m_selBandID = -1;
+	rbi.fMask = RBBIM_ID | RBBIM_CHILD;
+	m_selBandID = -1; m_selToolbar = NULL;
 	for (unsigned int i=0; i< m_rebar.GetBandCount(); i++)
 	{
 		m_rebar.GetRect(i, &rect);
 		if (PtInRect(&rect,ptMousePos))
 		{
 			m_rebar.GetBandInfo(i, &rbi);
-			m_selBandID = rbi.wID;
+			m_selBandID = rbi.wID; m_selToolbar = rbi.hwndChild;
 			break;
 		}
 	}
-	// display context menu for command & script toolbars only
-	if ((m_selBandID == ATL_IDW_BAND_FIRST+1) || (m_selBandID == ATL_IDW_BAND_FIRST+2))
+	// Display the FBE customization menu for command and every script toolbar band.
+	if (m_selToolbar == m_CmdToolbar || m_selToolbar == m_ScriptsToolbar || FindScriptToolbarRuntime(m_selToolbar) != NULL)
 	{
 		menu = ::LoadMenu(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_TOOLBAR_MENU));
 		popup = ::GetSubMenu(menu, 0);
@@ -853,8 +855,8 @@ public:
 
   LRESULT OnToolCustomize(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /* unused: hWndCtl */, BOOL& /*bHandled*/)
   {
-	  if (m_selBandID == ATL_IDW_BAND_FIRST+1) ShowCommandToolbarCustomizeDialog(); else
-	  if (m_selBandID == ATL_IDW_BAND_FIRST+2) ShowScriptsToolbarCustomizeDialog();
+	  if (m_selToolbar == m_CmdToolbar) ShowCommandToolbarCustomizeDialog(); else
+	  if (m_selToolbar == m_ScriptsToolbar || FindScriptToolbarRuntime(m_selToolbar) != NULL) ShowScriptsToolbarCustomizeDialog(m_selToolbar);
       return 0;
   }
 
@@ -980,7 +982,7 @@ public:
   }
 
 	void ShowCommandToolbarCustomizeDialog();
-	void ShowScriptsToolbarCustomizeDialog();
+	void ShowScriptsToolbarCustomizeDialog(HWND selectedToolbar = NULL);
 	bool UpdateCommandToolbarItems(const std::vector<PortableToolbarItem>& items);
 	void ShowScriptToolbarManagerDialog();
 
