@@ -47,6 +47,10 @@ developer checkout or CI must not depend on this absolute path.
 - **RELEASE**: run `tools/build/verify-release.ps1`. Run
   `-FullValidation` only before a release/tag, after a major systemic change,
   or on explicit request.
+- Create or extend tests only when they are needed to cover the code changed in
+  the current session. Run only tests that cover that affected code.
+- Run a full test suite only before a release or when the user explicitly
+  requests it.
 - Do not run `verify-release.ps1` after every edit or every small commit.
   Prefer affected tests during development and run the release gate once after
   a completed stage when warranted. If it has passed and only documentation or
