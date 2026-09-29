@@ -48,6 +48,9 @@
     <ClCompile Include="HtmlExportWriterHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="HtmlExportWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="HtmlExportSettings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -111,6 +114,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HtmlExportWriterHelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HtmlExportWriter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HtmlExportSettings.h">

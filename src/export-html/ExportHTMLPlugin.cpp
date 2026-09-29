@@ -6,6 +6,7 @@
 #include "HtmlExportResourceAudit.h"
 #include "HtmlExportXslParameters.h"
 #include "HtmlExportWriterHelpers.h"
+#include "HtmlExportWriter.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "RuntimeLocalization.h"
 #include "..\\version.h"
@@ -138,7 +139,6 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 	InitExportHtmlRuntimeStrings();
 
-	HANDLE  hOut = INVALID_HANDLE_VALUE;
 	CString strMessage;
 	HtmlExportSettings exportSettings;
 
@@ -267,84 +267,55 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 
 		// 1 = HTML and an adjacent resource folder, 2 = MHT,
 		// 3 = HTML without images, 4 = self-contained HTML with data: URIs.
-		HtmlExportWriterHelpers::ImagePaths imagePaths;
-		const int imagesFolderMode = fExternalImages ? exportSettings.externalImagesFolderMode : 0;
-		const std::wstring imagesFolderName = fExternalImages ? std::wstring((LPCWSTR)exportSettings.externalImagesFolderName) : std::wstring();
-		if (!HtmlExportWriterHelpers::BuildImagePaths((LPCWSTR)dlg.m_szFileName, imagesFolderMode, imagesFolderName, imagePaths)) return E_FAIL;
-		CString dfile(imagePaths.directory.c_str());
-
-		// Self-contained output is first transformed in memory and audited before
-		// touching the selected target.  Other modes preserve the historic writer.
-		if (!fEmbeddedImages) {
-			hOut = ::CreateFile(dlg.m_szFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-			if (hOut == INVALID_HANDLE_VALUE) {
-			CString openErrorMessage;
-			openErrorMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
-			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)openErrorMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-			return E_FAIL;
+		HtmlExportWriter::Options writerOptions;
+		writerOptions.targetPath = dlg.m_szFileName;
+		writerOptions.mime = fMIME;
+		writerOptions.externalImages = fExternalImages;
+		writerOptions.standalone = fEmbeddedImages;
+		writerOptions.externalImagesFolderMode = fExternalImages ? exportSettings.externalImagesFolderMode : 0;
+		writerOptions.externalImagesFolderName = fExternalImages ? std::wstring((LPCWSTR)exportSettings.externalImagesFolderName) : std::wstring();
+		HtmlExportWriter::Callbacks writerCallbacks;
+		writerCallbacks.reportFailure = [](HtmlExportWriter::Failure failure, const std::wstring& path, DWORD error) {
+			CString message;
+			switch (failure) {
+			case HtmlExportWriter::Failure::CreateImagesDirectory:
+				message = FormatExportHtmlString(IDS_ERROR_CREATE_DIRECTORY, path.c_str(), (LPCTSTR)U::Win32ErrMsg(error));
+				break;
+			case HtmlExportWriter::Failure::ShortWrite:
+			case HtmlExportWriter::Failure::ShortImageWrite:
+				message = FormatExportHtmlString(IDS_ERROR_WRITE_FILE2, path.c_str());
+				break;
+			case HtmlExportWriter::Failure::OpenTarget:
+			case HtmlExportWriter::Failure::OpenImage:
+				message = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, path.c_str(), (LPCTSTR)U::Win32ErrMsg(error));
+				break;
+			default:
+				message = FormatExportHtmlString(IDS_ERROR_WRITE_FILE, path.c_str(), (LPCTSTR)U::Win32ErrMsg(error));
+				break;
 			}
-		}
+			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, message, NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+		};
+		writerCallbacks.confirmImageOverwrite = [](const std::wstring& path) {
+			const CString message = FormatExportHtmlString(IDS_WARNING_FILE_ALREADY_EXISTS, path.c_str());
+			return ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, message, NULL,
+				TDCBF_YES_BUTTON | TDCBF_NO_BUTTON, TD_WARNING_ICON) == IDYES;
+		};
+		HtmlExportWriter::Writer writer(writerOptions, writerCallbacks);
+		HRESULT writerResult = writer.Prepare();
+		if (FAILED(writerResult)) return writerResult;
 
-		CString relpath;
-		if (fExternalImages) {
-			relpath = imagePaths.imgPrefix.c_str();
+		CString imagePrefix;
+		if (fExternalImages) imagePrefix = writer.ImagePaths().imgPrefix.c_str();
+		HtmlExportXslParameters::ApplyImageMode(proc, fImages, fEmbeddedImages, imagePrefix);
 
-			if (!fMIME) {
-				if (!::CreateDirectory(dfile, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) {
-					DWORD	de = ::GetLastError();
-					CloseHandle(hOut);
-					::DeleteFile(dlg.m_szFileName);
-					strMessage = FormatExportHtmlString(IDS_ERROR_CREATE_DIRECTORY, (LPCTSTR)dfile, (LPCTSTR)U::Win32ErrMsg(de));
-					ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-					return E_FAIL;
-				}
-			}
-			else
-				dfile.Empty();
-		}
-		HtmlExportXslParameters::ApplyImageMode(proc, fImages, fEmbeddedImages, relpath);
-
-		std::string boundary;
-
-		// * write relevant MIME headers
-		if (fMIME) {
-			HtmlExportWriterHelpers::MimePreamble mimePreamble;
-			const time_t timestamp = time(NULL);
-			if (!HtmlExportWriterHelpers::BuildMimePreamble(timestamp, static_cast<unsigned int>(rand()), mimePreamble)) return E_FAIL;
-			boundary = mimePreamble.boundary;
-
-			DWORD   len = static_cast<DWORD>(mimePreamble.header.size());
-			DWORD   nw;
-			BOOL    fWr = WriteFile(hOut, mimePreamble.header.data(), len, &nw, NULL);
-			if (!fWr || nw != len)
-			{
-				if (!fWr)
-				{
-					strMessage = FormatExportHtmlString(IDS_ERROR_WRITE_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
-					ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-				}
-				else
-				{
-					strMessage = FormatExportHtmlString(IDS_ERROR_WRITE_FILE2, dlg.m_szFileName);
-					ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-				}
-				::CloseHandle(hOut);
-				::DeleteFile(dlg.m_szFileName);
-						return E_FAIL;
-			}
-		}
-
-		// * transform
-		CComPtr<IStream> standaloneOutput;
-		if (fEmbeddedImages) {
-			CheckError(::CreateStreamOnHGlobal(NULL, TRUE, &standaloneOutput));
-			CheckError(proc->put_output(variant_t((IUnknown*)standaloneOutput)));
-		} else {
-			CheckError(proc->put_output(variant_t((IUnknown*)U::NewStream(hOut, !fMIME))));
-		}
+		CComPtr<IStream> transformOutput;
+		CheckError(writer.GetTransformOutput(&transformOutput));
+		CheckError(proc->put_output(variant_t((IUnknown*)transformOutput)));
 		VARIANT_BOOL Done = VARIANT_FALSE;
 		CheckError(proc->transform(&Done));
 		if (fEmbeddedImages) {
+			IStream* standaloneOutput = writer.StandaloneOutput();
+			if (standaloneOutput == NULL) return E_UNEXPECTED;
 			STATSTG standaloneStat = {};
 			CheckError(standaloneOutput->Stat(&standaloneStat, STATFLAG_NONAME));
 			if (HtmlExportWriterHelpers::IsStandaloneWarningRequired(
@@ -359,177 +330,18 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 				FormatExportHtmlString(IDS_WARNING_EXTERNAL_RESOURCES, static_cast<int>(dependencies.size())), NULL,
 				TDCBF_YES_BUTTON | TDCBF_NO_BUTTON, TD_WARNING_ICON) != IDYES)
 				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			hOut = ::CreateFile(dlg.m_szFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-			if (hOut == INVALID_HANDLE_VALUE) {
-				CString openErrorMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
-				ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)openErrorMessage, NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-				return E_FAIL;
-			}
-			LARGE_INTEGER start = {};
-			CheckError(standaloneOutput->Seek(start, STREAM_SEEK_SET, NULL));
-			ULARGE_INTEGER written = {};
-			CheckError(standaloneOutput->CopyTo(U::NewStream(hOut, true), ULARGE_INTEGER{ 0xFFFFFFFF, 0x7FFFFFFF }, NULL, &written));
+			writerResult = writer.WriteStandaloneToTarget();
+			if (FAILED(writerResult)) return writerResult;
 		}
 
-		// * save images
-		if (fExternalImages || fMIME) {
-			if (dfile.IsEmpty() || dfile[dfile.GetLength() - 1] != _T('\\'))
-				dfile += _T('\\');
-			IXMLDOMNodeListPtr      bins;
-			CheckError(source->selectNodes(bstr_t(L"/fb:FictionBook/fb:binary"), &bins));
-			long listLength = 0;
-			CheckError(bins->get_length(&listLength));
-			for (long l = 0; l < listLength; ++l) {
-				try {
-					IXMLDOMNodePtr   be;
-					CheckError(bins->get_item(l, &be));
-					IXMLDOMElementPtr element;
-					CheckError(be->QueryInterface(IID_PPV_ARGS(&element)));
-					_variant_t	id;
-					CheckError(element->getAttribute(bstr_t(L"id"), &id));
-					_variant_t	ct;
-					CheckError(element->getAttribute(bstr_t(L"content-type"), &ct));
-					if (V_VT(&id) != VT_BSTR || V_VT(&ct) != VT_BSTR)
-						continue;
-
-					if (fMIME) {
-						// get base64 data
-						CComBSTR   data;
-						CheckError(be->get_text(&data));
-
-						// allocate buffer
-						char      *buffer = (char*)malloc(data.Length() + 1024);
-						if (buffer == NULL)
-							continue;
-
-						// construct a MIME header
-						_snprintf_s(buffer, 1024, _TRUNCATE,
-							"\r\n"
-							"%s\r\n"
-							"Content-Type: %S\r\n"
-							"Content-Transfer-Encoding: base64\r\n"
-							"Content-Location: %S\r\n"
-							"\r\n",
-							boundary.c_str(), V_BSTR(&ct), V_BSTR(&id));
-						DWORD     hlen = strlen(buffer);
-
-						// convert data to ascii
-						DWORD     mlen = WideCharToMultiByte(CP_ACP, 0,
-							data, data.Length(),
-							buffer + hlen, data.Length(),
-							NULL, NULL);
-
-						// write a new mime header+data
-						DWORD   nw;
-						BOOL    fWr = WriteFile(hOut, buffer, hlen + mlen, &nw, NULL);
-						DWORD   de = ::GetLastError();
-						free(buffer);
-
-						if (!fWr || nw != hlen + mlen)
-						{
-							if (!fWr)
-							{
-								strMessage = FormatExportHtmlString(IDS_ERROR_WRITE_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(de));
-								ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-							}
-							else
-							{
-								strMessage = FormatExportHtmlString(IDS_ERROR_WRITE_FILE2, dlg.m_szFileName);
-								ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-							}
-							::CloseHandle(hOut);
-							::DeleteFile(dlg.m_szFileName);
-							return E_FAIL;
-						}
-					}
-					else
-					{
-						CheckError(be->put_dataType(bstr_t(L"bin.base64")));
-						_variant_t	data;
-						CheckError(be->get_nodeTypedValue(&data));
-						if (V_VT(&data) != (VT_ARRAY | VT_UI1) || ::SafeArrayGetDim(V_ARRAY(&data)) != 1)
-							continue;
-						DWORD len = V_ARRAY(&data)->rgsabound[0].cElements;
-						void	*buffer;
-						::SafeArrayAccessData(V_ARRAY(&data), &buffer);
-						CString fname(dfile);
-						fname += V_BSTR(&id);
-						HANDLE hFile = ::CreateFile(fname, GENERIC_WRITE, 0, NULL, CREATE_NEW, 0, NULL);
-						if (hFile == INVALID_HANDLE_VALUE && ::GetLastError() == ERROR_FILE_EXISTS)
-						{
-							strMessage = FormatExportHtmlString(IDS_WARNING_FILE_ALREADY_EXISTS, (LPCTSTR)fname);
-							if (ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_YES_BUTTON | TDCBF_NO_BUTTON, TD_WARNING_ICON) != IDYES)
-								goto skip;
-							hFile = ::CreateFile(fname, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-						}
-						if (hFile != INVALID_HANDLE_VALUE)
-						{
-							DWORD wr;
-							BOOL fWr = ::WriteFile(hFile, buffer, len, &wr, NULL);
-							DWORD de = ::GetLastError();
-							::CloseHandle(hFile);
-							if (!fWr || wr != len)
-							{
-								if (!fWr)
-								{
-									strMessage = FormatExportHtmlString(IDS_ERROR_WRITE_FILE, (LPCTSTR)fname, (LPCTSTR)U::Win32ErrMsg(de));
-									ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-								}
-								else
-								{
-									strMessage = FormatExportHtmlString(IDS_ERROR_WRITE_FILE2, (LPCTSTR)fname);
-									ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-								}
-								::DeleteFile(fname);
-							}
-						}
-						else
-						{
-							strMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, (LPCTSTR)fname, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
-							ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-						}
-					skip:
-						::SafeArrayUnaccessData(V_ARRAY(&data));
-					}
-				}
-				catch (const _com_error&)
-				{
-					// Ошибка отдельного изображения не должна прерывать экспорт остальных.
-					continue;
-				}
-			}
-		}
-
-		// * write a final mime boundary
-		if (fMIME) {
-			char    mime_tmp[256];
-			_snprintf_s(mime_tmp, sizeof(mime_tmp), "\r\n%s\r\n", boundary.c_str());
-			DWORD   len = strlen(mime_tmp);
-			DWORD   nw;
-			BOOL    fWr = WriteFile(hOut, mime_tmp, len, &nw, NULL);
-			if (!fWr || nw != len)
-			{
-				if (!fWr)
-				{
-					strMessage = FormatExportHtmlString(IDS_ERROR_WRITE_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
-					ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-				}
-				else
-				{
-					strMessage = FormatExportHtmlString(IDS_ERROR_WRITE_FILE2, dlg.m_szFileName);
-					ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-				}
-				::CloseHandle(hOut);
-				::DeleteFile(dlg.m_szFileName);
-				return E_FAIL;
-			}
-			::CloseHandle(hOut);
-		}
+		writerResult = writer.WriteImages(source);
+		if (FAILED(writerResult)) return writerResult;
+		writerResult = writer.Finalize();
+		if (FAILED(writerResult)) return writerResult;
+		writer.Commit();
 	}
 	catch (_com_error& e)
 	{
-		if (hOut != INVALID_HANDLE_VALUE)
-			CloseHandle(hOut);
 		U::ReportError(e);
 		return e.Error();
 	}
