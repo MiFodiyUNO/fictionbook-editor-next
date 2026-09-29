@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ctime>
 #include <string>
 
 namespace HtmlExportWriterHelpers {
@@ -17,4 +18,13 @@ bool BuildImagePaths(
 	const std::wstring& externalImagesFolderName,
 	ImagePaths& paths);
 
+struct MimePreamble {
+	std::string boundary;
+	std::string header;
+};
+
+bool BuildMimePreamble(
+	time_t timestamp,
+	unsigned int randomValue,
+	MimePreamble& preamble);
 }

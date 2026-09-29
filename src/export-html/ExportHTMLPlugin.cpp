@@ -304,46 +304,18 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		}
 		HtmlExportXslParameters::ApplyImageMode(proc, fImages, fEmbeddedImages, relpath);
 
-		char    boundary[256];
+		std::string boundary;
 
 		// * write relevant MIME headers
 		if (fMIME) {
-			// format date
-			char  date[256];
-			tm _tm;
-			time_t tt;
-			
-			time(&tt);
-			gmtime_s(&_tm, &tt);
-			strftime(date, _countof(date), "%a, %d %b %Y %H:%M:%S +0000", &_tm);
+			HtmlExportWriterHelpers::MimePreamble mimePreamble;
+			const time_t timestamp = time(NULL);
+			if (!HtmlExportWriterHelpers::BuildMimePreamble(timestamp, static_cast<unsigned int>(rand()), mimePreamble)) return E_FAIL;
+			boundary = mimePreamble.boundary;
 
-			// construct some random mime boundary
-			_snprintf_s(
-				boundary,
-				_countof(boundary),
-				"------NextPart---%016llX.%08X",
-				static_cast<unsigned long long>(tt),
-				static_cast<unsigned int>(rand()));
-
-			// construct mime header
-			char  mime_hdr[2048];
-			_snprintf_s(mime_hdr, _countof(mime_hdr),
-				"From: <Saved by Haali ExportHTML Plugin>\r\n"
-				"Date: %s\r\n" // Thu, 17 Apr 2003 07:34:30 +0400
-				"MIME-Version: 1.0\r\n"
-				"Content-Type: multipart/related; boundary=\"%s\"; type=\"text/html\"\r\n"
-				"\r\n"
-				"This is a multi-part message in MIME format.\r\n"
-				"\r\n"
-				"%s\r\n"
-				"Content-Type: text/html; charset=\"utf-8\"\r\n"
-				"Content-Transfer-Encoding: 8bit\r\n"
-				"\r\n",
-				date, boundary + 2, boundary);
-
-			DWORD   len = strlen(mime_hdr);
+			DWORD   len = static_cast<DWORD>(mimePreamble.header.size());
 			DWORD   nw;
-			BOOL    fWr = WriteFile(hOut, mime_hdr, len, &nw, NULL);
+			BOOL    fWr = WriteFile(hOut, mimePreamble.header.data(), len, &nw, NULL);
 			if (!fWr || nw != len)
 			{
 				if (!fWr)
@@ -437,7 +409,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 							"Content-Transfer-Encoding: base64\r\n"
 							"Content-Location: %S\r\n"
 							"\r\n",
-							boundary, V_BSTR(&ct), V_BSTR(&id));
+							boundary.c_str(), V_BSTR(&ct), V_BSTR(&id));
 						DWORD     hlen = strlen(buffer);
 
 						// convert data to ascii
@@ -530,7 +502,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		// * write a final mime boundary
 		if (fMIME) {
 			char    mime_tmp[256];
-			_snprintf_s(mime_tmp, sizeof(mime_tmp), "\r\n%s\r\n", boundary);
+			_snprintf_s(mime_tmp, sizeof(mime_tmp), "\r\n%s\r\n", boundary.c_str());
 			DWORD   len = strlen(mime_tmp);
 			DWORD   nw;
 			BOOL    fWr = WriteFile(hOut, mime_tmp, len, &nw, NULL);

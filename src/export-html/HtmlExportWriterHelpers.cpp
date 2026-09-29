@@ -84,4 +84,43 @@ bool BuildImagePaths(
 	return true;
 }
 
+bool BuildMimePreamble(
+	time_t timestamp,
+	unsigned int randomValue,
+	MimePreamble& preamble)
+{
+	preamble = MimePreamble();
+
+	tm utc = {};
+	if (gmtime_s(&utc, &timestamp) != 0) return false;
+
+	char date[64] = {};
+	if (strftime(date, _countof(date), "%a, %d %b %Y %H:%M:%S +0000", &utc) == 0) return false;
+
+	char boundary[64] = {};
+	const int boundaryLength = _snprintf_s(boundary, _countof(boundary), _TRUNCATE,
+		"------NextPart---%016llX.%08X",
+		static_cast<unsigned long long>(timestamp), randomValue);
+	if (boundaryLength < 0) return false;
+
+	char header[2048] = {};
+	const int headerLength = _snprintf_s(header, _countof(header), _TRUNCATE,
+		"From: <Saved by Haali ExportHTML Plugin>\r\n"
+		"Date: %s\r\n"
+		"MIME-Version: 1.0\r\n"
+		"Content-Type: multipart/related; boundary=\"%s\"; type=\"text/html\"\r\n"
+		"\r\n"
+		"This is a multi-part message in MIME format.\r\n"
+		"\r\n"
+		"%s\r\n"
+		"Content-Type: text/html; charset=\"utf-8\"\r\n"
+		"Content-Transfer-Encoding: 8bit\r\n"
+		"\r\n",
+		date, boundary + 2, boundary);
+	if (headerLength < 0) return false;
+
+	preamble.boundary.assign(boundary, static_cast<size_t>(boundaryLength));
+	preamble.header.assign(header, static_cast<size_t>(headerLength));
+	return true;
+}
 }
