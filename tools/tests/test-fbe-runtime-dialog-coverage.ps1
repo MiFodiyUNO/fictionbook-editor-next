@@ -22,7 +22,7 @@ $consumers = @{
     IDD_FIND = @{ File = 'src\fbe\SearchReplace.h'; AdditionalFiles = @('src\fbe\FBEview.cpp'); Invocation = 'SetRuntimeDialogTitle' }
     IDD_REPLACE = @{ File = 'src\fbe\SearchReplace.h'; Invocation = 'SetRuntimeDialogTitle' }
     IDD_FIND_RESULTS = @{ File = 'src\fbe\FindResultsPane.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
-    IDD_SCRIPTS_TOOLBAR_CUSTOMIZE = @{ File = 'src\fbe\ScriptsToolbarCustomizeDlg.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD\)' }
+    IDD_SCRIPTS_TOOLBAR_CUSTOMIZE = @{ File = 'src\fbe\ScriptsToolbarCustomizeDlg.cpp'; AdditionalFiles = @('src\fbe\mainfrm.cpp'); Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD\)' }
     IDD_SCRIPT_TOOLBAR_MANAGER = @{ File = 'src\fbe\ScriptToolbarManagerDlg.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD\)' }
     IDD_SPELL_CHECK = @{ File = 'src\fbe\Speller.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SPELL_CHECK\)' }
     IDD_WORDS = @{ File = 'src\fbe\Words.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_WORDS\)' }

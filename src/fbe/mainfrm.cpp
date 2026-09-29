@@ -2238,7 +2238,7 @@ void CMainFrame::ShowCommandToolbarCustomizeDialog()
 	std::vector<ScriptsToolbarTarget> panels(1, target);
 	CScriptsToolbarCustomizeDlg dialog(m_CmdToolbar, commands, defaults, _Settings, panels,
 		[this](const CString&, const std::vector<PortableToolbarItem>& items) { return UpdateCommandToolbarItems(items); }, false,
-		FbeLoadRuntimeStringByKey(L"fbe.toolbar_customize.caption", L"Настройка панели инструментов"));
+		FbeLoadRuntimeStringByKey(L"fbe.toolbar_customize.caption", L"Customize toolbar"));
 	dialog.DoModal(m_hWnd);
 }
 

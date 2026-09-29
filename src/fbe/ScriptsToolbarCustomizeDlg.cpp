@@ -239,7 +239,7 @@ bool CScriptsToolbarCustomizeDlg::CommitCurrentItems(const std::vector<PortableT
 {
 	if(ApplyCurrentItemsToRuntimeToolbar() && (!m_saveItems || m_saveItems(m_panels[CurrentPanelIndex()].id, CurrentItems()))) return true;
 	CurrentItems() = previous; ApplyCurrentItemsToRuntimeToolbar();
-	U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.script_toolbar_manager.save_failed", L"Не удалось сохранить настройки панелей скриптов."), FbeLoadRuntimeStringByKey(L"fbe.script_toolbar_manager.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
+	U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.script_toolbar_manager.save_failed", L"Failed to save toolbar settings."), FbeLoadRuntimeStringByKey(L"fbe.script_toolbar_manager.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
 	return false;
 }
 bool CScriptsToolbarCustomizeDlg::MoveSelectedButtons(bool down)
