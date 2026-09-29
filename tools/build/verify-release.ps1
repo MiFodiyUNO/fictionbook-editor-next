@@ -180,6 +180,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-customizable-toolbar-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-scripts-toolbar-customize-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-script-toolbar-lifecycle-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-shift-toolbar-quick-customization-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-navigation-scripts-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-script-toolbar-lifecycle-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-navigation-scripts-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
