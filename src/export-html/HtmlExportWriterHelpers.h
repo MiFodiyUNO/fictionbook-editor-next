@@ -27,4 +27,7 @@ bool BuildMimePreamble(
 	time_t timestamp,
 	unsigned int randomValue,
 	MimePreamble& preamble);
+bool IsStandaloneWarningRequired(
+	unsigned long long resultSizeBytes,
+	unsigned long long standaloneWarningMiB);
 }

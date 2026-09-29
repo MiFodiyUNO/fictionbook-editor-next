@@ -123,4 +123,15 @@ bool BuildMimePreamble(
 	preamble.header.assign(header, static_cast<size_t>(headerLength));
 	return true;
 }
+bool IsStandaloneWarningRequired(
+	unsigned long long resultSizeBytes,
+	unsigned long long standaloneWarningMiB)
+{
+	if (standaloneWarningMiB == 0) return false;
+
+	const unsigned long long bytesPerMiB = 1024ULL * 1024ULL;
+	const unsigned long long wholeMiB = resultSizeBytes / bytesPerMiB;
+	return wholeMiB > standaloneWarningMiB ||
+		(wholeMiB == standaloneWarningMiB && resultSizeBytes % bytesPerMiB != 0);
+}
 }

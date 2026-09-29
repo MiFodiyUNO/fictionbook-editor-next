@@ -1,6 +1,7 @@
 #include "../../src/export-html/HtmlExportWriterHelpers.h"
 
 #include <iostream>
+#include <limits>
 #include <string>
 
 namespace {
@@ -61,6 +62,28 @@ int ExpectMimePreamble()
 	}
 	return header.size() >= 2 && header.compare(header.size() - 2, 2, "\r\n") == 0 ? 0 : 1;
 }
+int ExpectStandaloneWarningThreshold()
+{
+	const unsigned long long mib = 1024ULL * 1024ULL;
+	if (HtmlExportWriterHelpers::IsStandaloneWarningRequired(8ULL * mib, 0)) {
+		std::cerr << "standalone warning disabled" << std::endl;
+		return 1;
+	}
+	if (HtmlExportWriterHelpers::IsStandaloneWarningRequired(mib - 1, 1) ||
+		HtmlExportWriterHelpers::IsStandaloneWarningRequired(mib, 1) ||
+		!HtmlExportWriterHelpers::IsStandaloneWarningRequired(mib + 1, 1)) {
+		std::cerr << "standalone warning threshold" << std::endl;
+		return 1;
+	}
+
+	const unsigned long long maximum = (std::numeric_limits<unsigned long long>::max)();
+	if (HtmlExportWriterHelpers::IsStandaloneWarningRequired(maximum, maximum / mib + 1) ||
+		!HtmlExportWriterHelpers::IsStandaloneWarningRequired(maximum, 1)) {
+		std::cerr << "standalone warning overflow" << std::endl;
+		return 1;
+	}
+	return 0;
+}
 }
 
 int main()
@@ -73,6 +96,7 @@ int main()
 	failures += ExpectRejected(L"..\\images", "parent traversal");
 	failures += ExpectRejected(L"C:\\images", "absolute path");
 	failures += ExpectMimePreamble();
+	failures += ExpectStandaloneWarningThreshold();
 
 	return failures == 0 ? 0 : 1;
 }

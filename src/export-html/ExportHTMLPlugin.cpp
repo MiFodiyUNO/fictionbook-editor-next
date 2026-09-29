@@ -347,8 +347,9 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		if (fEmbeddedImages) {
 			STATSTG standaloneStat = {};
 			CheckError(standaloneOutput->Stat(&standaloneStat, STATFLAG_NONAME));
-			const unsigned long long warningBytes = static_cast<unsigned long long>(exportSettings.standaloneWarningMiB) * 1024ULL * 1024ULL;
-			if (warningBytes != 0 && standaloneStat.cbSize.QuadPart > warningBytes &&
+			if (HtmlExportWriterHelpers::IsStandaloneWarningRequired(
+				static_cast<unsigned long long>(standaloneStat.cbSize.QuadPart),
+				static_cast<unsigned long long>(exportSettings.standaloneWarningMiB)) &&
 				ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML,
 					FormatExportHtmlString(IDS_WARNING_STANDALONE_SIZE, exportSettings.standaloneWarningMiB), NULL,
 					TDCBF_YES_BUTTON | TDCBF_NO_BUTTON, TD_WARNING_ICON) != IDYES)
