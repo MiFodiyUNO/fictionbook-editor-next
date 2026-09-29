@@ -659,7 +659,7 @@ public:
 	LRESULT OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnToolbarDoubleClick(int, LPNMHDR pnmh, BOOL& bHandled);
-	static LRESULT CALLBACK ScriptsToolbarSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference);
+	static LRESULT CALLBACK ToolbarCustomizeSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference);
 
 
   int m_selBandID;
@@ -853,10 +853,8 @@ public:
 
   LRESULT OnToolCustomize(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /* unused: hWndCtl */, BOOL& /*bHandled*/)
   {
-	  UnhookSysDialogs();
-	  if (m_selBandID == ATL_IDW_BAND_FIRST+1) CustomizeCommandToolbar(); else
+	  if (m_selBandID == ATL_IDW_BAND_FIRST+1) ShowCommandToolbarCustomizeDialog(); else
 	  if (m_selBandID == ATL_IDW_BAND_FIRST+2) ShowScriptsToolbarCustomizeDialog();
-	  HookSysDialogs();
       return 0;
   }
 
@@ -981,8 +979,9 @@ public:
 	  return 0;
   }
 
+	void ShowCommandToolbarCustomizeDialog();
 	void ShowScriptsToolbarCustomizeDialog();
-	void CustomizeCommandToolbar();
+	bool UpdateCommandToolbarItems(const std::vector<PortableToolbarItem>& items);
 	void ShowScriptToolbarManagerDialog();
 
   LRESULT OnGoToReference(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)

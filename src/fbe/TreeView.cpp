@@ -873,9 +873,9 @@ void CTreeView::ApplyModeAppearance()
 void CTreeView::RebuildScriptTree()
 {
 	DeleteAllItems(); m_script_nodes.clear(); m_source_index.clear();
-	CTreeItem root = InsertItem(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.root", L"Scripts"), 0, 0, TVI_ROOT, TVI_LAST);
-	BuildScriptChildren(root, CString());
-	root.Expand(TVE_EXPAND);
+	// The pane caption already identifies Scripts.  Keep catalog descriptors at
+	// TVI_ROOT so the tree does not add a redundant synthetic parent node.
+	BuildScriptChildren(TVI_ROOT, CString());
 }
 
 void CTreeView::PrepareScriptImages()

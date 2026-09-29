@@ -230,10 +230,11 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 
 	const bool viewBarVisible = m_view_bar.IsWindowVisible() != FALSE;
 	int viewBarHight = viewBarVisible ? viewBarRect.bottom - viewBarRect.top : 0;
-	int viewBarWidth = viewBarRect.right - viewBarRect.left;
 
+	// The view bar is a pane-wide header, not a fixed-width toolbar.  Its
+	// right edge must follow every splitter and DPI-driven resize.
 	viewBarRect.left = clientRect.left;
-	viewBarRect.right = clientRect.left + viewBarWidth;
+	viewBarRect.right = clientRect.right;
 
 	bool moved = false;
 

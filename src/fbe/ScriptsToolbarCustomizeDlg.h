@@ -28,7 +28,7 @@ public:
 	enum { IDD = IDD_SCRIPTS_TOOLBAR_CUSTOMIZE };
 	CScriptsToolbarCustomizeDlg(HWND toolbar, const std::vector<ScriptsToolbarCommand>& available,
 		const CSimpleArray<TBBUTTON>& defaults, CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels,
-		const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems);
+		const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems, bool showPanelSelector, const CString& caption);
 	~CScriptsToolbarCustomizeDlg();
 
 	BEGIN_MSG_MAP(CScriptsToolbarCustomizeDlg)
@@ -70,6 +70,8 @@ private:
 	CSize m_minimumSize;
 	HFONT m_dialogFont;
 	UINT m_dpi;
+	bool m_showPanelSelector;
+	CString m_caption;
 	bool m_dragging;
 	int m_dragSource;
 	int m_dragInsert;

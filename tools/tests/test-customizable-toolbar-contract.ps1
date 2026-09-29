@@ -57,9 +57,9 @@ foreach ($required in @(
 if ($mainFrameSource.IndexOf('fbe.hotkey.scripts.last_script', [StringComparison]::Ordinal) -lt 0) {
     throw 'Last script не получает runtime-локализацию при формировании каталога панели.'
 }
-foreach ($required in @('SetWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc', 'message == WM_LBUTTONDBLCLK', 'ShowScriptsToolbarCustomizeDialog()', 'RemoveWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc')) {
+foreach ($required in @('SetWindowSubclass(m_CmdToolbar, ToolbarCustomizeSubclassProc', 'SetWindowSubclass(m_ScriptsToolbar, ToolbarCustomizeSubclassProc', 'message == WM_LBUTTONDBLCLK', 'ShowCommandToolbarCustomizeDialog()', 'ShowScriptsToolbarCustomizeDialog()', 'RemoveWindowSubclass(m_CmdToolbar, ToolbarCustomizeSubclassProc', 'RemoveWindowSubclass(m_ScriptsToolbar, ToolbarCustomizeSubclassProc')) {
 	if ($mainFrameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
-		throw "Scripts toolbar не перехватывает double-click через безопасный subclass: $required"
+		throw "Command и Scripts toolbar должны использовать один безопасный double-click subclass: $required"
 	}
 }
 
@@ -119,38 +119,43 @@ if ($dialogSource.IndexOf('UiMetrics::UpdateForWindow(m_hWnd)', [StringCompariso
     throw 'Диалог не должен инвалидировать глобальные шрифты UiMetrics главного окна.'
 }
 
-if ($mainFrame.IndexOf('m_ScriptsToolbar.Customize()', [StringComparison]::Ordinal) -ge 0) {
-    throw 'Scripts toolbar не должна открывать штатный TB_CUSTOMIZE.'
-}
-if ($mainFrame.IndexOf('ShowScriptsToolbarCustomizeDialog()', [StringComparison]::Ordinal) -lt 0) {
-    throw 'Панель скриптов не открывает собственный диалог настройки.'
-}
-if ($mainFrame.IndexOf('m_selBandID == ATL_IDW_BAND_FIRST+2) ShowScriptsToolbarCustomizeDialog()', [StringComparison]::Ordinal) -lt 0) {
-    throw 'Контекстное меню Scripts toolbar не открывает собственный диалог.'
-}
-if ($mainFrame.IndexOf('m_selBandID == ATL_IDW_BAND_FIRST+1) CustomizeCommandToolbar()', [StringComparison]::Ordinal) -lt 0) {
-    throw 'Контекстное меню основной панели не открывает тематизированный штатный диалог.'
+if ($mainFrameSource.IndexOf('m_CmdToolbar.Customize()', [StringComparison]::Ordinal) -ge 0 -or
+    $mainFrameSource.IndexOf('m_ScriptsToolbar.Customize()', [StringComparison]::Ordinal) -ge 0) {
+    throw 'Пользовательский путь настройки не должен открывать штатный TB_CUSTOMIZE.'
 }
 foreach ($required in @(
-    'm_CmdToolbar.Customize()',
-    'SetWindowsHookExW(WH_CBT, ToolbarCustomizeCbtProc',
-    '::GetWindow(dialog, GW_OWNER) == ::GetAncestor(context->toolbar, GA_ROOT)',
-    'SetWindowSubclass(dialog, ToolbarCustomizeThemeProc',
-    'RemoveWindowSubclass(dialog, ToolbarCustomizeThemeProc',
-    'message == WM_CTLCOLORLISTBOX',
-    'message != WM_DRAWITEM',
-    'kCustomizeAvailableList = 201',
-    'kCustomizeCurrentList = 203',
-    'ThemeManager::ControlColor()',
-    'ThemeManager::DisabledTextColor()',
-    'ThemeManager::SelectionTextColor()',
-    'ImageList_GetIconSize',
-    'ImageList_Draw(imageList, LOWORD(bitmap), item->hDC, x, y, ILD_NORMAL)',
-    'UnhookWindowsHookEx(context.hook)'
+    'void CMainFrame::ShowCommandToolbarCustomizeDialog()',
+    'void CMainFrame::ShowScriptsToolbarCustomizeDialog()',
+    'CScriptsToolbarCustomizeDlg dialog(m_CmdToolbar',
+    'CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar',
+    'ToolbarCustomizeSubclassProc',
+    'message == WM_LBUTTONDBLCLK',
+    'if(window == frame->m_CmdToolbar) frame->ShowCommandToolbarCustomizeDialog()',
+    'else if(window == frame->m_ScriptsToolbar) frame->ShowScriptsToolbarCustomizeDialog()',
+    'PortableToolbarStore::Save(layout)',
+    'ToolbarLayoutAdapter::Capture(m_CmdToolbar, target.items)',
+    'UpdateCommandToolbarItems(items)'
 )) {
     if ($mainFrameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
-        throw "Штатный диалог панели команд потерял ограниченную dark-отрисовку: $required"
+        throw "Общая настройка панелей не содержит '$required'."
     }
 }
-
+foreach ($required in @(
+    'm_selBandID == ATL_IDW_BAND_FIRST+1) ShowCommandToolbarCustomizeDialog()',
+    'm_selBandID == ATL_IDW_BAND_FIRST+2) ShowScriptsToolbarCustomizeDialog()'
+)) {
+    if ($mainFrame.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Контекстное меню панели не открывает общий FBE-диалог: $required"
+    }
+}
+foreach ($forbidden in @('ToolbarCustomizeThemeProc', 'ToolbarCustomizeCbtProc', 'SetWindowsHookExW(WH_CBT')) {
+    if ($mainFrameSource.IndexOf($forbidden, [StringComparison]::Ordinal) -ge 0) {
+        throw "Штатный путь настройки toolbar не должен сохранять '$forbidden'."
+    }
+}
+foreach ($required in @('m_showPanelSelector', 'if(!m_showPanelSelector)', 'commands-main', 'm_caption', 'SetWindowText(m_caption)')) {
+    if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0 -and $dialogHeader.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Общий FBE-диалог не поддерживает command-toolbar режим: $required"
+    }
+}
 Write-Host 'Customizable toolbar TBN_GETBUTTONINFO contract passed.'

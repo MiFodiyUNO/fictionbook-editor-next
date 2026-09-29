@@ -15,7 +15,7 @@ namespace
 CScriptsToolbarCustomizeDlg::CScriptsToolbarCustomizeDlg(HWND toolbar,
 	const std::vector<ScriptsToolbarCommand>& available, const CSimpleArray<TBBUTTON>& defaults,
 	CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels,
-	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_scriptImages(NULL), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
+	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems, bool showPanelSelector, const CString& caption) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_showPanelSelector(showPanelSelector), m_caption(caption), m_scriptImages(NULL), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
 {
 }
 
@@ -29,6 +29,7 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	::SetProp(m_hWnd, kSkipSystemDialogLocalizationProperty, reinterpret_cast<HANDLE>(1));
 	UpdateMetrics();
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD);
+	if(!m_caption.IsEmpty()) SetWindowText(m_caption);
 	m_availableList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE);
 	m_currentList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT);
 	m_panelList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL);
@@ -38,6 +39,11 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_scriptImages = reinterpret_cast<HIMAGELIST>(::SendMessage(m_toolbar, TB_GETIMAGELIST, 0, 0));
 	for(size_t index = 0; index < m_panels.size(); ++index) m_panelList.AddString(m_panels[index].name);
 	if(m_panelList.GetCount() == 0) m_panelList.AddString(FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.main", L"Scripts"));
+	if(!m_showPanelSelector) {
+		::ShowWindow(GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL_LABEL), SW_HIDE);
+		::ShowWindow(GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL), SW_HIDE);
+		SetDlgItemText(IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL, FbeLoadRuntimeStringByKey(L"fbe.toolbar_customize.available_commands", L"Available commands:"));
+	}
 	int selectedPanel = 0; for(size_t index = 0; index < m_panels.size(); ++index) if(m_panels[index].toolbar == m_toolbar) { selectedPanel = static_cast<int>(index); break; }
 	m_panelList.SetCurSel(selectedPanel);
 	::SetWindowSubclass(m_availableList, AvailableListSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
@@ -263,7 +269,7 @@ LRESULT CScriptsToolbarCustomizeDlg::OnReset(WORD, WORD, HWND, BOOL&)
 	const std::vector<PortableToolbarItem> previous = CurrentItems(); CurrentItems().clear();
 	// User-created panels intentionally reset to an empty definition.  Only the
 	// stable main panel owns the legacy IDR_SCRIPTS default (ID_LAST_SCRIPT).
-	if(m_panels[CurrentPanelIndex()].id == L"scripts-main")
+	if(m_panels[CurrentPanelIndex()].id == L"scripts-main" || m_panels[CurrentPanelIndex()].id == L"commands-main")
 		for(int index = 0; index < m_defaults.GetSize(); ++index) { PortableToolbarItem item = {}; item.separator = (m_defaults[index].fsStyle & TBSTYLE_SEP) != 0; item.command = m_defaults[index].idCommand; item.width = m_defaults[index].iBitmap; CurrentItems().push_back(item); }
 	if(CommitCurrentItems(previous)) { RefreshLists(); UpdateButtonState(); } return 0;
 }
@@ -278,8 +284,10 @@ void CScriptsToolbarCustomizeDlg::LayoutControls(int width, int height)
 	HDWP defer = ::BeginDeferWindowPos(14); const UINT flags = SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOREDRAW;
 	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL), NULL, left, gap, labelWidth, controlHeight, flags);
 	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH), NULL, left + labelWidth, gap, listWidth - labelWidth, controlHeight, flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL_LABEL), NULL, right, gap, labelWidth, controlHeight, flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL), NULL, right + labelWidth, gap, listWidth - labelWidth, controlHeight, flags);
+	if(m_showPanelSelector) {
+		defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL_LABEL), NULL, right, gap, labelWidth, controlHeight, flags);
+		defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL), NULL, right + labelWidth, gap, listWidth - labelWidth, controlHeight, flags);
+	}
 	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL), NULL, left, Scale(38), listWidth, Scale(18), flags);
 	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL), NULL, right, Scale(38), listWidth, Scale(18), flags);
 	defer = ::DeferWindowPos(defer, m_availableList, NULL, left, top, listWidth, listHeight, flags);

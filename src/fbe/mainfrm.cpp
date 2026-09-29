@@ -91,133 +91,6 @@ RecoveryDiagnostics g_recoveryDiagnostics;
 
 namespace
 {
-// The lists in comctl32's TB_CUSTOMIZE dialog are owner-drawn by comctl32.
-// WM_CTLCOLORLISTBOX alone cannot recolour their items, so scope the drawing
-// override to this one modal invocation. The native dialog still owns all
-// selection, drag/drop, reset and toolbar mutation behaviour.
-constexpr UINT_PTR kToolbarCustomizeThemeSubclass = 0x46424543; // "FBEC"
-constexpr int kCustomizeAvailableList = 201;
-constexpr int kCustomizeCurrentList = 203;
-
-struct ToolbarCustomizeImage
-{
-	std::wstring caption;
-	int bitmap;
-};
-
-struct ToolbarCustomizeThemeContext
-{
-	HWND toolbar = NULL;
-	HHOOK hook = NULL;
-	std::vector<ToolbarCustomizeImage> images;
-};
-
-thread_local ToolbarCustomizeThemeContext* g_toolbarCustomizeTheme = nullptr;
-
-LRESULT CALLBACK ToolbarCustomizeThemeProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam,
-	UINT_PTR, DWORD_PTR reference)
-{
-	if(message == WM_NCDESTROY)
-	{
-		::RemoveWindowSubclass(dialog, ToolbarCustomizeThemeProc, kToolbarCustomizeThemeSubclass);
-		return ::DefSubclassProc(dialog, message, wParam, lParam);
-	}
-	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast())
-		return ::DefSubclassProc(dialog, message, wParam, lParam);
-
-	const HWND available = ::GetDlgItem(dialog, kCustomizeAvailableList);
-	const HWND current = ::GetDlgItem(dialog, kCustomizeCurrentList);
-	if(message == WM_CTLCOLORLISTBOX &&
-		(reinterpret_cast<HWND>(lParam) == available || reinterpret_cast<HWND>(lParam) == current))
-	{
-		HDC dc = reinterpret_cast<HDC>(wParam);
-		::SetBkColor(dc, ThemeManager::ControlColor());
-		::SetTextColor(dc, ThemeManager::TextColor());
-		return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
-	}
-	if(message != WM_DRAWITEM || (wParam != kCustomizeAvailableList && wParam != kCustomizeCurrentList))
-		return ::DefSubclassProc(dialog, message, wParam, lParam);
-
-	const DRAWITEMSTRUCT* item = reinterpret_cast<const DRAWITEMSTRUCT*>(lParam);
-	const HWND list = wParam == kCustomizeAvailableList ? available : current;
-	if(!item || item->CtlType != ODT_LISTBOX || item->hwndItem != list || !item->hDC ||
-		!(::GetWindowLongPtrW(list, GWL_STYLE) & LBS_HASSTRINGS))
-		return ::DefSubclassProc(dialog, message, wParam, lParam);
-
-	const bool selected = (item->itemState & ODS_SELECTED) != 0;
-	::FillRect(item->hDC, &item->rcItem, ThemeManager::Brush(selected ? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_CONTROL));
-	if(item->itemID == static_cast<UINT>(-1)) return TRUE;
-
-	const LRESULT length = ::SendMessageW(list, LB_GETTEXTLEN, item->itemID, 0);
-	if(length == LB_ERR || length < 0 || length > 32767)
-		return TRUE;
-	std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, L'\0');
-	if(::SendMessageW(list, LB_GETTEXT, item->itemID, reinterpret_cast<LPARAM>(caption.data())) == LB_ERR)
-		return TRUE;
-
-	ToolbarCustomizeThemeContext* context = reinterpret_cast<ToolbarCustomizeThemeContext*>(reference);
-	int iconWidth = 0;
-	if(context && ::IsWindow(context->toolbar))
-	{
-		for(const ToolbarCustomizeImage& image : context->images)
-		{
-			if(image.caption != caption.data() || image.bitmap < 0) continue;
-			const UINT bitmap = static_cast<UINT>(image.bitmap);
-			HIMAGELIST imageList = reinterpret_cast<HIMAGELIST>(::SendMessageW(context->toolbar,
-				TB_GETIMAGELIST, HIWORD(bitmap), 0));
-			int iconHeight = 0;
-			if(imageList && ::ImageList_GetIconSize(imageList, &iconWidth, &iconHeight))
-			{
-				const int x = item->rcItem.left + 3;
-				const int y = item->rcItem.top + (item->rcItem.bottom - item->rcItem.top - iconHeight) / 2;
-				::ImageList_Draw(imageList, LOWORD(bitmap), item->hDC, x, y, ILD_NORMAL);
-			}
-			break;
-		}
-	}
-
-	RECT textRect = item->rcItem;
-	textRect.left += iconWidth + 9;
-	textRect.right -= 3;
-	HFONT font = reinterpret_cast<HFONT>(::SendMessageW(list, WM_GETFONT, 0, 0));
-	HGDIOBJ oldFont = font ? ::SelectObject(item->hDC, font) : NULL;
-	const COLORREF oldText = ::SetTextColor(item->hDC,
-		(item->itemState & (ODS_DISABLED | ODS_GRAYED)) ? ThemeManager::DisabledTextColor() :
-		selected ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor());
-	const int oldMode = ::SetBkMode(item->hDC, TRANSPARENT);
-	::DrawTextW(item->hDC, caption.data(), -1, &textRect,
-		DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
-	::SetBkMode(item->hDC, oldMode);
-	::SetTextColor(item->hDC, oldText);
-	if(oldFont) ::SelectObject(item->hDC, oldFont);
-	if(item->itemState & ODS_FOCUS)
-		::FrameRect(item->hDC, &item->rcItem, ThemeManager::Brush(THEME_COLOR_FOCUS));
-	return TRUE;
-}
-
-LRESULT CALLBACK ToolbarCustomizeCbtProc(int code, WPARAM wParam, LPARAM lParam)
-{
-	ToolbarCustomizeThemeContext* context = g_toolbarCustomizeTheme;
-	if(code == HCBT_ACTIVATE && context)
-	{
-		HWND dialog = reinterpret_cast<HWND>(wParam);
-		const HWND available = ::GetDlgItem(dialog, kCustomizeAvailableList);
-		const HWND current = ::GetDlgItem(dialog, kCustomizeCurrentList);
-		wchar_t className[32] = {};
-		if(available && current &&
-			::GetWindow(dialog, GW_OWNER) == ::GetAncestor(context->toolbar, GA_ROOT) &&
-			::GetClassNameW(dialog, className, _countof(className)) &&
-			::lstrcmpW(className, L"#32770") == 0)
-			::SetWindowSubclass(dialog, ToolbarCustomizeThemeProc, kToolbarCustomizeThemeSubclass,
-				reinterpret_cast<DWORD_PTR>(context));
-	}
-	return ::CallNextHookEx(context ? context->hook : NULL, code, wParam, lParam);
-}
-}
-
-
-namespace
-{
 using ToolbarFactory::AutoSizeToolbar;
 using ToolbarFactory::ImageListHasMaskPlane;
 using ToolbarFactory::SetDialogFontForToolbarRow;
@@ -2342,37 +2215,50 @@ void CMainFrame::AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand, 
 	tb.AutoSize();
 }
 
-void CMainFrame::CustomizeCommandToolbar()
+void CMainFrame::ShowCommandToolbarCustomizeDialog()
 {
-	if(!::IsWindow(m_CmdToolbar) || !ThemeManager::IsDark() || ThemeManager::IsHighContrast())
+	if(!::IsWindow(m_CmdToolbar)) return;
+	TBBUTTONS catalog, defaults;
+	if(!GetAvailableButtons(m_CmdToolbar, catalog) || !GetDefaultButtons(m_CmdToolbar, defaults)) return;
+	std::vector<ScriptsToolbarCommand> commands;
+	for(int index = 0; index < catalog.GetSize(); ++index)
 	{
-		m_CmdToolbar.Customize();
-		return;
+		const TBBUTTON& button = catalog[index];
+		if(button.idCommand == 0 || (button.fsStyle & TBSTYLE_SEP)) continue;
+		CString text;
+		if(!GetButtonText(button, text)) continue;
+		ScriptsToolbarCommand command = {}; command.command = button.idCommand; command.name = text; command.button = button;
+		commands.push_back(command);
 	}
-
-	ToolbarCustomizeThemeContext context;
-	context.toolbar = m_CmdToolbar;
-	TBBUTTONS available;
-	if(GetAvailableButtons(m_CmdToolbar, available))
-	{
-		for(int index = 0; index < available.GetSize(); ++index)
-		{
-			const TBBUTTON& button = available[index];
-			if((button.fsStyle & BTNS_SEP) || button.iBitmap < 0) continue;
-			CString caption;
-			if(GetButtonText(button, caption))
-				context.images.push_back({ static_cast<LPCWSTR>(caption), button.iBitmap });
-		}
-	}
-
-	ToolbarCustomizeThemeContext* previous = g_toolbarCustomizeTheme;
-	g_toolbarCustomizeTheme = &context;
-	context.hook = ::SetWindowsHookExW(WH_CBT, ToolbarCustomizeCbtProc, NULL, ::GetCurrentThreadId());
-	m_CmdToolbar.Customize();
-	if(context.hook) ::UnhookWindowsHookEx(context.hook);
-	g_toolbarCustomizeTheme = previous;
+	std::sort(commands.begin(), commands.end(), [](const ScriptsToolbarCommand& left, const ScriptsToolbarCommand& right) {
+		return left.name.CompareNoCase(right.name) < 0;
+	});
+	ScriptsToolbarTarget target = {}; target.id = L"commands-main"; target.name = FbeLoadRuntimeStringByKey(L"fbe.toolbar_customize.main", L"Toolbar"); target.toolbar = m_CmdToolbar;
+	ToolbarLayoutAdapter::Capture(m_CmdToolbar, target.items);
+	std::vector<ScriptsToolbarTarget> panels(1, target);
+	CScriptsToolbarCustomizeDlg dialog(m_CmdToolbar, commands, defaults, _Settings, panels,
+		[this](const CString&, const std::vector<PortableToolbarItem>& items) { return UpdateCommandToolbarItems(items); }, false,
+		FbeLoadRuntimeStringByKey(L"fbe.toolbar_customize.caption", L"Настройка панели инструментов"));
+	dialog.DoModal(m_hWnd);
 }
 
+bool CMainFrame::UpdateCommandToolbarItems(const std::vector<PortableToolbarItem>& items)
+{
+	PortableToolbarLayout layout;
+	if(!PortableToolbarStore::Load(layout))
+	{
+		layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
+		ToolbarLayoutAdapter::Capture(m_ScriptsToolbar, layout.scripts);
+		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+			layout.scriptToolbars.push_back(m_scriptToolbars.Items()[index].definition);
+	}
+	layout.commandToolbarPresent = true;
+	layout.commands = items;
+	if(!PortableToolbarStore::Save(layout)) return false;
+	if(DeploymentContext::RegistryPersistenceAllowed())
+		m_CmdToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
+	return true;
+}
 void CMainFrame::ShowScriptsToolbarCustomizeDialog()
 {
 	if(!::IsWindow(m_ScriptsToolbar)) return;
@@ -2414,7 +2300,7 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog()
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.uid == target.items[itemIndex].scriptUid && script.commandId > 0) { target.items[itemIndex].command = ID_SCRIPT_BASE + script.commandId; break; } }
 		panels.push_back(target);
 	}
-	CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar, commands, defaults, _Settings, panels, [this](const CString& id, const std::vector<PortableToolbarItem>& items) { return UpdateScriptToolbarItems(id, items); });
+	CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar, commands, defaults, _Settings, panels, [this](const CString& id, const std::vector<PortableToolbarItem>& items) { return UpdateScriptToolbarItems(id, items); }, true, FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.caption", L"Настройка панели скриптов"));
 	dialog.DoModal(m_hWnd);
 }
 
@@ -2622,18 +2508,20 @@ LRESULT CMainFrame::OnViewScriptToolbarToggle(WORD, WORD command, HWND, BOOL&)
 
 LRESULT CMainFrame::OnToolbarDoubleClick(int, LPNMHDR hdr, BOOL& bHandled)
 {
-	if(hdr == NULL || hdr->hwndFrom != m_ScriptsToolbar) { bHandled = FALSE; return 0; }
-	ShowScriptsToolbarCustomizeDialog();
+	if(hdr == NULL || (hdr->hwndFrom != m_CmdToolbar && hdr->hwndFrom != m_ScriptsToolbar)) { bHandled = FALSE; return 0; }
+	if(hdr->hwndFrom == m_CmdToolbar) ShowCommandToolbarCustomizeDialog();
+	else ShowScriptsToolbarCustomizeDialog();
 	bHandled = TRUE;
 	return 0;
 }
 
-LRESULT CALLBACK CMainFrame::ScriptsToolbarSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
+LRESULT CALLBACK CMainFrame::ToolbarCustomizeSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
 {
 	CMainFrame* frame = reinterpret_cast<CMainFrame*>(reference);
 	if(frame != NULL && message == WM_LBUTTONDBLCLK)
 	{
-		frame->ShowScriptsToolbarCustomizeDialog();
+		if(window == frame->m_CmdToolbar) frame->ShowCommandToolbarCustomizeDialog();
+		else if(window == frame->m_ScriptsToolbar) frame->ShowScriptsToolbarCustomizeDialog();
 		return 0;
 	}
 	return ::DefSubclassProc(window, message, wParam, lParam);
@@ -3199,7 +3087,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   InitToolBar(m_ScriptsToolbar, IDR_SCRIPTS);
 	CImageList scriptsToolbarImages = m_ScriptsToolbar.GetImageList();
 	m_scriptsToolbarBaseImageCount = scriptsToolbarImages ? scriptsToolbarImages.GetImageCount() : 0;
-	::SetWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
+	::SetWindowSubclass(m_CmdToolbar, ToolbarCustomizeSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
+	::SetWindowSubclass(m_ScriptsToolbar, ToolbarCustomizeSubclassProc, 2, reinterpret_cast<DWORD_PTR>(this));
   UIAddToolBar(m_ScriptsToolbar);
 
 	if(!m_contextAttributeBars.Create(m_hWnd))
@@ -3543,7 +3432,8 @@ LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam 
 	::RemoveWindowSubclass(m_hWnd, MainMenuBarThemeProc, kMainMenuBarThemeSubclassId);
 	if(::IsWindow(m_MenuBar))
 		::RemoveWindowSubclass(m_MenuBar, MainMenuBarWindowThemeProc, kMainMenuBarWindowThemeSubclassId);
-	if(::IsWindow(m_ScriptsToolbar)) ::RemoveWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc, 1);
+	if(::IsWindow(m_CmdToolbar)) ::RemoveWindowSubclass(m_CmdToolbar, ToolbarCustomizeSubclassProc, 1);
+	if(::IsWindow(m_ScriptsToolbar)) ::RemoveWindowSubclass(m_ScriptsToolbar, ToolbarCustomizeSubclassProc, 2);
 	if(::IsWindow(m_status)) ::RemoveWindowSubclass(m_status, StatusBarThemeProc, kStatusBarThemeSubclassId);
 	ReleaseOwnedNativeMenuBitmaps();
 	g_rebarBaseStyles.erase(m_rebar);
