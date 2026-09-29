@@ -21,15 +21,30 @@ $dialogPath = Join-Path $repoRoot "src\export-html\HtmlExportOptionsDialog.h"
 $pluginCatalog = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'localization\plugin-ui\catalog.json') | ConvertFrom-Json
 $appCatalog = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'localization\app-ui\catalog.json') | ConvertFrom-Json
 if ((@($pluginCatalog.targetLanguages) -join '|') -ne (@($appCatalog.targetLanguages) -join '|')) { throw 'plugin-ui.targetLanguages must match app-ui.targetLanguages.' }
-$newExportHtmlResourceIds = @('IDS_OPTIONS_IMAGES_FOLDER_NAME', 'IDS_OPTIONS_WARNING_MIB', 'IDS_TOOLTIP_INCLUDE_TOC', 'IDS_TOOLTIP_STYLE', 'IDS_TOOLTIP_FONT', 'IDS_TOOLTIP_FONT_SIZE', 'IDS_TOOLTIP_LINE_HEIGHT', 'IDS_TOOLTIP_CONTENT_WIDTH', 'IDS_TOOLTIP_MARGINS', 'IDS_TOOLTIP_TEXT_ALIGNMENT', 'IDS_TOOLTIP_HEADING_ALIGNMENT', 'IDS_TOOLTIP_CSS_CLEAR', 'IDS_TOOLTIP_COVER_MODE', 'IDS_TOOLTIP_IMAGES_FOLDER', 'IDS_TOOLTIP_IMAGES_FOLDER_NAME', 'IDS_TOOLTIP_WARNING_MIB', 'IDS_TOOLTIP_NOTE_PLACEMENT', 'IDS_TOOLTIP_METADATA', 'IDS_TOOLTIP_METADATA_CHILD')
+$newExportHtmlResourceIds = @('IDS_OPTIONS_CSS_CLEAR', 'IDS_OPTIONS_IMAGES_FOLDER_NAME', 'IDS_OPTIONS_WARNING_MIB', 'IDS_TOOLTIP_INCLUDE_TOC', 'IDS_TOOLTIP_STYLE', 'IDS_TOOLTIP_FONT', 'IDS_TOOLTIP_FONT_SIZE', 'IDS_TOOLTIP_LINE_HEIGHT', 'IDS_TOOLTIP_CONTENT_WIDTH', 'IDS_TOOLTIP_MARGINS', 'IDS_TOOLTIP_TEXT_ALIGNMENT', 'IDS_TOOLTIP_HEADING_ALIGNMENT', 'IDS_TOOLTIP_CSS_CLEAR', 'IDS_TOOLTIP_COVER_MODE', 'IDS_TOOLTIP_IMAGES_FOLDER', 'IDS_TOOLTIP_IMAGES_FOLDER_NAME', 'IDS_TOOLTIP_WARNING_MIB', 'IDS_TOOLTIP_NOTE_PLACEMENT', 'IDS_TOOLTIP_METADATA', 'IDS_TOOLTIP_METADATA_CHILD')
+$identicalTechnicalTermAllowlist = @{
+    # Only resource IDs and locales explicitly listed here may intentionally match English.
+}
+$expectedGeneratedLanguageCount = 12
+if ($pluginCatalog.targetLanguages.Count -ne $expectedGeneratedLanguageCount) { throw "ExportHTML must declare exactly $expectedGeneratedLanguageCount target languages." }
 foreach ($resourceId in $newExportHtmlResourceIds) {
     $entries = @($pluginCatalog.strings.PSObject.Properties | Where-Object { $_.Value.resourceId -eq $resourceId -and $_.Value.component -like 'export-html.*' })
     if ($entries.Count -ne 1) { throw "ExportHTML catalog entry is missing or duplicated: $resourceId" }
     $entry = $entries[0].Value
+    $source = [string]$entry.source
+    $englishProperty = $entry.translations.PSObject.Properties['en-US']
+    if ($null -eq $englishProperty -or [string]::IsNullOrWhiteSpace([string]$englishProperty.Value)) { throw "ExportHTML English translation is missing or empty: $resourceId" }
+    $english = [string]$englishProperty.Value
     foreach ($language in $pluginCatalog.targetLanguages) {
-        $text = [string]$entry.translations.PSObject.Properties[$language].Value
-        if ([string]::IsNullOrWhiteSpace($text)) { throw "ExportHTML translation is empty: $resourceId / $language" }
-        if ($language -ne 'en-US' -and $text -eq [string]$entry.source) { throw "English fallback is forbidden for ExportHTML UI/prose: $resourceId / $language" }
+        $translationProperty = $entry.translations.PSObject.Properties[$language]
+        if ($null -eq $translationProperty) { throw "ExportHTML translation is missing: $resourceId / $language" }
+        $translation = [string]$translationProperty.Value
+        if ([string]::IsNullOrWhiteSpace($translation)) { throw "ExportHTML translation is empty: $resourceId / $language" }
+        if ($language -eq 'en-US') { continue }
+        $allowIdenticalTechnicalTerm = $identicalTechnicalTermAllowlist.ContainsKey($resourceId) -and $identicalTechnicalTermAllowlist[$resourceId] -contains $language
+        if (-not $allowIdenticalTechnicalTerm -and ($translation -eq $source -or $translation -eq $english)) {
+            throw "English fallback is forbidden for ExportHTML UI/prose: $resourceId / $language"
+        }
     }
 }
 if ((Get-Content -Raw (Join-Path $repoRoot 'src\export-html\resource.h')) -match 'IDS_TOOLTIP_OPTION_VALUE') { throw 'Unused IDS_TOOLTIP_OPTION_VALUE remained in resource.h.' }
@@ -42,6 +57,12 @@ $generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
 if ($pluginCatalog.strings.PSObject.Properties.Name -contains 'export_html.tooltip.option_value') { throw 'Unused generic tooltip catalog entry remained.' }
 if ($generatedRc -match 'Configure this HTML export setting') { throw 'Template tooltip prose remained in generated resources.' }
 if ($generatedRc -match 'IDS_TOOLTIP_OPTION_VALUE') { throw 'Unused IDS_TOOLTIP_OPTION_VALUE remained in generated resources.' }
+foreach ($resourceId in $newExportHtmlResourceIds) {
+    $occurrences = [regex]::Matches($generatedRc, "\b$([regex]::Escape($resourceId))\b").Count
+    if ($occurrences -ne $expectedGeneratedLanguageCount) {
+        throw "ExportHTML generated resource must occur exactly $expectedGeneratedLanguageCount times: $resourceId (actual: $occurrences)"
+    }
+}
 $dialog = Get-Content -Raw -LiteralPath $dialogPath
 $generalPage = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\export-html\HtmlExportGeneralPage.cpp")
 $appearancePage = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\export-html\HtmlExportAppearancePage.cpp")
