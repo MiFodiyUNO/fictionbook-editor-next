@@ -27,6 +27,33 @@ try {
         (Get-Sha256 ([Convert]::FromBase64String($png))),
         (Get-Sha256 ([Convert]::FromBase64String($jpg)))
     ) | Sort-Object
+    function Resolve-ExternalImagePath([string]$Src, [string]$ResourceRoot) {
+        # HTML URLs are percent-encoded. UnescapeDataString preserves '+'.
+        $decoded = [Uri]::UnescapeDataString($Src)
+        if ($decoded -match '^[a-z][a-z0-9+.-]*:' -or [IO.Path]::IsPathRooted($decoded)) {
+            throw "Expected a relative external image reference: $Src"
+        }
+        $root = [IO.Path]::GetFullPath($ResourceRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+        $relative = $decoded.Replace('/', [IO.Path]::DirectorySeparatorChar)
+        $candidate = [IO.Path]::GetFullPath((Join-Path $root $relative))
+        if (-not $candidate.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "External image escapes its export directory: $Src"
+        }
+        return $candidate
+    }
+    function Assert-ExternalImagePathResolution() {
+        $folder = Join-Path $directory 'Иллюстрации'
+        [void](New-Item -ItemType Directory -Path $folder)
+        $image = Join-Path $folder 'cover plus+name.png'
+        [IO.File]::WriteAllBytes($image, [Convert]::FromBase64String($png))
+        $src = ([Uri]::EscapeDataString('Иллюстрации')) + '/cover%20plus+name.png'
+        if ((Resolve-ExternalImagePath $src $directory) -ne $image) {
+            throw 'Unicode or percent-encoded external image path was not resolved.'
+        }
+        $traversalRejected = $false
+        try { [void](Resolve-ExternalImagePath '%2e%2e/outside.png' $directory) } catch { $traversalRejected = $true }
+        if (-not $traversalRejected) { throw 'Encoded traversal escaped the export directory.' }
+    }
     function Assert-HtmlImages([string]$HtmlPath, [string]$ResourceRoot, [bool]$Embedded) {
         $html = Get-Content -Raw -LiteralPath $HtmlPath
         $matches = @([regex]::Matches($html, '(?is)<img\b[^>]*?\bsrc\s*=\s*(?:["''](?<src>[^"'']+)["'']|(?<src>[^\s>]+))'))
@@ -37,15 +64,14 @@ try {
                 if ($src -notmatch '^data:(?:image/png|image/jpeg);base64,(?<data>.+)$') { throw "Expected embedded PNG/JPEG data URI in ${HtmlPath}: $src" }
                 Get-Sha256 ([Convert]::FromBase64String($Matches.data))
             } else {
-                if ($src -match '^[a-z]+:' -or [IO.Path]::IsPathRooted($src)) { throw "Expected a relative external image reference in ${HtmlPath}: $src" }
-                $candidate = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $HtmlPath) ($src.Replace('/', [IO.Path]::DirectorySeparatorChar))))
-                $root = [IO.Path]::GetFullPath($ResourceRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-                if (-not $candidate.StartsWith($root, [StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path -LiteralPath $candidate)) { throw "External image is not resolvable below its export directory: $src" }
+                $candidate = Resolve-ExternalImagePath $src $ResourceRoot
+                if (-not (Test-Path -LiteralPath $candidate)) { throw "External image is not resolvable below its export directory: $src" }
                 Get-Sha256 ([IO.File]::ReadAllBytes($candidate))
             }
         }
         if ((@($hashes | Sort-Object) -join ',') -ne ($expectedImageHashes -join ',')) { throw "Exported image bytes do not match the FB2 binaries in $HtmlPath." }
     }
+    Assert-ExternalImagePathResolution
     function Invoke-Export([int]$Mode, [string]$Output) {
         $old = @($env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_EXPORT_HTML_PATH, $env:FBE_NEXT_TEST_EXPORT_HTML_MODE, $env:FBE_NEXT_TEST_EXPORT_HTML_DOM_PATH)
         try {
