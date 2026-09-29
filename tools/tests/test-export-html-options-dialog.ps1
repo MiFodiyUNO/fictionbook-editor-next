@@ -32,6 +32,7 @@ if ($implementation -notmatch 'OnCancel[\s\S]*EndDialog\(IDCANCEL\)') { throw 'N
 if (([regex]::Matches($project, '<ClInclude Include="HtmlExportOptionsDialog\.h"').Count) -ne 1) { throw 'ExportHTML.vcxproj must contain one final options-dialog header entry.' }
 if (([regex]::Matches($filters, '<ClInclude Include="HtmlExportOptionsDialog\.h"').Count) -ne 1) { throw 'ExportHTML.vcxproj.filters must contain one final options-dialog header entry.' }
 $generalPage = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportGeneralPage.cpp')
+$generalHeader = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportGeneralPage.h')
 foreach ($token in @('options.SetSplitSupported(request.filterIndex == 1 || request.filterIndex == 3)', 'OnTypeChange)(IFileDialog* dialog)', 'type == 1 || type == 3', 'm_templateSupportsSplit', 'IDC_DOCUMENT_STRUCTURE')) {
     if ($allSource + $generalPage -notmatch [regex]::Escape($token)) { throw "Split availability contract is missing: $token" }
 }
@@ -40,6 +41,9 @@ $customTemplateIndex = $generalPage.IndexOf('candidate.usingCustomTemplate = !Ex
 $structureIndex = $generalPage.IndexOf('candidate.documentStructure = m_splitSupported && m_templateSupportsSplit')
 if ($templatePathIndex -lt 0 -or $customTemplateIndex -lt $templatePathIndex -or $structureIndex -lt $customTemplateIndex) { throw 'Split must be calculated after the current template path and bundled-template check.' }
 if ($generalPage -notmatch 'const BOOL splitSupported = m_splitSupported && m_templateSupportsSplit') { throw 'Split UI must require both export mode and bundled html.xsl.' }
+if (($generalPage + $generalHeader) -notmatch 'COMMAND_HANDLER\(IDC_TEMPLATE, EN_CHANGE, OnTemplateChanged\)' -or
+    $generalPage -notmatch 'LRESULT HtmlExportGeneralPage::OnTemplateChanged' -or
+    $generalPage -notmatch 'm_templateSupportsSplit = ExportHtmlPathsEqual\(templatePath') { throw 'Manual template changes must immediately update Split availability.' }
 Write-Host 'HTML export options dialog contract passed.'
 
 $runtimeLocalization = Get-Content -Raw (Join-Path $root 'src\export-html\RuntimeLocalization.cpp')

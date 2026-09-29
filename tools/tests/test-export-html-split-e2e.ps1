@@ -29,7 +29,7 @@ try {
     $pageText = Get-Content -Raw -LiteralPath $pages[0]; if ($pageText -notmatch 'section-2-.*#second' -or $pageText -notmatch 'section-3-.*#note') { throw 'Cross-section or note links were not rewritten.' }
     $noteText = Get-Content -Raw -LiteralPath $pages[2]; if ($noteText -notmatch 'section-1-.*#_note_ref_') { throw 'Split note backlink was not rewritten.' }
     $images = Join-Path $directory 'index_files'; if (-not (Test-Path -LiteralPath (Join-Path $images 'picture.png'))) { throw 'Split export did not use one shared external image directory.' }
-    if ($pages | Where-Object { $_.Name -match '[#%&]' -or $_.Name -match 'amp;' }) { throw 'Duplicate Unicode/special titles leaked into filenames.' }
+    if ($pages | Where-Object { [IO.Path]::GetFileName($_) -match '[#%&]' -or [IO.Path]::GetFileName($_) -match 'amp;' }) { throw 'Duplicate Unicode/special titles leaked into filenames.' }
     if ($pageText -notmatch 'index_files/picture.png') { throw 'Split page does not retain the shared image prefix.' }
     function Invoke-SplitExport([string]$Output, [int]$Mode, [int]$NotePlacement = 0, [string]$ConfirmOverwrite = "") {
         $saved = @($env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_EXPORT_HTML_PATH, $env:FBE_NEXT_TEST_EXPORT_HTML_MODE, $env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT, $env:FBE_NEXT_TEST_EXPORT_HTML_NOTE_PLACEMENT, $env:FBE_NEXT_TEST_EXPORT_HTML_CONFIRM_OVERWRITE)

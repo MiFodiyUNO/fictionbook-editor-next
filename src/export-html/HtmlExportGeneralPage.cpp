@@ -105,6 +105,13 @@ LRESULT HtmlExportGeneralPage::OnIncludeToc(WORD, WORD, HWND, BOOL&)
     return 0;
 }
 
+LRESULT HtmlExportGeneralPage::OnTemplateChanged(WORD, WORD, HWND, BOOL&)
+{
+    const CString templatePath = U::GetWindowText(GetDlgItem(IDC_TEMPLATE));
+    m_templateSupportsSplit = ExportHtmlPathsEqual(templatePath, U::GetProgDirFile(L"html.xsl"));
+    UpdateEnabledState();
+    return 0;
+}
 LRESULT HtmlExportGeneralPage::OnBrowseTemplate(WORD, WORD, HWND, BOOL&)
 {
     std::vector<CString> labels, patterns;

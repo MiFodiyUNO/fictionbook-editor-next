@@ -20,6 +20,7 @@ public:
         MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
         COMMAND_ID_HANDLER(IDC_INCLUDE_TOC, OnIncludeToc)
         COMMAND_ID_HANDLER(IDC_BROWSE, OnBrowseTemplate)
+        COMMAND_HANDLER(IDC_TEMPLATE, EN_CHANGE, OnTemplateChanged)
     END_MSG_MAP()
 
 private:
@@ -33,5 +34,6 @@ private:
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnIncludeToc(WORD, WORD, HWND, BOOL&);
     LRESULT OnBrowseTemplate(WORD, WORD, HWND, BOOL&);
+    LRESULT OnTemplateChanged(WORD, WORD, HWND, BOOL&);
     LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
 };
