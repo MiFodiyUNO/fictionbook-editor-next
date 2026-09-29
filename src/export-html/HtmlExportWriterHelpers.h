@@ -18,6 +18,14 @@ bool BuildImagePaths(
 	const std::wstring& externalImagesFolderName,
 	ImagePaths& paths);
 
+// Builds exactly one safe file path below the external-image directory.  FB2
+// binary/@id is a filename here, never a relative path.
+
+bool BuildExternalImagePath(
+	const ImagePaths& paths,
+	const std::wstring& binaryId,
+	std::wstring& imagePath);
+
 struct MimePreamble {
 	std::string boundary;
 	std::string header;

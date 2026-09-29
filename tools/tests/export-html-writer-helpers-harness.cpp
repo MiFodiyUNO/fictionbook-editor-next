@@ -31,6 +31,23 @@ int ExpectRejected(const std::wstring& folderName, const char* name)
 	return 0;
 }
 
+int ExpectExternalImagePaths()
+{
+	HtmlExportWriterHelpers::ImagePaths paths;
+	if (!HtmlExportWriterHelpers::BuildImagePaths(L"C:\\export\\book.html", 1, L"Иллюстрации", paths)) return 1;
+	std::wstring imagePath;
+	if (!HtmlExportWriterHelpers::BuildExternalImagePath(paths, L"обложка.png", imagePath) || imagePath != L"C:\\export\\Иллюстрации\\обложка.png") {
+		std::cerr << "unicode image path" << std::endl;
+		return 1;
+	}
+	for (const std::wstring& unsafe : { std::wstring(L"../evil.png"), std::wstring(L"C:\\evil.png"), std::wstring(L"nested/evil.png"), std::wstring(L"nested\\evil.png") }) {
+		if (HtmlExportWriterHelpers::BuildExternalImagePath(paths, unsafe, imagePath)) {
+			std::cerr << "unsafe image path" << std::endl;
+			return 1;
+		}
+	}
+	return 0;
+}
 int ExpectMimePreamble()
 {
 	HtmlExportWriterHelpers::MimePreamble preamble;
@@ -95,7 +112,8 @@ int main()
 	failures += ExpectPaths(L"C:\\export\\book.html", 1, L"images\\\\", L"C:\\export\\images", L"images/", "duplicate separators");
 	failures += ExpectRejected(L"..\\images", "parent traversal");
 	failures += ExpectRejected(L"C:\\images", "absolute path");
-	failures += ExpectMimePreamble();
+	failures += ExpectExternalImagePaths();
+failures += ExpectMimePreamble();
 	failures += ExpectStandaloneWarningThreshold();
 
 	return failures == 0 ? 0 : 1;

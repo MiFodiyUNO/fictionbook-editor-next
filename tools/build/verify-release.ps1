@@ -326,6 +326,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-html-settings-store.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-template-selection.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-template-resolver-native.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-html-writer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-modes.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-docx-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-epub-localization-resources.ps1")

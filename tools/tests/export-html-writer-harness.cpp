@@ -94,6 +94,120 @@ int ExpectOpenFailure()
 	return FAILED(writer.Prepare()) && reported == 1 ? 0 : 1;
 }
 
+IXMLDOMDocument2Ptr CreateBinaryDocument(const std::wstring& id)
+{
+	IXMLDOMDocument2Ptr document;
+	CheckError(document.CreateInstance(CLSID_DOMDocument60));
+	const std::wstring xml = L"<FictionBook xmlns='http://www.gribuser.ru/xml/fictionbook/2.0'><binary id='" + id + L"' content-type='application/octet-stream'>AA==</binary></FictionBook>";
+	VARIANT_BOOL loaded = VARIANT_FALSE;
+	CheckError(document->loadXML(CComBSTR(xml.c_str()), &loaded));
+	if (loaded != VARIANT_TRUE) throw _com_error(E_FAIL);
+	CheckError(document->setProperty(CComBSTR(L"SelectionLanguage"), _variant_t(L"XPath")));
+	CheckError(document->setProperty(CComBSTR(L"SelectionNamespaces"), _variant_t(L"xmlns:fb='http://www.gribuser.ru/xml/fictionbook/2.0'")));
+	return document;
+}
+
+int ExpectWriteFailureAndRollback(bool shortWrite)
+{
+	const std::wstring path = TemporaryPath(shortWrite ? L"short-write.mht" : L"write-failure.mht");
+	int reported = 0;
+	HRESULT result = S_OK;
+	{
+		HtmlExportWriter::Options options;
+		options.targetPath = path;
+		options.mime = true;
+		HtmlExportWriter::Callbacks callbacks = Callbacks(reported);
+		callbacks.writeTarget = [shortWrite](HANDLE, const void*, DWORD length, DWORD* written) {
+			*written = shortWrite && length > 0 ? length - 1 : 0;
+			::SetLastError(shortWrite ? ERROR_SUCCESS : ERROR_DISK_FULL);
+			return shortWrite ? TRUE : FALSE;
+		};
+		HtmlExportWriter::Writer writer(options, callbacks);
+		result = writer.Prepare();
+	}
+	return FAILED(result) && reported == 1 && ::GetFileAttributes(path.c_str()) == INVALID_FILE_ATTRIBUTES ? 0 : 1;
+}
+
+int ExpectNoTargetHandleLeak()
+{
+	const std::wstring path = TemporaryPath(L"handle.html");
+	int reported = 0;
+	{
+		HtmlExportWriter::Options options;
+		options.targetPath = path;
+		HtmlExportWriter::Writer writer(options, Callbacks(reported));
+		if (FAILED(writer.Prepare())) return 1;
+		CComPtr<IStream> output;
+		if (FAILED(writer.GetTransformOutput(&output)) || WriteText(output, "handle") || FAILED(writer.Finalize())) return 1;
+		writer.Commit();
+	}
+	HANDLE reopened = ::CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	const int failure = reported != 0 || reopened == INVALID_HANDLE_VALUE;
+	if (reopened != INVALID_HANDLE_VALUE) ::CloseHandle(reopened);
+	::DeleteFile(path.c_str());
+	return failure;
+}
+
+int ExpectExistingImage(bool overwrite)
+{
+	const std::wstring path = TemporaryPath(overwrite ? L"overwrite.html" : L"keep-existing.html");
+	int reported = 0;
+	const std::wstring imageName = L"pixel.bin";
+	{
+		HtmlExportWriter::Options options;
+		options.targetPath = path;
+		options.externalImages = true;
+		HtmlExportWriter::Callbacks callbacks = Callbacks(reported);
+		callbacks.confirmImageOverwrite = [overwrite](const std::wstring&) { return overwrite; };
+		HtmlExportWriter::Writer writer(options, callbacks);
+		if (FAILED(writer.Prepare())) return 1;
+		std::wstring imagePath;
+		if (!HtmlExportWriterHelpers::BuildExternalImagePath(writer.ImagePaths(), imageName, imagePath)) return 1;
+		HANDLE existing = ::CreateFile(imagePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+		const BYTE original = 0x7F;
+		DWORD written = 0;
+		if (existing == INVALID_HANDLE_VALUE || !::WriteFile(existing, &original, 1, &written, NULL) || written != 1) return 1;
+		::CloseHandle(existing);
+		if (FAILED(writer.WriteImages(CreateBinaryDocument(imageName))) || FAILED(writer.Finalize())) return 1;
+		writer.Commit();
+		HANDLE image = ::CreateFile(imagePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+		BYTE actual = 0xFF; DWORD read = 0;
+		if (image == INVALID_HANDLE_VALUE || !::ReadFile(image, &actual, 1, &read, NULL) || read != 1) return 1;
+		::CloseHandle(image);
+		const int expected = overwrite ? 0x00 : 0x7F;
+		if (actual != expected || reported != 0) return 1;
+		::DeleteFile(imagePath.c_str());
+		::RemoveDirectory(writer.ImagePaths().directory.c_str());
+	}
+	::DeleteFile(path.c_str());
+	return 0;
+}
+
+int ExpectUnsafeImageIdsRejected()
+{
+	const std::wstring path = TemporaryPath(L"safe-images.html");
+	int reported = 0;
+	{
+		HtmlExportWriter::Options options;
+		options.targetPath = path;
+		options.externalImages = true;
+		HtmlExportWriter::Writer writer(options, Callbacks(reported));
+		if (FAILED(writer.Prepare())) return 1;
+		const std::vector<std::wstring> unsafe = { L"../evil.png", L"C:\\evil.png", L"nested/evil.png", L"nested\\evil.png" };
+		for (size_t index = 0; index < unsafe.size(); ++index)
+			if (FAILED(writer.WriteImages(CreateBinaryDocument(unsafe[index])))) return 1;
+		const std::wstring unicodeName = L"Иллюстрация.png";
+		if (FAILED(writer.WriteImages(CreateBinaryDocument(unicodeName))) || FAILED(writer.Finalize())) return 1;
+		writer.Commit();
+		std::wstring unicodePath;
+		if (!HtmlExportWriterHelpers::BuildExternalImagePath(writer.ImagePaths(), unicodeName, unicodePath)) return 1;
+		const int failure = reported != 0 || ::GetFileAttributes(unicodePath.c_str()) == INVALID_FILE_ATTRIBUTES;
+		::DeleteFile(unicodePath.c_str());
+		::RemoveDirectory(writer.ImagePaths().directory.c_str());
+		::DeleteFile(path.c_str());
+		return failure;
+	}
+}
 int ExpectStandaloneWrite()
 {
 	const std::wstring path = TemporaryPath(L"standalone.html");
@@ -190,8 +304,10 @@ int ExpectRollback()
 int main()
 {
 	::CoInitialize(NULL);
-	const int failures = ExpectNormalWrite() + ExpectOpenFailure() + ExpectStandaloneWrite() +
-		ExpectMimeFinalBoundary() + ExpectExternalImageWrite() + ExpectRollback();
+	const int failures = ExpectNormalWrite() + ExpectOpenFailure() +
+		ExpectWriteFailureAndRollback(false) + ExpectWriteFailureAndRollback(true) + ExpectNoTargetHandleLeak() +
+		ExpectStandaloneWrite() + ExpectMimeFinalBoundary() + ExpectExternalImageWrite() +
+		ExpectExistingImage(false) + ExpectExistingImage(true) + ExpectUnsafeImageIdsRejected() + ExpectRollback();
 	::CoUninitialize();
 	if (failures != 0) std::cerr << "writer harness failures: " << failures << std::endl;
 	return failures == 0 ? 0 : 1;

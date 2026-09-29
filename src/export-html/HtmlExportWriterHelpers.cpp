@@ -84,6 +84,17 @@ bool BuildImagePaths(
 	return true;
 }
 
+bool BuildExternalImagePath(const ImagePaths& paths, const std::wstring& binaryId, std::wstring& imagePath)
+{
+	imagePath.clear();
+	if (paths.directory.empty() || binaryId.empty() || binaryId == L"." || binaryId == L"..") return false;
+	if (binaryId.find_first_of(L"\\/:*?\"<>|") != std::wstring::npos) return false;
+	imagePath = paths.directory;
+	if (!imagePath.empty() && !IsPathSeparator(imagePath.back())) imagePath += L'\\';
+	imagePath += binaryId;
+	return true;
+}
+
 bool BuildMimePreamble(
 	time_t timestamp,
 	unsigned int randomValue,

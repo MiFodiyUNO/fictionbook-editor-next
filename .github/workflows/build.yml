@@ -114,6 +114,11 @@ jobs:
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.ReleaseVersion = $env:GITHUB_REF_NAME.Substring(1) }
           if ('${{ steps.pcre2-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedPcre2 = $true }
           ./tools/build/build.ps1 @arguments
+      - name: Run ExportHTML writer ownership harness
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-export-html-writer.ps1
       - name: Strict first-party native warnings
         shell: pwsh
         run: |

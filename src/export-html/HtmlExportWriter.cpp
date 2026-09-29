@@ -53,9 +53,10 @@ HRESULT Writer::OpenTarget()
 HRESULT Writer::WriteTargetBytes(const void* bytes, DWORD length)
 {
 	DWORD written = 0;
-	if (::WriteFile(m_target, bytes, length, &written, NULL) && written == length) return S_OK;
+	const BOOL writeSucceeded = m_callbacks.writeTarget ? m_callbacks.writeTarget(m_target, bytes, length, &written) : ::WriteFile(m_target, bytes, length, &written, NULL);
+	if (writeSucceeded && written == length) return S_OK;
 	const DWORD error = ::GetLastError();
-	Report(written == length ? Failure::WriteTarget : Failure::ShortWrite, m_options.targetPath, error);
+	Report(!writeSucceeded ? Failure::WriteTarget : Failure::ShortWrite, m_options.targetPath, error);
 	return HRESULT_FROM_WIN32(error == ERROR_SUCCESS ? ERROR_WRITE_FAULT : error);
 }
 
@@ -160,7 +161,6 @@ HRESULT Writer::WriteImages(IXMLDOMDocument2* source)
 	if (FAILED(hr)) return hr;
 	long count = 0;
 	if (FAILED(hr = binaries->get_length(&count))) return hr;
-	const std::wstring directory = m_options.mime ? std::wstring() : m_imagePaths.directory + L"\\";
 	for (long index = 0; index < count; ++index) {
 		try {
 			IXMLDOMNodePtr node;
@@ -195,7 +195,11 @@ HRESULT Writer::WriteImages(IXMLDOMDocument2* source)
 			void* bytes = NULL;
 			if (FAILED(::SafeArrayAccessData(V_ARRAY(&data), &bytes))) continue;
 			const DWORD length = V_ARRAY(&data)->rgsabound[0].cElements;
-			const std::wstring imagePath = directory + std::wstring(V_BSTR(&id));
+			std::wstring imagePath;
+			if (!HtmlExportWriterHelpers::BuildExternalImagePath(m_imagePaths, std::wstring(V_BSTR(&id)), imagePath)) {
+				::SafeArrayUnaccessData(V_ARRAY(&data));
+				continue;
+			}
 			HANDLE image = ::CreateFile(imagePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_NEW, 0, NULL);
 			bool created = image != INVALID_HANDLE_VALUE;
 			if (image == INVALID_HANDLE_VALUE && ::GetLastError() == ERROR_FILE_EXISTS) {

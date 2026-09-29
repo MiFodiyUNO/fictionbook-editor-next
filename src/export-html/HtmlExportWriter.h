@@ -25,6 +25,9 @@ enum class Failure {
 struct Callbacks {
 	std::function<void(Failure failure, const std::wstring& path, DWORD error)> reportFailure;
 	std::function<bool(const std::wstring& path)> confirmImageOverwrite;
+	// Used only by the native writer harness to deterministically exercise
+	// OS-level write failure and short-write handling. Production leaves it empty.
+	std::function<BOOL(HANDLE, const void*, DWORD, DWORD*)> writeTarget;
 };
 
 struct Options {
