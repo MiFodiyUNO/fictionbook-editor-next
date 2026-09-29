@@ -266,7 +266,7 @@ public:
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0),
 	 m_scripts(ID_EDIT_INS_SYMBOL + 101, 999), m_testFailNextInitializeScripts(false), m_testFailAfterCustomToolbarCreates(0),
-	    m_bad_xml(false), m_selBandID(-1), m_selToolbar(NULL), m_scriptsToolbarBaseImageCount(0)
+	    m_bad_xml(false), m_selBandID(-1), m_selToolbar(NULL), m_quickToolbarWindow(NULL), m_quickToolbarSourceIndex(-1), m_quickToolbarStart{}, m_quickToolbarSourceSeparator(false), m_quickToolbarDragging(false), m_scriptsToolbarBaseImageCount(0)
 	// added by SeNS
 	{
 		strINS[0] = L'\0';
@@ -661,10 +661,20 @@ public:
 	LRESULT OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnToolbarDoubleClick(int, LPNMHDR pnmh, BOOL& bHandled);
 	static LRESULT CALLBACK ToolbarCustomizeSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference);
+	bool BeginToolbarQuickCustomize(HWND toolbar, POINT point);
+	void TrackToolbarQuickCustomize(HWND toolbar, POINT point);
+	bool CompleteToolbarQuickCustomize(HWND toolbar, POINT point);
+	void CancelToolbarQuickCustomize(HWND toolbar = NULL);
+	bool ApplyToolbarQuickCustomizeItems(HWND toolbar, const std::vector<PortableToolbarItem>& items);
 
 
   int m_selBandID;
   HWND m_selToolbar;
+	HWND m_quickToolbarWindow;
+	int m_quickToolbarSourceIndex;
+	POINT m_quickToolbarStart;
+	bool m_quickToolbarSourceSeparator;
+	bool m_quickToolbarDragging;
 
   void ApplyRuntimeToolbarMenuLocalization(HMENU menu)
   {

@@ -2517,6 +2517,103 @@ LRESULT CMainFrame::OnToolbarDoubleClick(int, LPNMHDR hdr, BOOL& bHandled)
 	return 0;
 }
 
+bool CMainFrame::BeginToolbarQuickCustomize(HWND toolbar, POINT point)
+{
+	if(toolbar != m_CmdToolbar && toolbar != m_ScriptsToolbar && FindScriptToolbarRuntime(toolbar) == NULL) return false;
+	const int source = static_cast<int>(::SendMessage(toolbar, TB_HITTEST, 0, reinterpret_cast<LPARAM>(&point)));
+	if(source < 0) return false;
+	CToolBarCtrl control = toolbar;
+	TBBUTTON button = {};
+	if(!control.GetButton(source, &button)) return false;
+	m_quickToolbarWindow = toolbar;
+	m_quickToolbarSourceIndex = source;
+	m_quickToolbarStart = point;
+	m_quickToolbarSourceSeparator = (button.fsStyle & TBSTYLE_SEP) != 0;
+	m_quickToolbarDragging = false;
+	::SetCapture(toolbar);
+	return true;
+}
+
+void CMainFrame::TrackToolbarQuickCustomize(HWND toolbar, POINT point)
+{
+	if(toolbar != m_quickToolbarWindow || m_quickToolbarDragging) return;
+	int horizontal = point.x - m_quickToolbarStart.x;
+	int vertical = point.y - m_quickToolbarStart.y;
+	if(horizontal < 0) horizontal = -horizontal;
+	if(vertical < 0) vertical = -vertical;
+	if(horizontal >= ::GetSystemMetrics(SM_CXDRAG) || vertical >= ::GetSystemMetrics(SM_CYDRAG))
+		m_quickToolbarDragging = true;
+}
+
+void CMainFrame::CancelToolbarQuickCustomize(HWND toolbar)
+{
+	if(toolbar != NULL && toolbar != m_quickToolbarWindow) return;
+	m_quickToolbarWindow = NULL;
+	m_quickToolbarSourceIndex = -1;
+	m_quickToolbarSourceSeparator = false;
+	m_quickToolbarDragging = false;
+}
+
+bool CMainFrame::ApplyToolbarQuickCustomizeItems(HWND toolbar, const std::vector<PortableToolbarItem>& items)
+{
+	TBBUTTONS available;
+	if(!GetAvailableButtons(toolbar, available)) return false;
+	std::vector<TBBUTTON> catalog(available.GetSize());
+	for(int index = 0; index < available.GetSize(); ++index) catalog[index] = available[index];
+	std::vector<PortableToolbarItem> previous;
+	ToolbarLayoutAdapter::Capture(toolbar, previous);
+	ToolbarLayoutAdapter::Apply(toolbar, items, catalog);
+	bool persisted = false;
+	if(toolbar == m_CmdToolbar)
+		persisted = UpdateCommandToolbarItems(items);
+	else if(ScriptToolbarRuntime* runtime = FindScriptToolbarRuntime(toolbar))
+		persisted = UpdateScriptToolbarItems(runtime->definition.id, items);
+	if(!persisted) ToolbarLayoutAdapter::Apply(toolbar, previous, catalog);
+	return persisted;
+}
+
+bool CMainFrame::CompleteToolbarQuickCustomize(HWND toolbar, POINT point)
+{
+	if(toolbar != m_quickToolbarWindow) return false;
+	const int source = m_quickToolbarSourceIndex;
+	const bool sourceSeparator = m_quickToolbarSourceSeparator;
+	const bool dragging = m_quickToolbarDragging;
+	CancelToolbarQuickCustomize();
+	if(::GetCapture() == toolbar) ::ReleaseCapture();
+
+	std::vector<PortableToolbarItem> items;
+	ToolbarLayoutAdapter::Capture(toolbar, items);
+	if(source < 0 || static_cast<size_t>(source) >= items.size()) return false;
+	if(!dragging)
+	{
+		if(sourceSeparator)
+			items.erase(items.begin() + source);
+		else
+		{
+			PortableToolbarItem separator = {};
+			separator.separator = true;
+			separator.width = 8;
+			items.insert(items.begin() + source, separator);
+		}
+		return ApplyToolbarQuickCustomizeItems(toolbar, items);
+	}
+	if(sourceSeparator) return false;
+
+	RECT client = {};
+	::GetClientRect(toolbar, &client);
+	if(!::PtInRect(&client, point)) return false;
+	int destination = static_cast<int>(::SendMessage(toolbar, TB_HITTEST, 0, reinterpret_cast<LPARAM>(&point)));
+	if(destination < 0) destination = static_cast<int>(items.size());
+	if(destination == source) return true;
+	PortableToolbarItem moved = items[source];
+	items.erase(items.begin() + source);
+	if(destination > source) --destination;
+	if(destination < 0) destination = 0;
+	if(static_cast<size_t>(destination) > items.size()) destination = static_cast<int>(items.size());
+	items.insert(items.begin() + destination, moved);
+	return ApplyToolbarQuickCustomizeItems(toolbar, items);
+}
+
 LRESULT CALLBACK CMainFrame::ToolbarCustomizeSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
 {
 	CMainFrame* frame = reinterpret_cast<CMainFrame*>(reference);
@@ -2525,6 +2622,26 @@ LRESULT CALLBACK CMainFrame::ToolbarCustomizeSubclassProc(HWND window, UINT mess
 		if(window == frame->m_CmdToolbar) frame->ShowCommandToolbarCustomizeDialog();
 		else if(window == frame->m_ScriptsToolbar || frame->FindScriptToolbarRuntime(window) != NULL) frame->ShowScriptsToolbarCustomizeDialog(window);
 		return 0;
+	}
+	if(frame != NULL)
+	{
+		switch(message)
+		{
+		case WM_LBUTTONDOWN:
+			if((wParam & MK_SHIFT) != 0 && frame->BeginToolbarQuickCustomize(window, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) })) return 0;
+			break;
+		case WM_MOUSEMOVE:
+			if(window == frame->m_quickToolbarWindow) { frame->TrackToolbarQuickCustomize(window, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); return 0; }
+			break;
+		case WM_LBUTTONUP:
+			if(window == frame->m_quickToolbarWindow) { frame->CompleteToolbarQuickCustomize(window, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); return 0; }
+			break;
+		case WM_CANCELMODE:
+		case WM_CAPTURECHANGED:
+			frame->CancelToolbarQuickCustomize(window);
+			break;
+
+		}
 	}
 	return ::DefSubclassProc(window, message, wParam, lParam);
 }
