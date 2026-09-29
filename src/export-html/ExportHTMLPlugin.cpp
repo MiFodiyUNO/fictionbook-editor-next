@@ -5,6 +5,7 @@
 #include "HtmlExportOptionsDialog.h"
 #include "HtmlExportResourceAudit.h"
 #include "HtmlExportXslParameters.h"
+#include "HtmlExportWriterHelpers.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "RuntimeLocalization.h"
 #include "..\\version.h"
@@ -266,7 +267,11 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 
 		// 1 = HTML and an adjacent resource folder, 2 = MHT,
 		// 3 = HTML without images, 4 = self-contained HTML with data: URIs.
-		CString dfile(dlg.m_szFileName);
+		HtmlExportWriterHelpers::ImagePaths imagePaths;
+		const int imagesFolderMode = fExternalImages ? exportSettings.externalImagesFolderMode : 0;
+		const std::wstring imagesFolderName = fExternalImages ? std::wstring((LPCWSTR)exportSettings.externalImagesFolderName) : std::wstring();
+		if (!HtmlExportWriterHelpers::BuildImagePaths((LPCWSTR)dlg.m_szFileName, imagesFolderMode, imagesFolderName, imagePaths)) return E_FAIL;
+		CString dfile(imagePaths.directory.c_str());
 
 		// Self-contained output is first transformed in memory and audited before
 		// touching the selected target.  Other modes preserve the historic writer.
@@ -280,29 +285,11 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			}
 		}
 
-		// * construct images directory
-		int	  cp = dfile.ReverseFind(_T('.'));
-		if (cp >= 0)
-			dfile.Delete(cp, dfile.GetLength() - cp);
-		dfile += _T("_files");
-		if (fExternalImages && exportSettings.externalImagesFolderMode == 1 && !exportSettings.externalImagesFolderName.IsEmpty()) {
-			const int slash = dfile.ReverseFind(_T('\\'));
-			if (slash >= 0) dfile = dfile.Left(slash + 1) + exportSettings.externalImagesFolderName;
-			else dfile = exportSettings.externalImagesFolderName;
-		}
 		CString relpath;
 		if (fExternalImages) {
-			// Construct an HTML-relative resource path. MSXML BSTR parameters preserve Unicode.
-			relpath = dfile;
-			cp = relpath.ReverseFind(_T('\\'));
-			if (cp >= 0)
-				relpath.Delete(0, cp + 1);
-
-
+			relpath = imagePaths.imgPrefix.c_str();
 
 			if (!fMIME) {
-				relpath += _T('/');
-
 				if (!::CreateDirectory(dfile, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) {
 					DWORD	de = ::GetLastError();
 					CloseHandle(hOut);
@@ -314,7 +301,6 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			}
 			else
 				dfile.Empty();
-
 		}
 		HtmlExportXslParameters::ApplyImageMode(proc, fImages, fEmbeddedImages, relpath);
 

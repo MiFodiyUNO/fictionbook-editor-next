@@ -186,6 +186,7 @@
     <ClCompile Include="HtmlExportResourceAudit.cpp" />
     <ClCompile Include="HtmlExportSettings.cpp" />
     <ClCompile Include="HtmlExportXslParameters.cpp" />
+    <ClCompile Include="HtmlExportWriterHelpers.cpp" />
     <ClCompile Include="HtmlExportOptionsDialog.cpp" />
     <ClCompile Include="HtmlExportGeneralPage.cpp" />
     <ClCompile Include="HtmlExportAppearancePage.cpp" />
@@ -214,6 +215,7 @@
     <ClInclude Include="HtmlExportResourceAudit.h" />
     <ClInclude Include="HtmlExportSettings.h" />
     <ClInclude Include="HtmlExportXslParameters.h" />
+    <ClInclude Include="HtmlExportWriterHelpers.h" />
     <ClInclude Include="HtmlExportGeneralPage.h" />
     <ClInclude Include="HtmlExportAppearancePage.h" />
     <ClInclude Include="HtmlExportImagesPage.h" />
