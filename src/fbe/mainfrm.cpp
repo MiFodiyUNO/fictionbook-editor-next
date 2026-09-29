@@ -2301,7 +2301,7 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog(HWND selectedToolbar)
 		panels.push_back(target);
 	}
 	const HWND selected = selectedToolbar != NULL && FindScriptToolbarRuntime(selectedToolbar) != NULL ? selectedToolbar : m_ScriptsToolbar;
-	CScriptsToolbarCustomizeDlg dialog(selected, commands, defaults, _Settings, panels, [this](const CString& id, const std::vector<PortableToolbarItem>& items) { return UpdateScriptToolbarItems(id, items); }, true, FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.caption", L"Настройка панели скриптов"));
+	CScriptsToolbarCustomizeDlg dialog(selected, commands, defaults, _Settings, panels, [this](const CString& id, const std::vector<PortableToolbarItem>& items) { return UpdateScriptToolbarItems(id, items); }, true, FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.caption", L"Customize scripts toolbar"));
 	dialog.DoModal(m_hWnd);
 }
 
