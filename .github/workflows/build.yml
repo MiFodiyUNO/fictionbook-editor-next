@@ -21,6 +21,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
+      - name: Validate plugin localization catalog
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-plugin-localization-catalog.ps1
       # validate reads the Lexilla and Hunspell projects to enforce the
       # boundary between first-party and vendored MSBuild policy. Fetching
       # every submodule here is unnecessary and makes this fast job depend on
@@ -217,26 +222,36 @@ jobs:
             out/build-provenance
           if-no-files-found: error
           retention-days: 3
-      - name: Upload editor background runtime diagnostics
+      - name: Check runtime diagnostics availability
         if: failure()
+        id: runtime-diagnostics
+        shell: pwsh
+        run: |
+          function Test-DiagnosticFiles([string]$path) {
+            return $null -ne (Get-ChildItem -LiteralPath $path -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+          }
+          "editor_background_has_files=$(Test-DiagnosticFiles 'out/tests/editor-background-runtime-failure')" >> $env:GITHUB_OUTPUT
+          "runtime_has_files=$(Test-DiagnosticFiles 'out/tests/runtime-failure')" >> $env:GITHUB_OUTPUT
+      - name: Upload editor background runtime diagnostics
+        if: failure() && steps.runtime-diagnostics.outputs.editor_background_has_files == 'True'
         uses: actions/upload-artifact@v7
         with:
           name: editor-background-runtime-diagnostics
           path: out/tests/editor-background-runtime-failure/**
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
       - name: Upload failed runtime diagnostics
-        if: failure()
+        if: failure() && steps.runtime-diagnostics.outputs.runtime_has_files == 'True'
         uses: actions/upload-artifact@v7
         with:
           name: runtime-failure-diagnostics
           path: out/tests/runtime-failure/**
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
 
   package:
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [validate, build]
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v7
@@ -296,7 +311,7 @@ jobs:
 
   publish:
     if: github.ref_type == 'tag'
-    needs: package
+    needs: [validate, package]
     runs-on: windows-2022
     permissions:
       contents: write

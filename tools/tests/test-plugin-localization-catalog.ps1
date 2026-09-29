@@ -57,6 +57,7 @@ if ($stringProperties.Count -eq 0) {
 }
 
 $seenKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$translationIssues = [Collections.Generic.List[object]]::new()
 foreach ($property in $stringProperties) {
     $key = [string]$property.Name
     if (-not $seenKeys.Add($key)) {
@@ -72,19 +73,41 @@ foreach ($property in $stringProperties) {
         throw "У ключа $key отсутствует source-строка."
     }
 
-    if (-not $entry.translations) {
-        throw "У ключа $key отсутствует блок translations."
-    }
-
     foreach ($language in $requiredLanguages) {
-        $translationProperty = $entry.translations.PSObject.Properties[$language]
+        $translationProperty = if ($entry.translations) { $entry.translations.PSObject.Properties[$language] } else { $null }
         if (-not $translationProperty) {
-            throw "У ключа $key отсутствует перевод для $language."
+            $translationIssues.Add([pscustomobject]@{
+                    Key      = $key
+                    Language = $language
+                    State    = 'отсутствует'
+                })
+            continue
         }
         if ([string]::IsNullOrWhiteSpace([string]$translationProperty.Value)) {
-            throw "У ключа $key пустой перевод для $language."
+            $translationIssues.Add([pscustomobject]@{
+                    Key      = $key
+                    Language = $language
+                    State    = 'пустой'
+                })
         }
     }
+}
+
+if ($translationIssues.Count -gt 0) {
+    $issuesByKey = @($translationIssues | Group-Object Key | Sort-Object Name)
+    Write-Host 'Каталог локализации плагинов не прошёл проверку.'
+    Write-Host "  Проблемных ключей: $($issuesByKey.Count)"
+    Write-Host "  Отсутствующих/пустых переводов: $($translationIssues.Count)"
+    Write-Host '  По языкам:'
+    foreach ($languageIssues in @($translationIssues | Group-Object Language | Sort-Object Name)) {
+        Write-Host "    $($languageIssues.Name): $($languageIssues.Count)"
+    }
+    Write-Host '  Ключи с отсутствующими/пустыми переводами:'
+    foreach ($keyIssues in $issuesByKey) {
+        $languages = @($keyIssues.Group | Sort-Object Language | ForEach-Object { "$($_.Language) ($($_.State))" })
+        Write-Host "    $($keyIssues.Name): $($languages -join ', ')"
+    }
+    exit 1
 }
 
 Write-Host "Каталог локализации плагинов прошёл проверку."

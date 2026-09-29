@@ -20,8 +20,30 @@ foreach ($required in @(
     './tools/build/build-shell-integration.ps1 -Configuration Release -Platform x64 -PlatformToolset v143',
     './tools/build/Initialize-CiUtf8.ps1',
     './tools/tests/test-first-party-msbuild-policy.ps1',
+    './tools/tests/test-plugin-localization-catalog.ps1',
     './tools/tests/test-ci-build-contract.ps1 -RequireArtifacts')) {
     if (-not $workflow.Contains($required)) { throw "CI workflow is missing '$required'." }
+}
+$localizationStep = $workflow.IndexOf('- name: Validate plugin localization catalog')
+$validateFixtures = $workflow.IndexOf('- name: Initialize MSBuild policy fixtures')
+if ($localizationStep -lt 0 -or $localizationStep -gt $validateFixtures) {
+    throw 'Plugin localization catalog must run before validate initializes submodules and later checks.'
+}
+
+if ($workflow -notmatch '(?m)^\s*build:\s*\r?\n\s*needs:\s*validate\s*$' -or
+    $workflow -notmatch '(?m)^\s*package:\s*\r?\n\s*if:.*\r?\n\s*needs:\s*\[validate, build\]\s*$' -or
+    $workflow -notmatch '(?m)^\s*publish:\s*\r?\n\s*if:.*\r?\n\s*needs:\s*\[validate, package\]\s*$') {
+    throw 'Build, package and publish must depend on successful validate.'
+}
+
+foreach ($artifact in @(
+        @{ Name = 'editor background runtime diagnostics'; Output = 'editor_background_has_files'; Path = 'out/tests/editor-background-runtime-failure/**' },
+        @{ Name = 'failed runtime diagnostics'; Output = 'runtime_has_files'; Path = 'out/tests/runtime-failure/**' }
+    )) {
+    $pattern = "(?s)- name: Upload $([regex]::Escape($artifact.Name)).*?if: failure\(\) && steps\.runtime-diagnostics\.outputs\.$($artifact.Output) == 'True'.*?path: $([regex]::Escape($artifact.Path)).*?if-no-files-found: error"
+    if ($workflow -notmatch $pattern) {
+        throw "CI must upload $($artifact.Name) only when its diagnostic files exist."
+    }
 }
 
 $validateCheckout = [regex]::Match($workflow, '(?s)validate:.*?actions/checkout@v7\s*\r?\n\s*with:(?<options>.*?)\r?\n\s*# validate reads.*?- name: Initialize MSBuild policy fixtures\s*\r?\n\s*shell: pwsh\s*\r?\n\s*run: (?<command>.*?)\r?\n\s*- name: Check generated')
