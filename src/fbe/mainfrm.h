@@ -266,7 +266,7 @@ public:
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0),
 	 m_scripts(ID_EDIT_INS_SYMBOL + 101, 999), m_testFailNextInitializeScripts(false), m_testFailAfterCustomToolbarCreates(0),
-	    m_bad_xml(false), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0)
+	    m_bad_xml(false), m_selBandID(-1), m_selToolbar(NULL), m_scriptsToolbarBaseImageCount(0)
 	// added by SeNS
 	{
 		strINS[0] = L'\0';
