@@ -68,7 +68,6 @@ bool HtmlExportGeneralPage::SaveToSettings(HtmlExportSettings& candidate, CStrin
     }
     candidate.includeToc = includeToc;
     if (includeToc) candidate.tocDepth = depth;
-    candidate.documentStructure = m_splitSupported && m_templateSupportsSplit && CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).GetCurSel() == 1 ? 1 : 0;
     candidate.templatePath = U::GetWindowText(GetDlgItem(IDC_TEMPLATE));
     const DWORD attributes = candidate.templatePath.IsEmpty() ? INVALID_FILE_ATTRIBUTES : ::GetFileAttributes(candidate.templatePath);
     if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
@@ -77,6 +76,9 @@ bool HtmlExportGeneralPage::SaveToSettings(HtmlExportSettings& candidate, CStrin
         return false;
     }
     candidate.usingCustomTemplate = !ExportHtmlPathsEqual(candidate.templatePath, U::GetProgDirFile(L"html.xsl"));
+    m_templateSupportsSplit = !candidate.usingCustomTemplate;
+    candidate.documentStructure = m_splitSupported && m_templateSupportsSplit && CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).GetCurSel() == 1 ? 1 : 0;
+    if (!m_templateSupportsSplit) CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).SetCurSel(0);
     return true;
 }
 
@@ -91,9 +93,10 @@ void HtmlExportGeneralPage::UpdateEnabledState()
     const BOOL enabled = IsDlgButtonChecked(IDC_INCLUDE_TOC) == BST_CHECKED;
     ::EnableWindow(GetDlgItem(IDC_TOCDEPTH), enabled);
     ::EnableWindow(GetDlgItem(IDC_TOC_DEPTH_LABEL), enabled);
-    if (!m_splitSupported) CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).SetCurSel(0);
-    ::EnableWindow(GetDlgItem(IDC_DOCUMENT_STRUCTURE), m_splitSupported);
-    ::EnableWindow(GetDlgItem(IDC_DOCUMENT_STRUCTURE_LABEL), m_splitSupported);
+    const BOOL splitSupported = m_splitSupported && m_templateSupportsSplit;
+    if (!splitSupported) CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).SetCurSel(0);
+    ::EnableWindow(GetDlgItem(IDC_DOCUMENT_STRUCTURE), splitSupported);
+    ::EnableWindow(GetDlgItem(IDC_DOCUMENT_STRUCTURE_LABEL), splitSupported);
 }
 
 LRESULT HtmlExportGeneralPage::OnIncludeToc(WORD, WORD, HWND, BOOL&)

@@ -324,11 +324,14 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			}
 			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, message, NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
 		};
-		writerCallbacks.confirmImageOverwrite = [](const std::wstring& path) {
-			const CString message = FormatExportHtmlString(IDS_WARNING_FILE_ALREADY_EXISTS, path.c_str());
-			return ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, message, NULL,
-				TDCBF_YES_BUTTON | TDCBF_NO_BUTTON, TD_WARNING_ICON) == IDYES;
-		};
+        writerCallbacks.confirmImageOverwrite = [](const std::wstring& path) {
+            wchar_t testConfirm[4] = {};
+            if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_CONFIRM_OVERWRITE", testConfirm, _countof(testConfirm)) == 1)
+                return testConfirm[0] == L'1';
+            const CString message = FormatExportHtmlString(IDS_WARNING_FILE_ALREADY_EXISTS, path.c_str());
+            return ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, message, NULL,
+                TDCBF_YES_BUTTON | TDCBF_NO_BUTTON, TD_WARNING_ICON) == IDYES;
+        };
 		HtmlExportWriter::Writer writer(writerOptions, writerCallbacks);
 		HRESULT writerResult = writer.Prepare();
 		if (FAILED(writerResult)) return writerResult;

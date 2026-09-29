@@ -35,6 +35,11 @@ $generalPage = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportGene
 foreach ($token in @('options.SetSplitSupported(request.filterIndex == 1 || request.filterIndex == 3)', 'OnTypeChange)(IFileDialog* dialog)', 'type == 1 || type == 3', 'm_templateSupportsSplit', 'IDC_DOCUMENT_STRUCTURE')) {
     if ($allSource + $generalPage -notmatch [regex]::Escape($token)) { throw "Split availability contract is missing: $token" }
 }
+$templatePathIndex = $generalPage.IndexOf('candidate.templatePath = U::GetWindowText')
+$customTemplateIndex = $generalPage.IndexOf('candidate.usingCustomTemplate = !ExportHtmlPathsEqual')
+$structureIndex = $generalPage.IndexOf('candidate.documentStructure = m_splitSupported && m_templateSupportsSplit')
+if ($templatePathIndex -lt 0 -or $customTemplateIndex -lt $templatePathIndex -or $structureIndex -lt $customTemplateIndex) { throw 'Split must be calculated after the current template path and bundled-template check.' }
+if ($generalPage -notmatch 'const BOOL splitSupported = m_splitSupported && m_templateSupportsSplit') { throw 'Split UI must require both export mode and bundled html.xsl.' }
 Write-Host 'HTML export options dialog contract passed.'
 
 $runtimeLocalization = Get-Content -Raw (Join-Path $root 'src\export-html\RuntimeLocalization.cpp')
