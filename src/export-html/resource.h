@@ -104,7 +104,6 @@
 #define IDS_WARNING_STANDALONE_SIZE        195
 #define IDS_OPTIONS_IMAGES_FOLDER_NAME     196
 #define IDS_OPTIONS_WARNING_MIB            197
-#define IDS_TOOLTIP_OPTION_VALUE           198
 #define IDS_TOOLTIP_INCLUDE_TOC            199
 #define IDS_TOOLTIP_STYLE                  200
 #define IDS_TOOLTIP_FONT                   201

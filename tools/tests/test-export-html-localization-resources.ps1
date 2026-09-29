@@ -18,11 +18,30 @@ $rcPath = Join-Path $repoRoot "src\export-html\ExportHTML.rc"
 $generatedRcPath = Join-Path $repoRoot "src\export-html\ExportHTMLStrings.generated.rc2"
 $dialogPath = Join-Path $repoRoot "src\export-html\HtmlExportOptionsDialog.h"
 
+$pluginCatalog = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'localization\plugin-ui\catalog.json') | ConvertFrom-Json
+$appCatalog = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'localization\app-ui\catalog.json') | ConvertFrom-Json
+if ((@($pluginCatalog.targetLanguages) -join '|') -ne (@($appCatalog.targetLanguages) -join '|')) { throw 'plugin-ui.targetLanguages must match app-ui.targetLanguages.' }
+$newExportHtmlResourceIds = @('IDS_OPTIONS_IMAGES_FOLDER_NAME', 'IDS_OPTIONS_WARNING_MIB', 'IDS_TOOLTIP_INCLUDE_TOC', 'IDS_TOOLTIP_STYLE', 'IDS_TOOLTIP_FONT', 'IDS_TOOLTIP_FONT_SIZE', 'IDS_TOOLTIP_LINE_HEIGHT', 'IDS_TOOLTIP_CONTENT_WIDTH', 'IDS_TOOLTIP_MARGINS', 'IDS_TOOLTIP_TEXT_ALIGNMENT', 'IDS_TOOLTIP_HEADING_ALIGNMENT', 'IDS_TOOLTIP_CSS_CLEAR', 'IDS_TOOLTIP_COVER_MODE', 'IDS_TOOLTIP_IMAGES_FOLDER', 'IDS_TOOLTIP_IMAGES_FOLDER_NAME', 'IDS_TOOLTIP_WARNING_MIB', 'IDS_TOOLTIP_NOTE_PLACEMENT', 'IDS_TOOLTIP_METADATA', 'IDS_TOOLTIP_METADATA_CHILD')
+foreach ($resourceId in $newExportHtmlResourceIds) {
+    $entries = @($pluginCatalog.strings.PSObject.Properties | Where-Object { $_.Value.resourceId -eq $resourceId -and $_.Value.component -like 'export-html.*' })
+    if ($entries.Count -ne 1) { throw "ExportHTML catalog entry is missing or duplicated: $resourceId" }
+    $entry = $entries[0].Value
+    foreach ($language in $pluginCatalog.targetLanguages) {
+        $text = [string]$entry.translations.PSObject.Properties[$language].Value
+        if ([string]::IsNullOrWhiteSpace($text)) { throw "ExportHTML translation is empty: $resourceId / $language" }
+        if ($language -ne 'en-US' -and $text -eq [string]$entry.source) { throw "English fallback is forbidden for ExportHTML UI/prose: $resourceId / $language" }
+    }
+}
+if ((Get-Content -Raw (Join-Path $repoRoot 'src\export-html\resource.h')) -match 'IDS_TOOLTIP_OPTION_VALUE') { throw 'Unused IDS_TOOLTIP_OPTION_VALUE remained in resource.h.' }
+if ((Get-Content -Raw (Join-Path $repoRoot 'src\export-html\RuntimeLocalization.cpp')) -match 'IDS_TOOLTIP_OPTION_VALUE') { throw 'Unused IDS_TOOLTIP_OPTION_VALUE remained in runtime bindings.' }
 $rc = Get-Content -Raw -LiteralPath $rcPath
 if (-not (Test-Path -LiteralPath $generatedRcPath)) {
     throw "Сгенерированный файл строк ExportHTML не найден: $generatedRcPath"
 }
 $generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
+if ($pluginCatalog.strings.PSObject.Properties.Name -contains 'export_html.tooltip.option_value') { throw 'Unused generic tooltip catalog entry remained.' }
+if ($generatedRc -match 'Configure this HTML export setting') { throw 'Template tooltip prose remained in generated resources.' }
+if ($generatedRc -match 'IDS_TOOLTIP_OPTION_VALUE') { throw 'Unused IDS_TOOLTIP_OPTION_VALUE remained in generated resources.' }
 $dialog = Get-Content -Raw -LiteralPath $dialogPath
 $generalPage = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\export-html\HtmlExportGeneralPage.cpp")
 $appearancePage = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\export-html\HtmlExportAppearancePage.cpp")
@@ -85,7 +104,26 @@ $requiredResourceIds = @(
     "IDS_UNKNOWN_ERROR",
 	"IDS_CUSTOM_SAVE_CUSTOM_CSS",
 	"IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH",
-	"IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT"
+	"IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT",
+    "IDS_OPTIONS_IMAGES_FOLDER_NAME",
+    "IDS_OPTIONS_WARNING_MIB",
+    "IDS_TOOLTIP_INCLUDE_TOC",
+    "IDS_TOOLTIP_STYLE",
+    "IDS_TOOLTIP_FONT",
+    "IDS_TOOLTIP_FONT_SIZE",
+    "IDS_TOOLTIP_LINE_HEIGHT",
+    "IDS_TOOLTIP_CONTENT_WIDTH",
+    "IDS_TOOLTIP_MARGINS",
+    "IDS_TOOLTIP_TEXT_ALIGNMENT",
+    "IDS_TOOLTIP_HEADING_ALIGNMENT",
+    "IDS_TOOLTIP_CSS_CLEAR",
+    "IDS_TOOLTIP_COVER_MODE",
+    "IDS_TOOLTIP_IMAGES_FOLDER",
+    "IDS_TOOLTIP_IMAGES_FOLDER_NAME",
+    "IDS_TOOLTIP_WARNING_MIB",
+    "IDS_TOOLTIP_NOTE_PLACEMENT",
+    "IDS_TOOLTIP_METADATA",
+    "IDS_TOOLTIP_METADATA_CHILD"
 )
 
 
