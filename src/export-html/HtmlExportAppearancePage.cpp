@@ -142,8 +142,13 @@ void HtmlExportAppearancePage::InitTooltips()
     m_tooltip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
     if (!m_tooltip) return;
-    const UINT controls[] = { IDC_STYLE, IDC_FONT_FAMILY, IDC_CUSTOM_FONT, IDC_FONT_SIZE, IDC_LINE_HEIGHT, IDC_CONTENT_WIDTH, IDC_PAGE_MARGINS, IDC_TEXT_ALIGNMENT, IDC_HEADING_ALIGNMENT, IDC_CUSTOM_CSS, IDC_BROWSE_CSS, IDC_CLEAR_CSS };
-    for (size_t index = 0; index < _countof(controls); ++index) AddTooltip(controls[index], IDS_TOOLTIP_OPTION_VALUE);
+    const struct { UINT control; UINT text; } controls[] = {
+        { IDC_STYLE, IDS_TOOLTIP_STYLE }, { IDC_FONT_FAMILY, IDS_TOOLTIP_FONT }, { IDC_CUSTOM_FONT, IDS_TOOLTIP_FONT },
+        { IDC_FONT_SIZE, IDS_TOOLTIP_FONT_SIZE }, { IDC_LINE_HEIGHT, IDS_TOOLTIP_LINE_HEIGHT }, { IDC_CONTENT_WIDTH, IDS_TOOLTIP_CONTENT_WIDTH },
+        { IDC_PAGE_MARGINS, IDS_TOOLTIP_MARGINS }, { IDC_TEXT_ALIGNMENT, IDS_TOOLTIP_TEXT_ALIGNMENT }, { IDC_HEADING_ALIGNMENT, IDS_TOOLTIP_HEADING_ALIGNMENT },
+        { IDC_CUSTOM_CSS, IDS_TOOLTIP_CUSTOM_CSS }, { IDC_BROWSE_CSS, IDS_TOOLTIP_BROWSE_CSS }, { IDC_CLEAR_CSS, IDS_TOOLTIP_CSS_CLEAR }
+    };
+    for (size_t index = 0; index < _countof(controls); ++index) AddTooltip(controls[index].control, controls[index].text);
 }
 
 void HtmlExportAppearancePage::AddTooltip(UINT id, UINT textId)

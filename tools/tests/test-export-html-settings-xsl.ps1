@@ -1,4 +1,4 @@
-<# Verifies HtmlExportSettings-to-XSL behaviour without invoking the UI. #>
+﻿<# Verifies HtmlExportSettings-to-XSL behaviour without invoking the UI. #>
 [CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
@@ -18,3 +18,22 @@ $processor = $template.createProcessor(); $processor.input = $xml
 foreach ($unexpected in @('Table of contents', 'name="author"', 'name="title"', 'name="description"', 'class="props"')) { if ($html -match [regex]::Escape($unexpected)) { throw "Disabled setting was emitted: $unexpected" } }
 foreach ($expected in @('font-family: sans-serif', 'font-size: 18px', 'line-height: 1.5', 'max-width: 960px', 'margin: 3em', 'text-align: left', 'body { color: red; }')) { if ($html -notmatch [regex]::Escape($expected)) { throw "Setting was not rendered: $expected" } }
 Write-Host 'ExportHTML extended XSL settings regression passed.'
+$sourceXsl = Get-Content -Raw (Join-Path $root 'src\export-html\html.xsl')
+$runtimeXsl = Get-Content -Raw (Join-Path $root 'runtime\html.xsl')
+if ($sourceXsl -ne $runtimeXsl) { throw 'Source and runtime HTML XSL files diverged.' }
+if ($runtimeXsl -match '\$includedesc') { throw 'The v2 HTML XSL must not depend on legacy includedesc.' }
+function Invoke-ExportHtmlXsl([hashtable]$parameters) {
+    $run = $template.createProcessor(); $run.input = $xml
+    foreach ($pair in $parameters.GetEnumerator()) { $run.addParameter($pair.Key, $pair.Value, '') }
+    [void]$run.transform()
+    return [string]$run.output
+}
+$metadataWithoutAuthors = Invoke-ExportHtmlXsl @{ includetoc = $true; includemetadata = $true; includeannotation = $true; includetitleinfo = $true; includedocumentinfo = $false; includepublishinfo = $false; includecustominfo = $false; includeauthors = $false; includetranslators = $false }
+foreach ($unexpected in @('name="author"', '<td>Author', '>A B<')) { if ($metadataWithoutAuthors -match [regex]::Escape($unexpected)) { throw "Authors OFF was ignored: $unexpected" } }
+if ($metadataWithoutAuthors -notmatch 'Title Info') { throw 'Enabled Title Info metadata was not emitted.' }
+$metadataWithoutAnnotation = Invoke-ExportHtmlXsl @{ includetoc = $true; includemetadata = $true; includeannotation = $false; includetitleinfo = $true; includedocumentinfo = $false; includepublishinfo = $false; includecustominfo = $false; includeauthors = $true; includetranslators = $true }
+foreach ($unexpected in @('href="#_fbh_annotation"', 'name="description"', 'class="annotation"')) { if ($metadataWithoutAnnotation -match [regex]::Escape($unexpected)) { throw "Annotation OFF was ignored: $unexpected" } }
+if ($metadataWithoutAnnotation -notmatch 'href="#_fbh_description"') { throw 'Metadata TOC link was not emitted for enabled Title Info.' }
+$metadataDisabled = Invoke-ExportHtmlXsl @{ includetoc = $true; includemetadata = $false; includeannotation = $true; includetitleinfo = $true; includedocumentinfo = $true; includepublishinfo = $true; includecustominfo = $true; includeauthors = $true; includetranslators = $true }
+foreach ($unexpected in @('href="#_fbh_annotation"', 'href="#_fbh_description"', 'class="props"')) { if ($metadataDisabled -match [regex]::Escape($unexpected)) { throw "Metadata master flag was ignored: $unexpected" } }
+Write-Host 'ExportHTML metadata master/child and XSL parity regression passed.'

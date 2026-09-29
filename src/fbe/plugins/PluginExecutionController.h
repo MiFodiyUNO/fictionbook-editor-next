@@ -5,6 +5,7 @@
 enum class PluginExecutionStatus
 {
 	Success,
+	Cancelled,
 	Failed
 };
 
@@ -29,6 +30,7 @@ struct PluginImportResult
 	CString suggestedFilename;
 	MSXML2::IXMLDOMDocument2Ptr document;
 	bool Succeeded() const { return status == PluginExecutionStatus::Success; }
+	bool Cancelled() const { return status == PluginExecutionStatus::Cancelled; }
 };
 
 struct PluginExportRequest
@@ -48,6 +50,7 @@ struct PluginExecutionResult
 	HRESULT hr = E_FAIL;
 	CLSID clsid = CLSID_NULL;
 	bool Succeeded() const { return status == PluginExecutionStatus::Success; }
+	bool Cancelled() const { return status == PluginExecutionStatus::Cancelled; }
 };
 
 class PluginExecutionController

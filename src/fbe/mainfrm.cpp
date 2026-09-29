@@ -4512,6 +4512,7 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
     const CLSID& pluginClsid = m_plugins.ImportPlugins()[wID];
     const PluginImportResult execution = m_plugin_execution.Import(m_plugins.Manager(),
       pluginClsid, m_hWnd, _Settings.GetInterfaceLanguageName());
+    if (execution.Cancelled()) return 0;
     if (!execution.Succeeded()) {
       if (execution.failure != PluginExecutionFailure::InterfaceUnavailable &&
         execution.failure != PluginExecutionFailure::ResultStream)
@@ -4580,6 +4581,7 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 			request.sourceFilename = m_doc->m_namevalid ? m_doc->m_filename.GetString() : L"";
 			request.documentEncoding = m_doc->m_encoding;
 			const PluginExecutionResult execution = m_plugin_execution.Export(m_plugins.Manager(), request);
+			if (execution.Cancelled()) return 0;
 			if (!execution.Succeeded()) {
 				if (execution.failure != PluginExecutionFailure::InterfaceUnavailable)
 					U::ReportError(execution.hr);

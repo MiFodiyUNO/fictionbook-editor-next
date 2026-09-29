@@ -74,8 +74,14 @@ void HtmlExportNotesMetadataPage::InitTooltips()
     m_tooltip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
     if (!m_tooltip) return;
-    const UINT controls[] = { IDC_NOTE_PLACEMENT, IDC_METADATA, IDC_METADATA_ANNOTATION, IDC_METADATA_TITLE, IDC_METADATA_DOCUMENT, IDC_METADATA_PUBLISH, IDC_METADATA_HISTORY, IDC_METADATA_AUTHORS, IDC_METADATA_TRANSLATORS, IDC_METADATA_CUSTOM };
-    for (size_t index = 0; index < _countof(controls); ++index) AddTooltip(controls[index], IDS_TOOLTIP_OPTION_VALUE);
+    const struct { UINT control; UINT text; } controls[] = {
+        { IDC_NOTE_PLACEMENT, IDS_TOOLTIP_NOTE_PLACEMENT }, { IDC_METADATA, IDS_TOOLTIP_METADATA },
+        { IDC_METADATA_ANNOTATION, IDS_TOOLTIP_METADATA_CHILD }, { IDC_METADATA_TITLE, IDS_TOOLTIP_METADATA_CHILD },
+        { IDC_METADATA_DOCUMENT, IDS_TOOLTIP_METADATA_CHILD }, { IDC_METADATA_PUBLISH, IDS_TOOLTIP_METADATA_CHILD },
+        { IDC_METADATA_HISTORY, IDS_TOOLTIP_METADATA_CHILD }, { IDC_METADATA_AUTHORS, IDS_TOOLTIP_METADATA_CHILD },
+        { IDC_METADATA_TRANSLATORS, IDS_TOOLTIP_METADATA_CHILD }, { IDC_METADATA_CUSTOM, IDS_TOOLTIP_METADATA_CHILD }
+    };
+    for (size_t index = 0; index < _countof(controls); ++index) AddTooltip(controls[index].control, controls[index].text);
 }
 
 void HtmlExportNotesMetadataPage::AddTooltip(UINT id, UINT textId)

@@ -1,4 +1,4 @@
-<# Guards plugin COM execution ownership separately from plugin UI discovery. #>
+﻿<# Guards plugin COM execution ownership separately from plugin UI discovery. #>
 [CmdletBinding()]
 param()
 
@@ -33,3 +33,17 @@ foreach($name in @('OnToolsImport', 'OnToolsExport')) {
     }
 }
 Write-Host 'Plugin execution boundary contract passed.'
+
+foreach($required in @('PluginExecutionStatus::Cancelled', 'HRESULT_FROM_WIN32\(ERROR_CANCELLED\)')) {
+    if(($executionHeader + $executionSource) -notmatch $required) { throw "Plugin cancellation contract is missing: $required" }
+}
+foreach($name in @('OnToolsImport', 'OnToolsExport')) {
+    $handler = [regex]::Match($mainSource, "(?s)LRESULT\s+CMainFrame::$name\(.*?(?=LRESULT\s+CMainFrame::)").Value
+    if($handler -notmatch 'execution\.Cancelled\(\)\s*\)\s*return 0;') { throw "$name must treat plugin cancellation as neutral." }
+}if ($executionSource -notmatch '(?s)ImportV2.*?HRESULT_FROM_WIN32\(ERROR_CANCELLED\).*?PluginExecutionStatus::Cancelled.*?return result;\s*\}\s*if \(FAILED\(hr\)\).*?PluginExecutionFailure::PluginCall') { throw 'Import cancellation must return before PluginCall.' }
+if ($executionSource -notmatch '(?s)ExportV2.*?HRESULT_FROM_WIN32\(ERROR_CANCELLED\).*?return Cancelled\(request\.clsid\);\s*if \(FAILED\(hr\)\).*?PluginExecutionFailure::PluginCall') { throw 'Export cancellation must return before PluginCall.' }
+foreach($name in @('OnToolsImport', 'OnToolsExport')) {
+    $handler = [regex]::Match($mainSource, "(?s)LRESULT\s+CMainFrame::$name\(.*?(?=LRESULT\s+CMainFrame::)").Value
+    if ($handler -notmatch '(?s)execution\.Cancelled\(\).*?return 0;.*?execution\.Succeeded\(\).*?U::ReportError') { throw "$name must exit before showing an error for cancellation." }
+}
+Write-Host 'Plugin cancellation no-error contract passed.'

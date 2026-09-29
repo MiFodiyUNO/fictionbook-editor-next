@@ -9146,6 +9146,348 @@
         "cs-CZ": "Poznámky",
         "bg-BG": "Бележки"
       }
+    },
+"export_html.dialog.css_clear": {
+      "source": "Clear custom CSS.",
+      "component": "export-html.dialog",
+      "resourceId": "IDS_OPTIONS_CSS_CLEAR",
+      "translations": {
+        "en-US": "Clear",
+        "ru-RU": "Очистить",
+        "uk-UA": "Очистити",
+        "de-DE": "Leeren",
+        "fr-FR": "Effacer",
+        "es-ES": "Limpiar",
+        "it-IT": "Cancella",
+        "pl-PL": "Wyczysc",
+        "pt-PT": "Limpar",
+        "nl-NL": "Wissen",
+        "cs-CZ": "Vymazat",
+        "bg-BG": "Изчисти"
+      }
+    },
+    "export_html.tooltip.include_toc": {
+      "source": "Choose whether to include the table of contents.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_INCLUDE_TOC",
+      "translations": {
+        "en-US": "Include table of contents Configure this HTML export setting.",
+        "ru-RU": "Добавлять оглавление Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Додавати зміст Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Inhaltsverzeichnis einfügen Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Inclure la table des matières Configurez ce parametre HTML.",
+        "es-ES": "Incluir tabla de contenido Configure esta opcion de exportacion HTML.",
+        "it-IT": "Includi indice Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Dołącz spis treści Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Incluir índice Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Inhoudsopgave opnemen Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Zahrnout obsah Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Включване на съдържание Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.style": {
+      "source": "Choose the visual style of the generated HTML.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_STYLE",
+      "translations": {
+        "en-US": "Style: Configure this HTML export setting.",
+        "ru-RU": "Стиль: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Стиль: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Stil: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Style : Configurez ce parametre HTML.",
+        "es-ES": "Estilo: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Stile: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Styl: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Estilo: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Stijl: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Styl: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Стил: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.font": {
+      "source": "Choose the font family used in the generated HTML.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_FONT",
+      "translations": {
+        "en-US": "Text font: Configure this HTML export setting.",
+        "ru-RU": "Шрифт текста: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Шрифт тексту: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Textschrift: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Police du texte : Configurez ce parametre HTML.",
+        "es-ES": "Fuente del texto: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Carattere del testo: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Czcionka tekstu: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Tipo de letra do texto: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Tekstlettertype: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Písmo textu: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Шрифт на текста: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.font_size": {
+      "source": "Set the base font size in points.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_FONT_SIZE",
+      "translations": {
+        "en-US": "Text size: Configure this HTML export setting.",
+        "ru-RU": "Размер текста: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Розмір тексту: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Textgröße: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Taille du texte : Configurez ce parametre HTML.",
+        "es-ES": "Tamaño del texto: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Dimensione testo: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Rozmiar tekstu: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Tamanho do texto: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Tekstgrootte: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Velikost textu: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Размер на текста: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.line_height": {
+      "source": "Set the line spacing for the generated text.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_LINE_HEIGHT",
+      "translations": {
+        "en-US": "Line height: Configure this HTML export setting.",
+        "ru-RU": "Межстрочный интервал: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Міжрядковий інтервал: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Zeilenhöhe: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Interligne : Configurez ce parametre HTML.",
+        "es-ES": "Interlineado: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Interlinea: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Interlinia: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Altura da linha: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Regelhoogte: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Výška řádku: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Междуредие: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.content_width": {
+      "source": "Limit the content width in pixels; zero uses the default.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_CONTENT_WIDTH",
+      "translations": {
+        "en-US": "Reading width: Configure this HTML export setting.",
+        "ru-RU": "Ширина области чтения: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Ширина області читання: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Lesebreite: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Largeur de lecture : Configurez ce parametre HTML.",
+        "es-ES": "Ancho de lectura: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Larghezza di lettura: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Szerokość czytania: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Largura de leitura: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Leesbreedte: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Šířka pro čtení: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Ширина за четене: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.margins": {
+      "source": "Choose the page margin preset.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_MARGINS",
+      "translations": {
+        "en-US": "Margins: Configure this HTML export setting.",
+        "ru-RU": "Поля страницы: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Поля: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Ränder: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Marges : Configurez ce parametre HTML.",
+        "es-ES": "Márgenes: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Margini: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Marginesy: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Margens: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Marges: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Okraje: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Полета: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.text_alignment": {
+      "source": "Choose the alignment of body text.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_TEXT_ALIGNMENT",
+      "translations": {
+        "en-US": "Body text: Configure this HTML export setting.",
+        "ru-RU": "Основной текст: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Основний текст: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Fließtext: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Corps du texte : Configurez ce parametre HTML.",
+        "es-ES": "Texto principal: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Testo principale: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Tekst główny: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Texto principal: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Hoofdtekst: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Hlavní text: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Основен текст: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.heading_alignment": {
+      "source": "Choose the alignment of headings.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_HEADING_ALIGNMENT",
+      "translations": {
+        "en-US": "Headings: Configure this HTML export setting.",
+        "ru-RU": "Заголовки: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Заголовки: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Überschriften: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Titres : Configurez ce parametre HTML.",
+        "es-ES": "Encabezados: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Titoli: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Nagłówki: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Títulos: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Koppen: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Nadpisy: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Заглавия: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.css_clear": {
+      "source": "Clear the custom CSS field.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_CSS_CLEAR",
+      "translations": {
+        "en-US": "Clear Configure this HTML export setting.",
+        "ru-RU": "Очистить Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Очистити Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Leeren Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Effacer Configurez ce parametre HTML.",
+        "es-ES": "Limpiar Configure esta opcion de exportacion HTML.",
+        "it-IT": "Cancella Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Wyczysc Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Limpar Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Wissen Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Vymazat Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Изчисти Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.cover_mode": {
+      "source": "Choose how the cover image is fitted.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_COVER_MODE",
+      "translations": {
+        "en-US": "Cover size: Configure this HTML export setting.",
+        "ru-RU": "Размер обложки: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Розмір обкладинки: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Covergröße: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Taille de la couverture : Configurez ce parametre HTML.",
+        "es-ES": "Tamaño de portada: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Dimensione copertina: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Rozmiar okładki: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Tamanho da capa: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Omslaggrootte: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Velikost obálky: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Размер на корицата: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.images_folder": {
+      "source": "Choose where external images are written.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_IMAGES_FOLDER",
+      "translations": {
+        "en-US": "Images folder: Configure this HTML export setting.",
+        "ru-RU": "Папка изображений: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Папка зображень: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Bilderordner: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Dossier des images : Configurez ce parametre HTML.",
+        "es-ES": "Carpeta de imágenes: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Cartella immagini: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Folder obrazów: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Pasta de imagens: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Afbeeldingenmap: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Složka obrázků: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Папка за изображения: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.images_folder_name": {
+      "source": "Enter a safe relative folder name for external images.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_IMAGES_FOLDER_NAME",
+      "translations": {
+        "en-US": "Folder name: Configure this HTML export setting.",
+        "ru-RU": "Имя папки: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Назва папки: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Ordnername: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Nom du dossier: Configurez ce parametre HTML.",
+        "es-ES": "Nombre de carpeta: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Nome della cartella: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Nazwa folderu: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Nome da pasta: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Mapnaam: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Název složky: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Име на папката: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.warning_mib": {
+      "source": "Warn when a standalone export exceeds this size in MiB.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_WARNING_MIB",
+      "translations": {
+        "en-US": "Warning threshold, MiB: Configure this HTML export setting.",
+        "ru-RU": "Порог предупреждения, МиБ: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Поріг попередження, МіБ: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Warnschwelle, MiB: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Seuil alerte, Mio: Configurez ce parametre HTML.",
+        "es-ES": "Umbral de advertencia, MiB: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Soglia di avviso, MiB: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Próg ostrzeżenia, MiB: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Limite de aviso, MiB: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Waarschuwingsdrempel, MiB: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Hranice varování, MiB: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Праг за предупреждение, MiB: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.note_placement": {
+      "source": "Choose where notes are placed in the exported HTML.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_NOTE_PLACEMENT",
+      "translations": {
+        "en-US": "Note placement: Configure this HTML export setting.",
+        "ru-RU": "Размещение примечаний: Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Розміщення приміток: Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Platzierung der Anmerkungen: Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Placement des notes : Configurez ce parametre HTML.",
+        "es-ES": "Ubicación de notas: Configure esta opcion de exportacion HTML.",
+        "it-IT": "Posizione note: Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Umieszczenie przypisów: Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Posição das notas: Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Plaatsing van notities: Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Umístění poznámek: Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Разположение на бележките: Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.metadata": {
+      "source": "Enable export of the selected FB2 metadata.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_METADATA",
+      "translations": {
+        "en-US": "Include book information Configure this HTML export setting.",
+        "ru-RU": "Добавлять сведения о книге Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Додавати відомості про книгу Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Buchinformationen einfügen Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Inclure les informations du livre Configurez ce parametre HTML.",
+        "es-ES": "Incluir información del libro Configure esta opcion de exportacion HTML.",
+        "it-IT": "Includi informazioni sul libro Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Dołącz informacje o książce Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Incluir informações do livro Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Boekinformatie opnemen Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Zahrnout informace o knize Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Включване на информация за книгата Настройте тази опция за HTML експортиране."
+      }
+    },
+    "export_html.tooltip.metadata_child": {
+      "source": "Choose this metadata section when metadata export is enabled.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_METADATA_CHILD",
+      "translations": {
+        "en-US": "Annotation Configure this HTML export setting.",
+        "ru-RU": "Аннотация Настройте этот параметр экспорта HTML.",
+        "uk-UA": "Анотація Налаштуйте цей параметр експорту HTML.",
+        "de-DE": "Annotation Konfigurieren Sie diese HTML-Exportoption.",
+        "fr-FR": "Annotation Configurez ce parametre HTML.",
+        "es-ES": "Anotación Configure esta opcion de exportacion HTML.",
+        "it-IT": "Annotazione Configura questa opzione di esportazione HTML.",
+        "pl-PL": "Adnotacja Skonfiguruj te opcje eksportu HTML.",
+        "pt-PT": "Anotação Configure esta opcao de exportacao HTML.",
+        "nl-NL": "Annotatie Stel deze HTML-exportoptie in.",
+        "cs-CZ": "Anotace Nastavte tuto moznost exportu HTML.",
+        "bg-BG": "Анотация Настройте тази опция за HTML експортиране."
+      }
     }
   }
 }

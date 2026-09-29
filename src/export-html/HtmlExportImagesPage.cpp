@@ -93,8 +93,12 @@ void HtmlExportImagesPage::InitTooltips()
     m_tooltip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
     if (!m_tooltip) return;
-    const UINT controls[] = { IDC_IMAGE_MAX_WIDTH, IDC_IMAGE_MAX_HEIGHT, IDC_COVER_MODE, IDC_IMAGES_FOLDER, IDC_IMAGES_FOLDER_NAME, IDC_STANDALONE_WARNING };
-    for (size_t index = 0; index < _countof(controls); ++index) AddTooltip(controls[index], IDS_TOOLTIP_OPTION_VALUE);
+    const struct { UINT control; UINT text; } controls[] = {
+        { IDC_IMAGE_MAX_WIDTH, IDS_TOOLTIP_IMAGE_MAX_WIDTH }, { IDC_IMAGE_MAX_HEIGHT, IDS_TOOLTIP_IMAGE_MAX_HEIGHT },
+        { IDC_COVER_MODE, IDS_TOOLTIP_COVER_MODE }, { IDC_IMAGES_FOLDER, IDS_TOOLTIP_IMAGES_FOLDER },
+        { IDC_IMAGES_FOLDER_NAME, IDS_TOOLTIP_IMAGES_FOLDER_NAME }, { IDC_STANDALONE_WARNING, IDS_TOOLTIP_WARNING_MIB }
+    };
+    for (size_t index = 0; index < _countof(controls); ++index) AddTooltip(controls[index].control, controls[index].text);
 }
 
 void HtmlExportImagesPage::AddTooltip(UINT id, UINT textId)

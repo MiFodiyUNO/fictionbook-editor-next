@@ -146,11 +146,11 @@
 	  <h4>Table of contents</h4>
           <ul>
 	    <X:apply-templates mode="toc" select="/F:FictionBook/F:body/F:section"/>
-	    <!-- insert links to annotation and description -->
-	    <X:if test="$includemetadata and $includedesc">
-	      <X:if test="/F:FictionBook/F:description/F:title-info/F:annotation">
-		<li><p><a class="toclink" href="#_fbh_annotation">Annotation</a></p></li>
-	      </X:if>
+	    <!-- Metadata links follow the v2 master and child flags. -->
+	    <X:if test="$includemetadata and $includeannotation and /F:FictionBook/F:description/F:title-info/F:annotation">
+	      <li><p><a class="toclink" href="#_fbh_annotation">Annotation</a></p></li>
+	    </X:if>
+	    <X:if test="$includemetadata and ($includetitleinfo or $includedocumentinfo or $includepublishinfo or $includecustominfo)">
 	      <li><p><a class="toclink" href="#_fbh_description">Document information</a></p></li>
 	    </X:if>
 	  </ul>
@@ -158,7 +158,7 @@
 	<!-- main text -->
 	<X:apply-templates select="/F:FictionBook/F:body"/>
 	<!-- generate description -->
-	<X:if test="$includemetadata and $includedesc">
+	<X:if test="$includemetadata and ($includeannotation or $includetitleinfo or $includedocumentinfo or $includepublishinfo or $includecustominfo)">
 	  <hr/>
 	  <!-- annotation -->
 	  <X:if test="$includeannotation"><X:apply-templates select="/F:FictionBook/F:description/F:title-info/F:annotation"/></X:if>
@@ -431,15 +431,17 @@
 	</X:for-each>
       </td>
     </tr>
-    <tr>
-      <td>Author<X:if test="count(F:author) &gt; 1">s</X:if></td>
-      <td>
-	<X:for-each select="F:author">
-	  <X:if test="position() &gt; 1">,</X:if>
-	  <X:call-template name="author-prop"/>
-	</X:for-each>
-      </td>
-    </tr>
+    <X:if test="$includeauthors">
+      <tr>
+        <td>Author<X:if test="count(F:author) &gt; 1">s</X:if></td>
+        <td>
+	  <X:for-each select="F:author">
+	    <X:if test="position() &gt; 1">,</X:if>
+	    <X:call-template name="author-prop"/>
+	  </X:for-each>
+        </td>
+      </tr>
+    </X:if>
     <tr><td>Title</td><td><X:value-of select="F:book-title"/></td></tr>
     <X:if test="F:keywords">
       <tr><td>Keywords</td><td><X:value-of select="F:keywords"/></td></tr>

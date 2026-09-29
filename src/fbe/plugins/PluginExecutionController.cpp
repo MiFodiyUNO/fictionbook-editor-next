@@ -22,6 +22,13 @@ PluginExecutionResult Failure(const CLSID& clsid, PluginExecutionFailure failure
 	result.clsid = clsid; result.failure = failure; result.hr = hr;
 	return result;
 }
+PluginExecutionResult Cancelled(const CLSID& clsid)
+{
+	PluginExecutionResult result;
+	result.clsid = clsid; result.status = PluginExecutionStatus::Cancelled;
+	result.hr = HRESULT_FROM_WIN32(ERROR_CANCELLED);
+	return result;
+}
 }
 
 PluginImportResult PluginExecutionController::Import(PluginManager& manager,
@@ -44,6 +51,7 @@ PluginImportResult PluginExecutionController::Import(PluginManager& manager,
 	CComBSTR suggestedFilename; CComPtr<IStream> stream;
 	hr = plugin->Import(host, &suggestedFilename, &stream);
 	TracePluginExecution(L"Import", clsid, L"ImportV2", hr, stream ? 1 : 0);
+	if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) { result.status = PluginExecutionStatus::Cancelled; result.hr = hr; return result; }
 	if (FAILED(hr)) { result.failure = PluginExecutionFailure::PluginCall; result.hr = hr; return result; }
 	if (!stream) { result.failure = PluginExecutionFailure::ResultStream; result.hr = E_FAIL; TracePluginExecution(L"Import", clsid, L"ImportV2Stream", result.hr, 0); return result; }
 	CComPtr<MSXML2::IXMLDOMDocument2> document;
@@ -80,6 +88,7 @@ PluginExecutionResult PluginExecutionController::Export(PluginManager& manager,
 	if (FAILED(hr)) { TracePluginExecution(L"Export", request.clsid, L"CreateSnapshot", hr, 0); return Failure(request.clsid, PluginExecutionFailure::SnapshotCreation, hr); }
 	hr = plugin->Export(host, _bstr_t(static_cast<LPCWSTR>(request.sourceFilename)), snapshot);
 	TracePluginExecution(L"Export", request.clsid, L"ExportV2", hr, 0);
+	if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return Cancelled(request.clsid);
 	if (FAILED(hr)) return Failure(request.clsid, PluginExecutionFailure::PluginCall, hr);
 	result.status = PluginExecutionStatus::Success; result.failure = PluginExecutionFailure::None; result.hr = S_OK;
 	TracePluginExecution(L"Export", request.clsid, L"completed", S_OK, 0);
