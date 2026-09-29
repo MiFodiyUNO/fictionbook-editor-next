@@ -157,7 +157,9 @@
 	</X:if>
 	<!-- main text -->
 	<X:apply-templates select="/F:FictionBook/F:body"/>
-	<!-- generate description -->
+	<X:if test="$noteplacement = 1 and //F:section[(@id or @F:id) and key('note-ref', concat('#', @id | @F:id))]">
+	  <section class="notes"><h4>Notes</h4><X:apply-templates select="//F:section[(@id or @F:id) and key('note-ref', concat('#', @id | @F:id))]" mode="note"/></section>
+	</X:if>	<!-- generate description -->
 	<X:if test="$includemetadata and ($includeannotation or $includetitleinfo or $includedocumentinfo or $includepublishinfo or $includecustominfo)">
 	  <hr/>
 	  <!-- annotation -->
@@ -186,32 +188,40 @@
     <X:apply-templates/>
   </X:template>
 
-  <!-- text sections -->
+  <!-- text sections; note bodies are suppressed from their source location only
+       when a placement mode explicitly re-emits them below. -->
   <X:template match="F:section">
+    <X:choose>
+      <X:when test="$noteplacement != 0 and (@id or @F:id) and key('note-ref', concat('#', @id | @F:id))"/>
+      <X:otherwise><X:call-template name="render-section"/></X:otherwise>
+    </X:choose>
+  </X:template>
+
+  <X:template name="note-backlinks">
+    <X:if test="(@id or @F:id) and key('note-ref', concat('#', @id | @F:id))">
+      <X:for-each select="key('note-ref', concat('#', @id | @F:id))">
+        <a class="note-back">
+          <X:attribute name="href"><X:text>#_note_ref_</X:text><X:value-of select="generate-id()"/></X:attribute>
+          <X:text>&#x21A9;</X:text><X:if test="last() &gt; 1"><X:value-of select="position()"/></X:if>
+        </a><X:if test="position() != last()"><X:text> </X:text></X:if>
+      </X:for-each>
+    </X:if>
+  </X:template>
+
+  <X:template name="render-section">
     <section>
-      <!-- add an anchor for intra-document links -->
       <X:call-template name="id"/>
-      <!-- add a anchor for toc -->
-      <X:if test="F:title">
-        <a>
-	  <X:attribute name="id">
-	    <X:text>_toc_</X:text><X:value-of select="generate-id()"/>
-	  </X:attribute>
-	  <X:attribute name="name">
-	    <X:text>_toc_</X:text><X:value-of select="generate-id()"/>
-	  </X:attribute>
-        </a>
-      </X:if>
+      <X:if test="F:title"><a><X:attribute name="id"><X:text>_toc_</X:text><X:value-of select="generate-id()"/></X:attribute><X:attribute name="name"><X:text>_toc_</X:text><X:value-of select="generate-id()"/></X:attribute></a></X:if>
       <X:apply-templates/>
-      <X:if test="(@id or @F:id) and key('note-ref', concat('#', @id | @F:id))">
-        <X:for-each select="key('note-ref', concat('#', @id | @F:id))">
-          <a class="note-back">
-            <X:attribute name="href"><X:text>#_note_ref_</X:text><X:value-of select="generate-id()"/></X:attribute>
-	    <X:text>&#x21A9;</X:text><X:if test="last() &gt; 1"><X:value-of select="position()"/></X:if>
-          </a><X:if test="position() != last()"><X:text> </X:text></X:if>
-        </X:for-each>
+      <X:call-template name="note-backlinks"/>
+      <X:if test="$noteplacement = 2 and not(ancestor::F:section) and descendant::F:section[(@id or @F:id) and key('note-ref', concat('#', @id | @F:id))]">
+        <section class="notes"><h4>Notes</h4><X:apply-templates select="descendant::F:section[(@id or @F:id) and key('note-ref', concat('#', @id | @F:id))]" mode="note"/></section>
       </X:if>
     </section>
+  </X:template>
+
+  <X:template match="F:section" mode="note">
+    <section class="note-entry"><X:call-template name="id"/><X:apply-templates/><X:call-template name="note-backlinks"/></section>
   </X:template>
 
   <!-- special case to insert table of contents after the first header -->
