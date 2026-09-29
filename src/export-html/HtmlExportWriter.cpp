@@ -153,6 +153,24 @@ HRESULT Writer::WriteStandaloneToTarget()
 	return S_OK;
 }
 
+HRESULT Writer::WriteSplitDocument(const std::wstring& fileName, const std::wstring& html)
+{
+    if (!m_prepared || fileName.empty() || fileName.find_first_of(L"\\/:*?\"<>|") != std::wstring::npos || fileName == L"." || fileName == L"..") return E_INVALIDARG;
+    const std::wstring::size_type slash = m_options.targetPath.find_last_of(L"\\/");
+    const std::wstring path = (slash == std::wstring::npos ? std::wstring() : m_options.targetPath.substr(0, slash + 1)) + fileName;
+    const int bytesNeeded = html.empty() ? 0 : ::WideCharToMultiByte(CP_UTF8, 0, html.data(), static_cast<int>(html.size()), NULL, 0, NULL, NULL);
+    if (!html.empty() && bytesNeeded == 0) return HRESULT_FROM_WIN32(::GetLastError());
+    std::vector<char> bytes(static_cast<size_t>(bytesNeeded));
+    if (bytesNeeded > 0 && ::WideCharToMultiByte(CP_UTF8, 0, html.data(), static_cast<int>(html.size()), bytes.data(), bytesNeeded, NULL, NULL) == 0) return HRESULT_FROM_WIN32(::GetLastError());
+    const bool existed = ::GetFileAttributes(path.c_str()) != INVALID_FILE_ATTRIBUTES;
+    ScopedHandle output(::CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL));
+    if (output.Get() == INVALID_HANDLE_VALUE) { const DWORD error = ::GetLastError(); Report(Failure::OpenTarget, path, error); return HRESULT_FROM_WIN32(error); }
+    DWORD written = 0;
+    const BOOL success = bytes.empty() || ::WriteFile(output.Get(), bytes.data(), static_cast<DWORD>(bytes.size()), &written, NULL);
+    if (!success || written != bytes.size()) { const DWORD error = ::GetLastError(); Report(success ? Failure::ShortWrite : Failure::WriteTarget, path, error); return HRESULT_FROM_WIN32(error == ERROR_SUCCESS ? ERROR_WRITE_FAULT : error); }
+    if (!existed) m_createdDocuments.push_back(path);
+    return S_OK;
+}
 HRESULT Writer::WriteImages(IXMLDOMDocument2* source)
 {
 	if (source == NULL || (!m_options.externalImages && !m_options.mime)) return S_OK;
@@ -272,6 +290,9 @@ void Writer::Abort()
 	for (size_t index = 0; index < m_createdImages.size(); ++index)
 		::DeleteFile(m_createdImages[index].c_str());
 	m_createdImages.clear();
+	for (size_t index = 0; index < m_createdDocuments.size(); ++index)
+		::DeleteFile(m_createdDocuments[index].c_str());
+	m_createdDocuments.clear();
 	if (m_createdImagesDirectory) ::RemoveDirectory(m_imagePaths.directory.c_str());
 	m_createdImagesDirectory = false;
 	if (m_targetOpened && !m_options.targetPath.empty()) ::DeleteFile(m_options.targetPath.c_str());

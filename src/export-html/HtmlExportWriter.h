@@ -49,6 +49,7 @@ public:
 	HRESULT GetTransformOutput(IStream** output);
 	IStream* StandaloneOutput() const;
 	HRESULT WriteStandaloneToTarget();
+	HRESULT WriteSplitDocument(const std::wstring& fileName, const std::wstring& html);
 	HRESULT WriteImages(IXMLDOMDocument2* source);
 	HRESULT Finalize();
 	void Commit();
@@ -70,6 +71,7 @@ private:
 	CComPtr<IStream> m_standaloneOutput;
 	std::string m_mimeBoundary;
 	std::vector<std::wstring> m_createdImages;
+	std::vector<std::wstring> m_createdDocuments;
 	bool m_createdImagesDirectory;
 	bool m_targetOpened;
 	bool m_prepared;

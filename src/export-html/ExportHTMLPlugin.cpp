@@ -7,6 +7,7 @@
 #include "HtmlExportXslParameters.h"
 #include "HtmlExportWriterHelpers.h"
 #include "HtmlExportWriter.h"
+#include "HtmlSplitExport.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "RuntimeLocalization.h"
 #include "..\\version.h"
@@ -66,6 +67,23 @@ bool LoadUtf8TextFile(const CString& filename, CString& text)
 	return true;
 }
 
+std::wstring SplitIndexPath(const std::wstring& selectedPath)
+{
+    const std::wstring::size_type slash = selectedPath.find_last_of(L"\\/");
+    return (slash == std::wstring::npos ? std::wstring() : selectedPath.substr(0, slash + 1)) + L"index.html";
+}
+
+HRESULT WriteUtf8Stream(IStream* stream, const std::wstring& text)
+{
+    if (!stream) return E_POINTER;
+    const int length = text.empty() ? 0 : ::WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), NULL, 0, NULL, NULL);
+    if (!text.empty() && length == 0) return HRESULT_FROM_WIN32(::GetLastError());
+    std::vector<char> bytes(static_cast<size_t>(length));
+    if (length > 0 && ::WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), bytes.data(), length, NULL, NULL) == 0) return HRESULT_FROM_WIN32(::GetLastError());
+    ULONG written = 0;
+    const HRESULT hr = bytes.empty() ? S_OK : stream->Write(bytes.data(), static_cast<ULONG>(bytes.size()), &written);
+    return SUCCEEDED(hr) && written == bytes.size() ? S_OK : FAILED(hr) ? hr : STG_E_WRITEFAULT;
+}
 std::wstring ReadUtf8Stream(IStream* stream)
 {
 	STATSTG stat = {};
@@ -184,6 +202,9 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			dlg.m_template = U::GetProgDirFile(L"html.xsl");
 			dlg.m_usingCustomTemplate = false;
 			exportSettings.templatePath = dlg.m_template;
+            wchar_t testSplit[4] = {};
+            if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_SPLIT", testSplit, _countof(testSplit)) == 1 && testSplit[0] == L'1')
+                exportSettings.documentStructure = 1;
 		} else {
 			CHtmlExportOptionsDialog options;
 			options.LoadSettings();
@@ -227,6 +248,9 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		bool    fExternalImages = dlg.m_ofn.nFilterIndex == 1;
 		bool    fEmbeddedImages = dlg.m_ofn.nFilterIndex == 4;
 		bool    fImages = fExternalImages || fMIME || fEmbeddedImages;
+		// Split is intentionally limited to the bundled XSL and modes 1/3. MHT and
+		// standalone retain their byte-for-byte single-file writer paths.
+		const bool fSplit = exportSettings.documentStructure == 1 && !dlg.m_usingCustomTemplate && (fExternalImages || (!fMIME && !fEmbeddedImages));
 		CString customCss;
 		if (!LoadUtf8TextFile(dlg.m_customCss, customCss)) {
 			strMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, (LPCTSTR)dlg.m_customCss,
@@ -268,7 +292,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		// 1 = HTML and an adjacent resource folder, 2 = MHT,
 		// 3 = HTML without images, 4 = self-contained HTML with data: URIs.
 		HtmlExportWriter::Options writerOptions;
-		writerOptions.targetPath = dlg.m_szFileName;
+		writerOptions.targetPath = fSplit ? SplitIndexPath(dlg.m_szFileName) : std::wstring(dlg.m_szFileName);
 		writerOptions.mime = fMIME;
 		writerOptions.externalImages = fExternalImages;
 		writerOptions.standalone = fEmbeddedImages;
@@ -309,10 +333,24 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		HtmlExportXslParameters::ApplyImageMode(proc, fImages, fEmbeddedImages, imagePrefix);
 
 		CComPtr<IStream> transformOutput;
-		CheckError(writer.GetTransformOutput(&transformOutput));
+		if (fSplit)
+			CheckError(::CreateStreamOnHGlobal(NULL, TRUE, &transformOutput));
+		else
+			CheckError(writer.GetTransformOutput(&transformOutput));
 		CheckError(proc->put_output(variant_t((IUnknown*)transformOutput)));
 		VARIANT_BOOL Done = VARIANT_FALSE;
 		CheckError(proc->transform(&Done));
+		if (fSplit) {
+			HtmlSplitExport::Plan splitPlan;
+			if (!HtmlSplitExport::BuildPlan(ReadUtf8Stream(transformOutput), splitPlan)) return E_FAIL;
+			CComPtr<IStream> indexOutput;
+			CheckError(writer.GetTransformOutput(&indexOutput));
+			CheckError(WriteUtf8Stream(indexOutput, splitPlan.indexHtml));
+			for (const HtmlSplitExport::SectionDocument& section : splitPlan.sections) {
+				writerResult = writer.WriteSplitDocument(section.fileName, section.html);
+				if (FAILED(writerResult)) return writerResult;
+			}
+		}
 		if (fEmbeddedImages) {
 			IStream* standaloneOutput = writer.StandaloneOutput();
 			if (standaloneOutput == NULL) return E_UNEXPECTED;

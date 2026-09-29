@@ -29,6 +29,8 @@ public:
     HtmlExportImagesPage m_imagesPage;
     HtmlExportNotesMetadataPage m_notesPage;
     int m_currentPage = 0;
+    bool m_splitSupported = true;
+    void SetSplitSupported(bool value) { m_splitSupported = value; m_generalPage.SetSplitSupported(value); }
 
     void LoadSettings();
     void Persist();
@@ -64,7 +66,7 @@ public:
     STDMETHOD(OnFileOk)(IFileDialog*) { return S_OK; } STDMETHOD(OnFolderChanging)(IFileDialog*, IShellItem*) { return S_OK; }
     STDMETHOD(OnFolderChange)(IFileDialog*) { return S_OK; } STDMETHOD(OnSelectionChange)(IFileDialog*) { return S_OK; }
     STDMETHOD(OnShareViolation)(IFileDialog*, IShellItem*, FDE_SHAREVIOLATION_RESPONSE* r) { if (r) *r=FDESVR_DEFAULT; return S_OK; }
-    STDMETHOD(OnTypeChange)(IFileDialog*) { return S_OK; } STDMETHOD(OnOverwrite)(IFileDialog*, IShellItem*, FDE_OVERWRITE_RESPONSE* r) { if (r) *r=FDEOR_DEFAULT; return S_OK; }
+    STDMETHOD(OnTypeChange)(IFileDialog* dialog) { UINT type = 4; if (dialog) dialog->GetFileTypeIndex(&type); if (options) options->SetSplitSupported(type == 1 || type == 3); return S_OK; } STDMETHOD(OnOverwrite)(IFileDialog*, IShellItem*, FDE_OVERWRITE_RESPONSE* r) { if (r) *r=FDEOR_DEFAULT; return S_OK; }
     STDMETHOD(OnItemSelected)(IFileDialogCustomize*, DWORD, DWORD) { return S_OK; } STDMETHOD(OnCheckButtonToggled)(IFileDialogCustomize*, DWORD, BOOL) { return S_OK; }
     STDMETHOD(OnControlActivating)(IFileDialogCustomize*, DWORD) { return S_OK; }
     STDMETHOD(OnButtonClicked)(IFileDialogCustomize* customize, DWORD id);

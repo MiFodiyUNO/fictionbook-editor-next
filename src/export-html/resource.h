@@ -121,6 +121,10 @@
 #define IDS_TOOLTIP_NOTE_PLACEMENT         213
 #define IDS_TOOLTIP_METADATA               214
 #define IDS_TOOLTIP_METADATA_CHILD         215
+#define IDS_OPTIONS_DOCUMENT_STRUCTURE   216
+#define IDS_OPTIONS_VALUE_SINGLE_HTML     217
+#define IDS_OPTIONS_VALUE_SPLIT_SECTIONS 218
+#define IDS_TOOLTIP_DOCUMENT_STRUCTURE   219
 #define IDC_OPTIONS_TABS                 1014
 #define IDC_INCLUDE_TOC                  1015
 #define IDC_FORMAT_VALUE                 1017
@@ -164,6 +168,8 @@
 #define IDC_NOTE_PLACEMENT_LABEL         1056
 #define IDC_BROWSE                      1001
 #define IDC_TEMPLATE                    1002
+#define IDC_DOCUMENT_STRUCTURE          1057
+#define IDC_DOCUMENT_STRUCTURE_LABEL    1058
 #define IDC_TOCDEPTH                    1004
 #define IDC_TEMPLATE_LABEL              1005
 #define IDC_TOC_DEPTH_LABEL             1006

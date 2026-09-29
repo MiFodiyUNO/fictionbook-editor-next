@@ -26,6 +26,7 @@ LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
         tabs.InsertItem(index, &item);
     }
     m_generalPage.Attach(&m_workingSettings);
+    m_generalPage.SetSplitSupported(m_splitSupported);
     m_appearancePage.Attach(&m_workingSettings);
     m_imagesPage.Attach(&m_workingSettings);
     m_notesPage.Attach(&m_workingSettings);

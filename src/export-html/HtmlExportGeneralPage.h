@@ -13,6 +13,7 @@ public:
     void LoadFromSettings();
     bool SaveToSettings(HtmlExportSettings& candidate, CString& error);
     void UpdateEnabledState();
+    void SetSplitSupported(bool value);
 
     BEGIN_MSG_MAP(HtmlExportGeneralPage)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -24,6 +25,7 @@ public:
 private:
     HtmlExportSettings* m_settings = NULL;
     HWND m_tooltip = NULL;
+    bool m_splitSupported = true;
     std::vector<CString> m_tooltipTexts;
     void InitTooltips();
     void AddTooltip(UINT id, UINT textId);

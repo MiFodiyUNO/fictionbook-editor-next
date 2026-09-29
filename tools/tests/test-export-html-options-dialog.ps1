@@ -35,7 +35,7 @@ Write-Host 'HTML export options dialog contract passed.'
 
 $runtimeLocalization = Get-Content -Raw (Join-Path $root 'src\export-html\RuntimeLocalization.cpp')
 $catalog = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'localization\plugin-ui\catalog.json') | ConvertFrom-Json
-$requiredTooltipIds = @('IDS_TOOLTIP_INCLUDE_TOC', 'IDS_TOOLTIP_STYLE', 'IDS_TOOLTIP_FONT', 'IDS_TOOLTIP_FONT_SIZE', 'IDS_TOOLTIP_LINE_HEIGHT', 'IDS_TOOLTIP_CONTENT_WIDTH', 'IDS_TOOLTIP_MARGINS', 'IDS_TOOLTIP_TEXT_ALIGNMENT', 'IDS_TOOLTIP_HEADING_ALIGNMENT', 'IDS_TOOLTIP_CSS_CLEAR', 'IDS_TOOLTIP_COVER_MODE', 'IDS_TOOLTIP_IMAGES_FOLDER', 'IDS_TOOLTIP_IMAGES_FOLDER_NAME', 'IDS_TOOLTIP_WARNING_MIB', 'IDS_TOOLTIP_NOTE_PLACEMENT', 'IDS_TOOLTIP_METADATA', 'IDS_TOOLTIP_METADATA_CHILD')
+$requiredTooltipIds = @('IDS_TOOLTIP_INCLUDE_TOC', 'IDS_TOOLTIP_STYLE', 'IDS_TOOLTIP_FONT', 'IDS_TOOLTIP_FONT_SIZE', 'IDS_TOOLTIP_LINE_HEIGHT', 'IDS_TOOLTIP_CONTENT_WIDTH', 'IDS_TOOLTIP_MARGINS', 'IDS_TOOLTIP_TEXT_ALIGNMENT', 'IDS_TOOLTIP_HEADING_ALIGNMENT', 'IDS_TOOLTIP_CSS_CLEAR', 'IDS_TOOLTIP_COVER_MODE', 'IDS_TOOLTIP_IMAGES_FOLDER', 'IDS_TOOLTIP_IMAGES_FOLDER_NAME', 'IDS_TOOLTIP_WARNING_MIB', 'IDS_TOOLTIP_NOTE_PLACEMENT', 'IDS_TOOLTIP_METADATA', 'IDS_TOOLTIP_METADATA_CHILD', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE')
 foreach ($id in @('IDS_OPTIONS_CSS_CLEAR') + $requiredTooltipIds) {
     if ($runtimeLocalization -notmatch [regex]::Escape($id)) { throw "Runtime localization binding is missing: $id" }
     $entry = @($catalog.strings.PSObject.Properties | Where-Object { $_.Value.resourceId -eq $id -and $_.Value.component -like 'export-html.*' })

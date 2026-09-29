@@ -35,6 +35,7 @@ LRESULT HtmlExportGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
     SetDlgItemText(IDC_INCLUDE_TOC, LoadExportHtmlString(IDS_OPTIONS_INCLUDE_TOC));
     SetDlgItemText(IDC_TOC_DEPTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH));
     SetDlgItemText(IDC_TEMPLATE_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL));
+    SetDlgItemText(IDC_DOCUMENT_STRUCTURE_LABEL, LoadExportHtmlString(IDS_OPTIONS_DOCUMENT_STRUCTURE));
     LoadFromSettings();
     InitTooltips();
     return TRUE;
@@ -46,6 +47,11 @@ void HtmlExportGeneralPage::LoadFromSettings()
     CheckDlgButton(IDC_INCLUDE_TOC, m_settings->includeToc ? BST_CHECKED : BST_UNCHECKED);
     SetDlgItemInt(IDC_TOCDEPTH, m_settings->tocDepth, FALSE);
     SetDlgItemText(IDC_TEMPLATE, m_settings->templatePath);
+    CComboBox structure = GetDlgItem(IDC_DOCUMENT_STRUCTURE);
+    structure.ResetContent();
+    structure.AddString(LoadExportHtmlString(IDS_OPTIONS_VALUE_SINGLE_HTML));
+    structure.AddString(LoadExportHtmlString(IDS_OPTIONS_VALUE_SPLIT_SECTIONS));
+    structure.SetCurSel(m_settings->documentStructure == 1 ? 1 : 0);
     UpdateEnabledState();
 }
 
@@ -61,6 +67,7 @@ bool HtmlExportGeneralPage::SaveToSettings(HtmlExportSettings& candidate, CStrin
     }
     candidate.includeToc = includeToc;
     if (includeToc) candidate.tocDepth = depth;
+    candidate.documentStructure = m_splitSupported && CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).GetCurSel() == 1 ? 1 : 0;
     candidate.templatePath = U::GetWindowText(GetDlgItem(IDC_TEMPLATE));
     const DWORD attributes = candidate.templatePath.IsEmpty() ? INVALID_FILE_ATTRIBUTES : ::GetFileAttributes(candidate.templatePath);
     if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
@@ -72,11 +79,20 @@ bool HtmlExportGeneralPage::SaveToSettings(HtmlExportSettings& candidate, CStrin
     return true;
 }
 
+void HtmlExportGeneralPage::SetSplitSupported(bool value)
+{
+    m_splitSupported = value;
+    if (m_hWnd) UpdateEnabledState();
+}
+
 void HtmlExportGeneralPage::UpdateEnabledState()
 {
     const BOOL enabled = IsDlgButtonChecked(IDC_INCLUDE_TOC) == BST_CHECKED;
     ::EnableWindow(GetDlgItem(IDC_TOCDEPTH), enabled);
     ::EnableWindow(GetDlgItem(IDC_TOC_DEPTH_LABEL), enabled);
+    if (!m_splitSupported) CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).SetCurSel(0);
+    ::EnableWindow(GetDlgItem(IDC_DOCUMENT_STRUCTURE), m_splitSupported);
+    ::EnableWindow(GetDlgItem(IDC_DOCUMENT_STRUCTURE_LABEL), m_splitSupported);
 }
 
 LRESULT HtmlExportGeneralPage::OnIncludeToc(WORD, WORD, HWND, BOOL&)
@@ -115,6 +131,7 @@ void HtmlExportGeneralPage::InitTooltips()
     AddTooltip(IDC_TOCDEPTH, IDS_TOOLTIP_TOC_DEPTH);
     AddTooltip(IDC_TEMPLATE, IDS_TOOLTIP_TEMPLATE);
     AddTooltip(IDC_BROWSE, IDS_TOOLTIP_BROWSE_TEMPLATE);
+    AddTooltip(IDC_DOCUMENT_STRUCTURE, IDS_TOOLTIP_DOCUMENT_STRUCTURE);
 }
 
 void HtmlExportGeneralPage::AddTooltip(UINT id, UINT textId)
