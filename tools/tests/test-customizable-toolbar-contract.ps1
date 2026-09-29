@@ -57,7 +57,7 @@ foreach ($required in @(
 if ($mainFrameSource.IndexOf('fbe.hotkey.scripts.last_script', [StringComparison]::Ordinal) -lt 0) {
     throw 'Last script не получает runtime-локализацию при формировании каталога панели.'
 }
-foreach ($required in @('SetWindowSubclass(m_CmdToolbar, ToolbarCustomizeSubclassProc', 'SetWindowSubclass(m_ScriptsToolbar, ToolbarCustomizeSubclassProc', 'message == WM_LBUTTONDBLCLK', 'ShowCommandToolbarCustomizeDialog()', 'ShowScriptsToolbarCustomizeDialog()', 'RemoveWindowSubclass(m_CmdToolbar, ToolbarCustomizeSubclassProc', 'RemoveWindowSubclass(m_ScriptsToolbar, ToolbarCustomizeSubclassProc')) {
+foreach ($required in @('SetWindowSubclass(m_CmdToolbar, ToolbarCustomizeSubclassProc', 'SetWindowSubclass(m_ScriptsToolbar, ToolbarCustomizeSubclassProc', 'message == WM_LBUTTONDBLCLK', 'ShowCommandToolbarCustomizeDialog()', 'ShowScriptsToolbarCustomizeDialog(window)', 'RemoveWindowSubclass(m_CmdToolbar, ToolbarCustomizeSubclassProc', 'RemoveWindowSubclass(m_ScriptsToolbar, ToolbarCustomizeSubclassProc')) {
 	if ($mainFrameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
 		throw "Command и Scripts toolbar должны использовать один безопасный double-click subclass: $required"
 	}
@@ -125,13 +125,13 @@ if ($mainFrameSource.IndexOf('m_CmdToolbar.Customize()', [StringComparison]::Ord
 }
 foreach ($required in @(
     'void CMainFrame::ShowCommandToolbarCustomizeDialog()',
-    'void CMainFrame::ShowScriptsToolbarCustomizeDialog()',
+    'void CMainFrame::ShowScriptsToolbarCustomizeDialog(HWND selectedToolbar)',
     'CScriptsToolbarCustomizeDlg dialog(m_CmdToolbar',
-    'CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar',
+    'CScriptsToolbarCustomizeDlg dialog(selected',
     'ToolbarCustomizeSubclassProc',
     'message == WM_LBUTTONDBLCLK',
     'if(window == frame->m_CmdToolbar) frame->ShowCommandToolbarCustomizeDialog()',
-    'else if(window == frame->m_ScriptsToolbar) frame->ShowScriptsToolbarCustomizeDialog()',
+    'else if(window == frame->m_ScriptsToolbar || frame->FindScriptToolbarRuntime(window) != NULL) frame->ShowScriptsToolbarCustomizeDialog(window)',
     'PortableToolbarStore::Save(layout)',
     'ToolbarLayoutAdapter::Capture(m_CmdToolbar, target.items)',
     'UpdateCommandToolbarItems(items)'
@@ -141,8 +141,8 @@ foreach ($required in @(
     }
 }
 foreach ($required in @(
-    'm_selBandID == ATL_IDW_BAND_FIRST+1) ShowCommandToolbarCustomizeDialog()',
-    'm_selBandID == ATL_IDW_BAND_FIRST+2) ShowScriptsToolbarCustomizeDialog()'
+    'if (m_selToolbar == m_CmdToolbar) ShowCommandToolbarCustomizeDialog(); else',
+    'if (m_selToolbar == m_ScriptsToolbar || FindScriptToolbarRuntime(m_selToolbar) != NULL) ShowScriptsToolbarCustomizeDialog(m_selToolbar);'
 )) {
     if ($mainFrame.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Контекстное меню панели не открывает общий FBE-диалог: $required"
