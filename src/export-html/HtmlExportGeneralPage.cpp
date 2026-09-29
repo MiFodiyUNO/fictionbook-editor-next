@@ -47,6 +47,7 @@ void HtmlExportGeneralPage::LoadFromSettings()
     CheckDlgButton(IDC_INCLUDE_TOC, m_settings->includeToc ? BST_CHECKED : BST_UNCHECKED);
     SetDlgItemInt(IDC_TOCDEPTH, m_settings->tocDepth, FALSE);
     SetDlgItemText(IDC_TEMPLATE, m_settings->templatePath);
+    m_templateSupportsSplit = ExportHtmlPathsEqual(m_settings->templatePath, U::GetProgDirFile(L"html.xsl"));
     CComboBox structure = GetDlgItem(IDC_DOCUMENT_STRUCTURE);
     structure.ResetContent();
     structure.AddString(LoadExportHtmlString(IDS_OPTIONS_VALUE_SINGLE_HTML));
@@ -67,7 +68,7 @@ bool HtmlExportGeneralPage::SaveToSettings(HtmlExportSettings& candidate, CStrin
     }
     candidate.includeToc = includeToc;
     if (includeToc) candidate.tocDepth = depth;
-    candidate.documentStructure = m_splitSupported && CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).GetCurSel() == 1 ? 1 : 0;
+    candidate.documentStructure = m_splitSupported && m_templateSupportsSplit && CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).GetCurSel() == 1 ? 1 : 0;
     candidate.templatePath = U::GetWindowText(GetDlgItem(IDC_TEMPLATE));
     const DWORD attributes = candidate.templatePath.IsEmpty() ? INVALID_FILE_ATTRIBUTES : ::GetFileAttributes(candidate.templatePath);
     if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
@@ -118,7 +119,11 @@ LRESULT HtmlExportGeneralPage::OnBrowseTemplate(WORD, WORD, HWND, BOOL&)
         FbeDiagnostic::HResult(L"file-dialog", L"FD204", result.error, L"Browse HTML XSL template");
         return 0;
     }
-    if (!result.paths.empty()) SetDlgItemText(IDC_TEMPLATE, result.paths.front().c_str());
+    if (!result.paths.empty()) {
+        SetDlgItemText(IDC_TEMPLATE, result.paths.front().c_str());
+        m_templateSupportsSplit = ExportHtmlPathsEqual(result.paths.front().c_str(), U::GetProgDirFile(L"html.xsl"));
+        UpdateEnabledState();
+    }
     return 0;
 }
 

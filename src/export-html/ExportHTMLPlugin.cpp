@@ -205,6 +205,9 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
             wchar_t testSplit[4] = {};
             if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_SPLIT", testSplit, _countof(testSplit)) == 1 && testSplit[0] == L'1')
                 exportSettings.documentStructure = 1;
+            wchar_t testNotePlacement[8] = {};
+            if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_NOTE_PLACEMENT", testNotePlacement, _countof(testNotePlacement)) > 0)
+                exportSettings.notePlacement = max(0, min(2, _wtoi(testNotePlacement)));
 		} else {
 			CHtmlExportOptionsDialog options;
 			options.LoadSettings();
@@ -225,6 +228,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			request.save = true; request.pathMustExist = true; request.overwritePrompt = true; request.defaultExtension = L"html";
 			request.initialFileName = filename ? filename : L""; request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size()); request.filterIndex = 4;
 			request.events = events;
+            options.SetSplitSupported(request.filterIndex == 1 || request.filterIndex == 3);
 			request.customize = [](IFileDialogCustomize* customize) {
 				CString button = LoadExportHtmlString(IDS_HTML_EXPORT_OPTIONS_TITLE);
 				button += L"...";
@@ -296,6 +300,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		writerOptions.mime = fMIME;
 		writerOptions.externalImages = fExternalImages;
 		writerOptions.standalone = fEmbeddedImages;
+		writerOptions.split = fSplit;
 		writerOptions.externalImagesFolderMode = fExternalImages ? exportSettings.externalImagesFolderMode : 0;
 		writerOptions.externalImagesFolderName = fExternalImages ? std::wstring((LPCWSTR)exportSettings.externalImagesFolderName) : std::wstring();
 		HtmlExportWriter::Callbacks writerCallbacks;
@@ -343,12 +348,13 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		if (fSplit) {
 			HtmlSplitExport::Plan splitPlan;
 			if (!HtmlSplitExport::BuildPlan(ReadUtf8Stream(transformOutput), splitPlan)) return E_FAIL;
-			CComPtr<IStream> indexOutput;
-			CheckError(writer.GetTransformOutput(&indexOutput));
-			CheckError(WriteUtf8Stream(indexOutput, splitPlan.indexHtml));
+            writerResult = writer.WriteSplitDocument(L"index.html", splitPlan.indexHtml);
+            if (writerResult == S_FALSE) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+            if (FAILED(writerResult)) return writerResult;
 			for (const HtmlSplitExport::SectionDocument& section : splitPlan.sections) {
 				writerResult = writer.WriteSplitDocument(section.fileName, section.html);
-				if (FAILED(writerResult)) return writerResult;
+				if (writerResult == S_FALSE) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+                if (FAILED(writerResult)) return writerResult;
 			}
 		}
 		if (fEmbeddedImages) {

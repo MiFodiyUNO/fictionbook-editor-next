@@ -35,6 +35,7 @@ struct Options {
 	bool mime = false;
 	bool externalImages = false;
 	bool standalone = false;
+	bool split = false;
 	int externalImagesFolderMode = 0;
 	std::wstring externalImagesFolderName;
 };

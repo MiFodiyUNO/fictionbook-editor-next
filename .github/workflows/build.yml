@@ -119,6 +119,8 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-export-html-writer.ps1
+          ./tools/tests/test-export-html-split.ps1
+          ./tools/tests/test-export-html-split-e2e.ps1 -FbeExe out/Release/FBE.exe
       - name: Strict first-party native warnings
         shell: pwsh
         run: |

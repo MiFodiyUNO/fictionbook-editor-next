@@ -26,6 +26,7 @@ private:
     HtmlExportSettings* m_settings = NULL;
     HWND m_tooltip = NULL;
     bool m_splitSupported = true;
+    bool m_templateSupportsSplit = true;
     std::vector<CString> m_tooltipTexts;
     void InitTooltips();
     void AddTooltip(UINT id, UINT textId);

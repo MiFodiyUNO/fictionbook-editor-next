@@ -47,11 +47,37 @@ std::wstring SectionTitle(const std::wstring& html)
     }
     return std::wstring();
 }
+std::wstring DecodeHtmlEntities(const std::wstring& value)
+{
+    std::wstring result;
+    for (size_t index = 0; index < value.size(); ++index) {
+        if (value[index] != L'&') { result += value[index]; continue; }
+        const size_t end = value.find(L';', index + 1);
+        if (end == std::wstring::npos) { result += value[index]; continue; }
+        const std::wstring entity = value.substr(index + 1, end - index - 1);
+        wchar_t decoded = 0;
+        if (entity == L"amp") decoded = L'&';
+        else if (entity == L"quot") decoded = L'"';
+        else if (entity == L"apos" || entity == L"#39") decoded = L'\'';
+        else if (entity == L"lt") decoded = L'<';
+        else if (entity == L"gt") decoded = L'>';
+        else if (!entity.empty() && entity[0] == L'#') {
+            const bool hexadecimal = entity.size() > 2 && (entity[1] == L'x' || entity[1] == L'X');
+            wchar_t* parsed = NULL;
+            const unsigned long code = wcstoul(entity.c_str() + (hexadecimal ? 2 : 1), &parsed, hexadecimal ? 16 : 10);
+            if (parsed && *parsed == L'\0' && code > 0 && code <= 0xFFFF) decoded = static_cast<wchar_t>(code);
+        }
+        if (decoded) { result += decoded; index = end; }
+        else result += value[index];
+    }
+    return result;
+}
 std::wstring SafeFileStem(const std::wstring& title)
 {
     std::wstring stem;
-    for (wchar_t ch : title) {
-        if (ch < 32 || ch == L'\\' || ch == L'/' || ch == L':' || ch == L'*' || ch == L'?' || ch == L'\"' || ch == L'<' || ch == L'>' || ch == L'|') stem += L'_';
+    const std::wstring decodedTitle = DecodeHtmlEntities(title);
+    for (wchar_t ch : decodedTitle) {
+        if (ch < 32 || ch == L'\\' || ch == L'/' || ch == L':' || ch == L'*' || ch == L'?' || ch == L'\"' || ch == L'<' || ch == L'>' || ch == L'|' || ch == L'#' || ch == L'%' || ch == L'&') stem += L'_';
         else stem += ch;
     }
     while (!stem.empty() && (iswspace(stem.front()) || stem.front() == L'.')) stem.erase(stem.begin());

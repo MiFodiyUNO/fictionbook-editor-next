@@ -79,9 +79,11 @@ HRESULT Writer::Prepare()
 		m_prepared = true;
 		return S_OK;
 	}
-
-	HRESULT hr = OpenTarget();
-	if (FAILED(hr)) return hr;
+    HRESULT hr = S_OK;
+    if (!m_options.split) {
+        hr = OpenTarget();
+        if (FAILED(hr)) return hr;
+    }
 	if (m_options.externalImages && !m_options.mime) {
 		if (!::CreateDirectory(m_imagePaths.directory.c_str(), NULL)) {
 			const DWORD error = ::GetLastError();
@@ -136,8 +138,11 @@ IStream* Writer::StandaloneOutput() const
 HRESULT Writer::WriteStandaloneToTarget()
 {
 	if (!m_options.standalone || m_standaloneOutput == NULL) return E_UNEXPECTED;
-	HRESULT hr = OpenTarget();
-	if (FAILED(hr)) return hr;
+    HRESULT hr = S_OK;
+    if (!m_options.split) {
+        hr = OpenTarget();
+        if (FAILED(hr)) return hr;
+    }
 	LARGE_INTEGER start = {};
 	hr = m_standaloneOutput->Seek(start, STREAM_SEEK_SET, NULL);
 	if (FAILED(hr)) return hr;
@@ -163,6 +168,8 @@ HRESULT Writer::WriteSplitDocument(const std::wstring& fileName, const std::wstr
     std::vector<char> bytes(static_cast<size_t>(bytesNeeded));
     if (bytesNeeded > 0 && ::WideCharToMultiByte(CP_UTF8, 0, html.data(), static_cast<int>(html.size()), bytes.data(), bytesNeeded, NULL, NULL) == 0) return HRESULT_FROM_WIN32(::GetLastError());
     const bool existed = ::GetFileAttributes(path.c_str()) != INVALID_FILE_ATTRIBUTES;
+    if (existed && (!m_callbacks.confirmImageOverwrite || !m_callbacks.confirmImageOverwrite(path)))
+        return S_FALSE;
     ScopedHandle output(::CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL));
     if (output.Get() == INVALID_HANDLE_VALUE) { const DWORD error = ::GetLastError(); Report(Failure::OpenTarget, path, error); return HRESULT_FROM_WIN32(error); }
     DWORD written = 0;

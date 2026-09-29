@@ -31,6 +31,10 @@ if ($plugin -notmatch 'options\.LoadSettings\(\);[\s\S]*ModernFileDialog::Show')
 if ($implementation -notmatch 'OnCancel[\s\S]*EndDialog\(IDCANCEL\)') { throw 'Nested HTML options Cancel must leave the current object unchanged.' }
 if (([regex]::Matches($project, '<ClInclude Include="HtmlExportOptionsDialog\.h"').Count) -ne 1) { throw 'ExportHTML.vcxproj must contain one final options-dialog header entry.' }
 if (([regex]::Matches($filters, '<ClInclude Include="HtmlExportOptionsDialog\.h"').Count) -ne 1) { throw 'ExportHTML.vcxproj.filters must contain one final options-dialog header entry.' }
+$generalPage = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportGeneralPage.cpp')
+foreach ($token in @('options.SetSplitSupported(request.filterIndex == 1 || request.filterIndex == 3)', 'OnTypeChange)(IFileDialog* dialog)', 'type == 1 || type == 3', 'm_templateSupportsSplit', 'IDC_DOCUMENT_STRUCTURE')) {
+    if ($allSource + $generalPage -notmatch [regex]::Escape($token)) { throw "Split availability contract is missing: $token" }
+}
 Write-Host 'HTML export options dialog contract passed.'
 
 $runtimeLocalization = Get-Content -Raw (Join-Path $root 'src\export-html\RuntimeLocalization.cpp')

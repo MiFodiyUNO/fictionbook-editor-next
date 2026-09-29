@@ -283,6 +283,31 @@ int ExpectExternalImageWrite()
 	return failure;
 }
 
+int ExpectExistingSplitDocument()
+{
+    const std::wstring target = TemporaryPath(L"split-target.html");
+    const std::wstring root = target.substr(0, target.find_last_of(L"\\/") + 1);
+    const std::wstring index = root + L"index.html";
+    { std::ofstream initial(index, std::ios::binary); initial << "old"; }
+    int reported = 0;
+    {
+        HtmlExportWriter::Options options; options.targetPath = target; options.split = true;
+        HtmlExportWriter::Writer writer(options, Callbacks(reported));
+        if (FAILED(writer.Prepare()) || writer.WriteSplitDocument(L"index.html", L"new") != S_FALSE) return 1;
+    }
+    std::string text;
+    if (!ReadFileText(index, text) || text != "old") return 1;
+    {
+        HtmlExportWriter::Options options; options.targetPath = target; options.split = true;
+        HtmlExportWriter::Callbacks callbacks = Callbacks(reported); callbacks.confirmImageOverwrite = [](const std::wstring&) { return true; };
+        HtmlExportWriter::Writer writer(options, callbacks);
+        if (FAILED(writer.Prepare()) || FAILED(writer.WriteSplitDocument(L"index.html", L"new"))) return 1;
+        // Existing files are never owned by rollback.
+    }
+    const int failure = !ReadFileText(index, text) || text != "new";
+    ::DeleteFile(index.c_str());
+    return failure;
+}
 int ExpectRollback()
 {
 	const std::wstring path = TemporaryPath(L"rollback.html");
@@ -307,7 +332,7 @@ int main()
 	const int failures = ExpectNormalWrite() + ExpectOpenFailure() +
 		ExpectWriteFailureAndRollback(false) + ExpectWriteFailureAndRollback(true) + ExpectNoTargetHandleLeak() +
 		ExpectStandaloneWrite() + ExpectMimeFinalBoundary() + ExpectExternalImageWrite() +
-		ExpectExistingImage(false) + ExpectExistingImage(true) + ExpectUnsafeImageIdsRejected() + ExpectRollback();
+		ExpectExistingImage(false) + ExpectExistingImage(true) + ExpectUnsafeImageIdsRejected() + ExpectExistingSplitDocument() + ExpectRollback();
 	::CoUninitialize();
 	if (failures != 0) std::cerr << "writer harness failures: " << failures << std::endl;
 	return failures == 0 ? 0 : 1;
