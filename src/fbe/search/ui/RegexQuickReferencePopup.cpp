@@ -3,7 +3,7 @@
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\UiMetrics.h"
 
-RegexQuickReferencePopup::RegexQuickReferencePopup() {}
+RegexQuickReferencePopup::RegexQuickReferencePopup() : m_messageLoop(NULL) {}
 LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     RECT client = {}; GetClientRect(&client);
     const UINT dpi = UiMetrics::DpiForWindow(m_hWnd); const int gap = UiMetrics::ScaleForDpi(6, dpi); const int captionHeight = UiMetrics::ScaleForDpi(18, dpi); const int buttonHeight = UiMetrics::ScaleForDpi(22, dpi);
@@ -32,7 +32,13 @@ bool RegexQuickReferencePopup::Show(HWND owner, HWND anchor, FbeSearchPresets::S
     const UINT dpi = UiMetrics::DpiForWindow(anchor); RECT rc = {}; ::GetWindowRect(anchor, &rc); const int width = UiMetrics::ScaleForDpi(390, dpi), height = UiMetrics::ScaleForDpi(270, dpi); HMONITOR monitor = MonitorFromWindow(anchor, MONITOR_DEFAULTTONEAREST); MONITORINFO info = { sizeof(info) }; GetMonitorInfo(monitor, &info);
     int x = rc.right + width <= info.rcWork.right ? rc.right : rc.left - width; int y = rc.bottom + height <= info.rcWork.bottom ? rc.bottom : rc.top - height;
     x = max(info.rcWork.left, min(x, info.rcWork.right - width)); y = max(info.rcWork.top, min(y, info.rcWork.bottom - height));
-    return Create(owner, CRect(x, y, x + width, y + height), NULL, WS_POPUP | WS_BORDER, WS_EX_TOOLWINDOW) != NULL && ShowWindow(SW_SHOW) != FALSE;
+    HWND hwnd = Create(owner, CRect(x, y, x + width, y + height), NULL, WS_POPUP | WS_BORDER, WS_EX_TOOLWINDOW);
+    if(hwnd == NULL) return false;
+    m_messageLoop = _Module.GetMessageLoop();
+    if(m_messageLoop) m_messageLoop->AddMessageFilter(this);
+    ShowWindow(SW_SHOW);
+    UpdateWindow();
+    return true;
 }
 CString RegexQuickReferencePopup::Caption() const {
     const bool source = m_context == FbeSearchPresets::SearchUiContext::Source;
@@ -50,6 +56,10 @@ CString RegexQuickReferencePopup::CategoryCaption(FbeSearchPresets::RegexQuickRe
     }
 }
 BOOL RegexQuickReferencePopup::PreTranslateMessage(MSG* message) {
+    if(message->message == WM_LBUTTONDOWN || message->message == WM_RBUTTONDOWN || message->message == WM_MBUTTONDOWN || message->message == WM_NCLBUTTONDOWN) {
+        if(message->hwnd != m_hWnd && !::IsChild(m_hWnd, message->hwnd)) DestroyWindow();
+        return FALSE;
+    }
     if(message->message != WM_KEYDOWN) return FALSE;
     if(message->wParam == VK_ESCAPE) { DestroyWindow(); return TRUE; }
     if(message->wParam == VK_RETURN) { Activate(); return TRUE; }
@@ -59,8 +69,9 @@ BOOL RegexQuickReferencePopup::PreTranslateMessage(MSG* message) {
     return FALSE;
 }
 void RegexQuickReferencePopup::MoveColumn(bool right) { CListBox& destination = right ? m_right : m_left; std::vector<int>& rows = right ? m_rightRows : m_leftRows; if(rows.empty()) return; destination.SetCurSel(rows.size() > 1 ? 1 : 0); destination.SetFocus(); }
-void RegexQuickReferencePopup::Activate() { CListBox& list = ::GetFocus() == m_right.m_hWnd ? m_right : m_left; std::vector<int>& rows = ::GetFocus() == m_right.m_hWnd ? m_rightRows : m_leftRows; const int row = list.GetCurSel(); const int index = row >= 0 && static_cast<size_t>(row) < rows.size() ? rows[row] : -1; if(index >= 0 && static_cast<size_t>(index) < m_entries.size() && m_insert) { m_insert(m_entries[index]); DestroyWindow(); } }
+void RegexQuickReferencePopup::Activate() { CListBox& list = ::GetFocus() == m_right.m_hWnd ? m_right : m_left; std::vector<int>& rows = ::GetFocus() == m_right.m_hWnd ? m_rightRows : m_leftRows; const int row = list.GetCurSel(); const int index = row >= 0 && static_cast<size_t>(row) < rows.size() ? rows[row] : -1; if(index >= 0 && static_cast<size_t>(index) < m_entries.size() && m_insert) { const FbeSearchPresets::RegexQuickReferenceEntry entry = m_entries[index]; const std::function<void(const FbeSearchPresets::RegexQuickReferenceEntry&)> callback = m_insert; DestroyWindow(); callback(entry); } }
 LRESULT RegexQuickReferencePopup::OnActivate(WORD, WORD, HWND, BOOL&) { Activate(); return 0; }
-LRESULT RegexQuickReferencePopup::OnFullHelp(WORD, WORD, HWND, BOOL&) { DestroyWindow(); if(m_openFullHelp) m_openFullHelp(); return 0; }
+LRESULT RegexQuickReferencePopup::OnFullHelp(WORD, WORD, HWND, BOOL&) { const std::function<void()> callback = m_openFullHelp; DestroyWindow(); if(callback) callback(); return 0; }
 LRESULT RegexQuickReferencePopup::OnKeyDown(UINT, WPARAM key, LPARAM, BOOL&) { if(key == VK_ESCAPE) DestroyWindow(); else if(key == VK_RETURN) Activate(); else if(key == VK_F1) { BOOL ignored = FALSE; OnFullHelp(0, 0, NULL, ignored); } return 0; }
 LRESULT RegexQuickReferencePopup::OnKillFocus(UINT, WPARAM, LPARAM, BOOL&) { HWND focus = ::GetFocus(); if(focus != m_hWnd && !::IsChild(m_hWnd, focus)) PostMessage(WM_CLOSE); return 0; }
+LRESULT RegexQuickReferencePopup::OnNcDestroy(UINT, WPARAM, LPARAM, BOOL& handled) { if(m_messageLoop) { m_messageLoop->RemoveMessageFilter(this); m_messageLoop = NULL; } handled = FALSE; return 0; }

@@ -40,14 +40,14 @@ foreach ($control in @('IDC_WHOLE', 'IDC_MATCHCASE', 'IDC_REGEXP', 'IDC_FIND_SCO
 }
 Require $find 'IDC_FIND_SCOPE[\s\S]*?IDC_FIND_UNICODE_PROPERTIES' 'Find UCP immediately follows Scope'
 Require $replace 'IDC_FIND_SCOPE[\s\S]*?IDC_FIND_UNICODE_PROPERTIES' 'Replace UCP immediately follows Scope'
-Require $find 'IDC_FIND_LABEL_TEXT,7,9,45,8[\s\S]*?IDC_TEXT,53,7,166,62' 'Find label and input use the shared horizontal grid'
-Require $replace 'IDC_REPLACE_LABEL_TEXT,7,9,45,8[\s\S]*?IDC_TEXT,53,7,166,62' 'Replace label and input use the shared horizontal grid'
+Require $find 'IDC_FIND_LABEL_TEXT,7,9,50,8[\s\S]*?IDC_TEXT,60,7,170,62' 'Find label and input use the shared horizontal grid'
+Require $replace 'IDC_REPLACE_LABEL_TEXT,7,9,50,8[\s\S]*?IDC_TEXT,60,7,170,62' 'Replace label and input use the shared horizontal grid'
 foreach ($dialogBlock in @($find, $replace)) {
     Require $dialogBlock 'IDC_WHOLE,"Button",BS_AUTOCHECKBOX \| WS_TABSTOP,7,' 'common options start at x=7'
-    Require $dialogBlock 'IDC_FIND_SCOPE_LABEL,120,' 'Scope leaves room for the regex help button'
-    Require $dialogBlock 'DIRECTION_GROUP,172,' 'Direction starts at x=172'
-    Require $dialogBlock 'ID_FIND_NEXT,225,7,63,14' 'Find Next uses the widened shared action column'
-    Require $dialogBlock 'IDCANCEL,225,61,63,14' 'Cancel uses the shared bottom action slot'
+    Require $dialogBlock 'IDC_FIND_SCOPE_LABEL,116,' 'Scope uses the shared middle column'
+    Require $dialogBlock 'DIRECTION_GROUP,194,' 'Direction has a dedicated column'
+    Require $dialogBlock 'ID_FIND_NEXT,254,7,64,14' 'Find Next uses the shared action column'
+    Require $dialogBlock 'IDCANCEL,254,61,64,14' 'Cancel uses the shared action slot'
 }
 Require $find 'IDC_FIND_ALL' 'Find All action'
 Require $replace 'IDC_REPLACE_ONE[\s\S]*?IDC_REPLACE_ALL' 'Replace-specific actions'
@@ -96,7 +96,7 @@ foreach ($dialogBlock in @($find, $replace)) {
     foreach ($control in @('IDC_FIND_TEMPLATES', 'IDC_FIND_REGEX_HELP', 'IDC_FIND_PRESETS_LABEL', 'IDC_FIND_PRESETS_TREE', 'IDC_FIND_PRESET_DESCRIPTION', 'IDC_FIND_PRESET_APPLY', 'IDC_FIND_PRESET_SAVE', 'IDC_FIND_PRESET_UPDATE', 'IDC_FIND_PRESET_RENAME', 'IDC_FIND_PRESET_DELETE')) {
         Require $dialogBlock $control "Find/Replace template control $control"
     }
-    Require $dialogBlock 'DIALOGEX 0, 0, 295, 103' 'base compact dialog width and height'
+    Require $dialogBlock 'DIALOGEX 0, 0, 326,' 'base compact dialog width provides a shared grid'
 }
 Require $regexHelp 'PCRE2-16' 'Design regex help engine'
 Require $regexHelp 'Scintilla regular expressions / C\+\+11 regex mode' 'Source regex help engine'
@@ -139,7 +139,7 @@ Require $sourceView 'class CSciFindDlg[\s\S]*?SearchContext\(\) const \{ return 
 Require $sourceView 'class CSciReplaceDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Source;' 'CSciReplaceDlg Source context'
 Require $dialog 'class CViewFindDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Design;' 'CViewFindDlg Design context'
 Require $view 'class CViewReplaceDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Design;' 'CViewReplaceDlg Design context'
-foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.search_preset.caption', 'fbe.search_preset.apply', 'fbe.search_preset.save_current', 'fbe.search_preset.update', 'fbe.search_preset.rename', 'fbe.search_preset.delete', 'fbe.regex_help.design.caption', 'fbe.regex_help.source.caption', 'fbe.regex_help.design.text', 'fbe.regex_help.source.text', 'fbe.tooltip.find.unicode_properties_source',
+foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.search_preset.caption', 'fbe.search_preset.apply', 'fbe.search_preset.save_current', 'fbe.search_preset.update', 'fbe.search_preset.rename', 'fbe.search_preset.delete', 'fbe.regex_help.design.caption', 'fbe.regex_help.source.caption', 'fbe.regex_help.design.text.detail', 'fbe.regex_help.source.text.detail', 'fbe.tooltip.find.unicode_properties_source',
     'fbe.search_preset.normalize_spaces.name', 'fbe.search_preset.normalize_spaces.description',
     'fbe.search_preset.duplicate_word.name', 'fbe.search_preset.duplicate_word.description',
     'fbe.search_preset.source_repeated_punctuation.name', 'fbe.search_preset.source_repeated_punctuation.description',
@@ -151,15 +151,18 @@ foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fb
     foreach ($language in $catalog.targetLanguages) { if ([string]::IsNullOrWhiteSpace([string]$entry.translations.$language)) { throw "Missing $language localization for $key." } }
 }
 foreach ($dialogBlock in @($find, $replace)) {
-    Require $dialogBlock 'IDC_FIND_PRESETS_TREE,"SysTreeView32"[^\r\n]*,302,18,198,74' 'template tree has a readable multi-row height'
-    Require $dialogBlock 'IDC_FIND_PRESET_DESCRIPTION,302,96,198,34' 'template description has a readable multi-line height'
-    Require $dialogBlock 'IDC_FIND_PRESET_SAVE,350,135,92,14' 'Russian Save current caption has room'
-    Require $dialogBlock 'IDC_FIND_PRESET_RENAME,351,153,83,14' 'Russian Rename caption has room'
+    Require $dialogBlock 'IDC_FIND_PRESETS_TREE,"SysTreeView32"[^\r\n]*,333,18,198,74' 'template tree has a readable multi-row height'
+    Require $dialogBlock 'IDC_FIND_PRESET_DESCRIPTION,333,96,198,34' 'template description has a readable multi-line height'
+    Require $dialogBlock 'IDC_FIND_PRESET_SAVE,381,135,92,14' 'Russian Save current caption has room'
+    Require $dialogBlock 'IDC_FIND_PRESET_RENAME,382,153,83,14' 'Russian Rename caption has room'
 }
-Require $find 'IDC_FIND_TEMPLATES,225,25,63,14' 'Find Templates toggle sits in the action column'
-Require $replace 'IDC_FIND_TEMPLATES,225,84,63,14' 'Replace Templates toggle sits at the compact pane right edge'
-Require $find 'IDC_FIND_REGEX_HELP,106,56,12,13' 'Find regex help sits beside RegExp'
-Require $replace 'IDC_FIND_REGEX_HELP,106,68,12,13' 'Replace regex help sits beside RegExp'
+Require $find 'IDC_FIND_TEMPLATES,254,82,64,14' 'Find Templates toggle is last in the action column'
+Require $replace 'IDC_FIND_TEMPLATES,254,100,64,14' 'Replace Templates toggle follows the common row offset'
+Require $find 'IDC_FIND_REGEX_HELP,108,60,12,13' 'Find regex help sits beside RegExp'
+Require $replace 'IDC_FIND_REGEX_HELP,108,78,12,13' 'Replace regex help follows the common row offset'
+foreach($control in @('IDC_TEXT,60,7,170', 'IDC_FIND_SCOPE,116', 'IDC_FIND_UNICODE_PROPERTIES,"Button"', 'ID_FIND_NEXT,254,7,64,14')) { Require $find $control "Find common grid: $control"; Require $replace $control "Replace common grid: $control" }
+Require $find 'IDD_FIND DIALOGEX 0, 0, 326, 116' 'Find compact dimensions provide room for Scope and UCP'
+Require $replace 'IDD_REPLACE DIALOGEX 0, 0, 326, 134' 'Replace height equals Find plus one row offset'
 if ($presetCatalog -match 'L"\\x\{00A0\}"') { throw 'NBSP preset must use literal U+00A0 for production normalization.' }
 Require $presetCatalog 'L"\\u00A0"' 'NBSP preset uses literal U+00A0'
 Require $view 'NormalizeSearchPatternNbsp[\s\S]*?pattern\.Replace\(L"\\u00A0", _Settings\.GetNBSPChar\(\)\)' 'production NBSP normalization replaces the literal preset character'

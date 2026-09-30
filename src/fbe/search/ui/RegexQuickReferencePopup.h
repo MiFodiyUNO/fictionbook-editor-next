@@ -3,7 +3,7 @@
 #include "..\\RegexQuickReference.h"
 #include <functional>
 
-class RegexQuickReferencePopup : public CWindowImpl<RegexQuickReferencePopup>
+class RegexQuickReferencePopup : public CWindowImpl<RegexQuickReferencePopup>, public CMessageFilter
 {
 public:
     DECLARE_WND_CLASS(L"FBERegexQuickReferencePopup")
@@ -11,9 +11,11 @@ public:
     bool Show(HWND owner, HWND anchor, FbeSearchPresets::SearchUiContext context, FbeSearchPresets::RegexQuickReferenceMode mode,
         const std::function<void(const FbeSearchPresets::RegexQuickReferenceEntry&)>& insert, const std::function<void()>& fullHelp);
     BOOL PreTranslateMessage(MSG* message);
+    // A successful Show transfers ownership to the HWND; OnFinalMessage deletes this.
     void OnFinalMessage(HWND) { delete this; }
     BEGIN_MSG_MAP(RegexQuickReferencePopup)
         MESSAGE_HANDLER(WM_CREATE, OnCreate)
+        MESSAGE_HANDLER(WM_NCDESTROY, OnNcDestroy)
         MESSAGE_HANDLER(WM_KEYDOWN, OnKeyDown)
         MESSAGE_HANDLER(WM_KILLFOCUS, OnKillFocus)
         COMMAND_HANDLER(1, LBN_DBLCLK, OnActivate)
@@ -22,6 +24,7 @@ public:
     END_MSG_MAP()
 private:
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnKeyDown(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnKillFocus(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnActivate(WORD, WORD, HWND, BOOL&);
@@ -42,4 +45,5 @@ private:
     std::function<void()> m_openFullHelp;
     FbeSearchPresets::SearchUiContext m_context;
     FbeSearchPresets::RegexQuickReferenceMode m_mode;
+    CMessageLoop* m_messageLoop;
 };

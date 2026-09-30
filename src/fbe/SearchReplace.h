@@ -418,6 +418,7 @@ public:
         FbeSearchPresets::RegexQuickReferenceMode mode = FbeSearchPresets::RegexQuickReferenceMode::Search;
         if(IsReplaceDialog() && (m_lastRegexTarget == IDC_REPLACE || ::GetFocus() == GetDlgItem(IDC_REPLACE))) { target = GetDlgItem(IDC_REPLACE); mode = FbeSearchPresets::RegexQuickReferenceMode::Replacement; }
         RegexQuickReferencePopup* popup = new RegexQuickReferencePopup();
+        // Show(false) means no HWND was created; on success the popup self-owns until WM_NCDESTROY.
         if(!popup->Show(DialogWindow(), GetDlgItem(IDC_FIND_REGEX_HELP), SearchContext(), mode,
             [this, target, mode](const FbeSearchPresets::RegexQuickReferenceEntry& entry) {
                 int first = 0, last = 0; ::SendMessage(target, EM_GETSEL, reinterpret_cast<WPARAM>(&first), reinterpret_cast<LPARAM>(&last)); const int length = ::GetWindowTextLength(target); CString current; ::GetWindowText(target, current.GetBuffer(length + 1), length + 1); current.ReleaseBuffer();
