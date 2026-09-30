@@ -227,6 +227,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_need_restart;
 
 	CString		m_scripts_folder;
+	bool		m_check_scripts_on_startup;
 
 	bool		m_insimage_ask;
 	bool		m_ins_clear_image;
@@ -368,6 +369,7 @@ public:
 	CString GetScriptsFolder() const;
 	CString GetScriptsFolderStored() const;
 	CString GetResolvedScriptsFolder() const;
+	bool CheckScriptsOnStartup() const;
 	CString GetDefaultScriptsFolderStored() const;
 	CString GetDefaultScriptsFolder();
 	bool	IsDefaultScriptsFolder();
@@ -424,6 +426,7 @@ public:
 	void SetInterfaceTheme(InterfaceTheme theme, bool apply = false);
 	void	SetGenreCatalog(GenreCatalog catalog, bool apply = false);
 	void	SetScriptsFolder(const CString& fullpath, bool apply = false);
+	void	SetCheckScriptsOnStartup(bool value, bool apply = false);
 	void	SetInsImageAsking(const bool value, bool apply = false);
 	void	SetIsInsClearImage(const bool value, bool apply = false);
 	void	SetCreateBackupFile(const bool value, bool apply = false);

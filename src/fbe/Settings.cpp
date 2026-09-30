@@ -617,6 +617,11 @@ CString CSettings::GetResolvedScriptsFolder() const
 	return FbeSettings::ResolveScriptsFolderPath(m_scripts_folder);
 }
 
+bool CSettings::CheckScriptsOnStartup() const
+{
+	return m_check_scripts_on_startup;
+}
+
 CString CSettings::GetDefaultScriptsFolderStored() const
 {
 	return FbeSettings::NormalizeScriptsFolderStoredPath(DEFAULT_SCRIPTS_FOLDER);
@@ -937,6 +942,12 @@ void CSettings::SetScriptsFolder(const CString& fullpath, bool apply)
 	{
 		m_scripts_folder = normalized;
 	}
+	if(apply) Save();
+}
+
+void CSettings::SetCheckScriptsOnStartup(bool value, bool apply)
+{
+	m_check_scripts_on_startup = value;
 	if(apply) Save();
 }
 

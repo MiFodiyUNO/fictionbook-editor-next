@@ -98,6 +98,7 @@ const wchar_t INTERFACE_LANG_KEY[]		= L"IntefaceLangID";
 const wchar_t INTERFACE_THEME_KEY[] = L"InterfaceTheme";
 const wchar_t GENRE_CATALOG_KEY[]       = L"GenreCatalog";
 const wchar_t SCRIPTS_FOLDER_KEY[]		= L"ScriptsFolder";
+const wchar_t CHECK_SCRIPTS_ON_STARTUP_KEY[] = L"CheckScriptsOnStartup";
 
 // Added by SeNS
 const wchar_t USESPELLER_CHECK_KEY[]	= L"UseSpellChecker";
@@ -174,6 +175,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(INTERFACE_THEME_KEY);
 	properties.push_back(GENRE_CATALOG_KEY);
 	properties.push_back(SCRIPTS_FOLDER_KEY);
+	properties.push_back(CHECK_SCRIPTS_ON_STARTUP_KEY);
 	// SeNS
 	properties.push_back(USESPELLER_CHECK_KEY);
 	properties.push_back(HIGHLIGHT_CHECK_KEY);
@@ -402,6 +404,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == SCRIPTS_FOLDER_KEY)
 	{
 		property = m_scripts_folder;
+		return true;
+	}
+	else if(sProperty == CHECK_SCRIPTS_ON_STARTUP_KEY)
+	{
+		property = GetStringedProperty(&m_check_scripts_on_startup, KEY_BOOL);
 		return true;
 	}
 	// added SeNS
@@ -765,6 +772,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == SCRIPTS_FOLDER_KEY)
 	{
 	m_scripts_folder = FbeSettings::NormalizeScriptsFolderStoredPath(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == CHECK_SCRIPTS_ON_STARTUP_KEY)
+	{
+		m_check_scripts_on_startup = StrToBool(sValue.GetStringValue());
 		return true;
 	}
 	// SeNS

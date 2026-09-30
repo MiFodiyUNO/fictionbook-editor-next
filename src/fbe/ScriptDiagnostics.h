@@ -30,6 +30,22 @@ inline bool& ErrorReported()
 	return value;
 }
 
+inline bool& DialogsSuppressed()
+{
+	static bool value = false;
+	return value;
+}
+
+class ScopedDialogSuppression
+{
+public:
+	ScopedDialogSuppression() : m_previous(DialogsSuppressed()) { DialogsSuppressed() = true; }
+	~ScopedDialogSuppression() { DialogsSuppressed() = m_previous; }
+
+private:
+	bool m_previous;
+};
+
 inline void SetContext(const CString& path, const CString& source)
 {
 	ScriptPath() = path;
@@ -96,6 +112,8 @@ inline void Copy(const CString& details)
 
 inline void ShowDetails(HWND owner, const CString& details)
 {
+	if (DialogsSuppressed())
+		return;
 	CString title = FbeLoadCString(IDS_SCRIPT_MSG_CPT);
 	CString copy = FbeLoadCString(IDS_SCRIPT_COPY_DETAILS);
 	CString close = FbeLoadCString(IDS_SCRIPT_CLOSE_DETAILS);

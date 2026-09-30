@@ -2065,6 +2065,25 @@
         "bg-BG": "..."
       }
     },
+    "fbe.dialog.idd_setting_other.check_scripts_on_startup": {
+      "resource": "IDD_SETTINGS_ADVANCED",
+      "kind": "CONTROL",
+      "targetId": "IDC_CHECK_SCRIPTS_ON_STARTUP",
+      "translations": {
+        "en-US": "Check scripts on startup",
+        "ru-RU": "Проверять скрипты при запуске",
+        "uk-UA": "Перевіряти скрипти під час запуску",
+        "de-DE": "Skripte beim Start prüfen",
+        "fr-FR": "Vérifier les scripts au démarrage",
+        "es-ES": "Comprobar los scripts al iniciar",
+        "it-IT": "Controlla gli script all'avvio",
+        "pl-PL": "Sprawdzaj skrypty przy uruchamianiu",
+        "pt-PT": "Verificar scripts ao iniciar",
+        "nl-NL": "Scripts bij opstarten controleren",
+        "cs-CZ": "Kontrolovat skripty při spuštění",
+        "bg-BG": "Проверявай скриптовете при стартиране"
+      }
+    },
     "fbe.dialog.idd_setting_other.images": {
       "resource": "IDD_SETTINGS_IMAGES",
       "kind": "GROUPBOX",
@@ -3182,6 +3201,7 @@
     "fbe.settings.tooltip.advanced.default_scripts_folder": { "resource": "IDD_SETTINGS_ADVANCED", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Uses the Scripts folder next to this installed or portable copy of FictionBook Editor Next.", "ru-RU": "Использует папку Scripts рядом с этой установленной или переносной копией FictionBook Editor Next." } },
     "fbe.settings.tooltip.advanced.browse": { "resource": "IDD_SETTINGS_ADVANCED", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Choose another folder containing user scripts.", "ru-RU": "Выбрать другую папку с пользовательскими скриптами." } },
     "fbe.settings.tooltip.advanced.fast_mode": { "resource": "IDD_SETTINGS_ADVANCED", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Uses the streamlined editor stylesheet. It can improve responsiveness on older computers, but some advanced page styling is reduced.", "ru-RU": "Использует упрощённую таблицу стилей редактора. На старых компьютерах это может повысить отзывчивость, но часть сложного оформления страниц будет упрощена." } },
+    "fbe.settings.tooltip.advanced.check_scripts_on_startup": { "resource": "IDD_SETTINGS_ADVANCED", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Checks every script for syntax errors and a Run function before showing it.", "ru-RU": "Проверяет каждый скрипт на синтаксические ошибки и наличие функции Run перед показом.", "uk-UA": "Перевіряє кожен скрипт на синтаксичні помилки та наявність функції Run перед показом.", "de-DE": "Prüft jedes Skript vor der Anzeige auf Syntaxfehler und eine Run-Funktion.", "fr-FR": "Vérifie avant l'affichage les erreurs de syntaxe et la fonction Run de chaque script.", "es-ES": "Comprueba los errores de sintaxis y la función Run de cada script antes de mostrarlo.", "it-IT": "Controlla gli errori di sintassi e la funzione Run di ogni script prima di mostrarlo.", "pl-PL": "Przed wyświetleniem sprawdza każdy skrypt pod kątem błędów składni i funkcji Run.", "pt-PT": "Verifica cada script quanto a erros de sintaxe e à função Run antes de o mostrar.", "nl-NL": "Controleert elk script vóór weergave op syntaxisfouten en een Run-functie.", "cs-CZ": "Před zobrazením zkontroluje každý skript na syntaktické chyby a funkci Run.", "bg-BG": "Проверява всеки скрипт за синтактични грешки и функция Run преди показване." } },
     "fbe.dialog.idd_setting_other.open_file": { "resource": "IDD_SETTINGS_GENERAL", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Open file", "ru-RU": "Открытие файла" } },
     "fbe.dialog.idd_setting_other.save_file": { "resource": "IDD_SETTINGS_GENERAL", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Saving", "ru-RU": "Сохранение" } },
     "fbe.dialog.idd_setting_other.default_encoding": { "resource": "IDD_SETTINGS_GENERAL", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Default encoding:", "ru-RU": "Кодировка по умолчанию:" } },

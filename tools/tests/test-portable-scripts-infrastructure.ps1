@@ -52,7 +52,9 @@ Must $menuBuilder 'MenuBuilder::Build' 'Active descriptors build the Scripts men
 MustNot $frame '\bScrInfo\b|LoadScriptPicture|SortScripts' 'CMainFrame legacy script model'
 Must $frame 'class ScriptDiscoveryRuntime' 'Discovery runtime has scoped ownership'
 Must $frame '~ScriptDiscoveryRuntime\(\) \{ if \(m_started\) StopScript\(\); \}' 'Started scripting runtime is always stopped'
-Must $frame 'runtime\.Started\(\) && SUCCEEDED\(ScriptLoad\(path\)\) && ScriptFindFunc\(L"Run"\)' 'Rejected scripts share scoped runtime cleanup'
+Must $frame 'if\(!_Settings\.CheckScriptsOnStartup\(\)\) return true;' 'Disabled startup validation keeps discovered scripts in the catalogue'
+Must $frame 'FbeScriptDiagnostics::ScopedDialogSuppression suppressDialogs;' 'Startup validation is noninteractive'
+Must $frame 'runtime\.Started\(\) && SUCCEEDED\(ScriptLoad\(path\)\) && ScriptFindFunc\(L"Run"\)' 'Enabled validation rejects scripts without a runnable Run function'
 
 Must $toolbarStore 'PortableToolbarsPath' 'Portable toolbar file path'
 Must $toolbarStore 'Toolbars\.xml' 'Portable toolbar data file'

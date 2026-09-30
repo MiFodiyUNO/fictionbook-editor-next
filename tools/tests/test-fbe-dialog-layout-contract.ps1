@@ -64,7 +64,7 @@ foreach ($control in @('IDC_SRCFONT', 'IDC_WRAP', 'IDC_SYNTAXHL', 'IDC_TAGHL', '
 foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE', 'IDC_UPDATE_CHANNEL')) {
     if ($sourceDialog -match $control) { throw "General control must not be in IDD_SETTINGS_SOURCE: $control" }
 }
-foreach ($control in @('IDC_DEFAULT_SCRIPTS_FOLDER', 'IDC_SCRIPTS_FOLDER_PATH', 'IDC_SELECT_SCRIPTS_FOLDER_BUTTON', 'IDC_FAST_MODE')) {
+foreach ($control in @('IDC_DEFAULT_SCRIPTS_FOLDER', 'IDC_SCRIPTS_FOLDER_PATH', 'IDC_SELECT_SCRIPTS_FOLDER_BUTTON', 'IDC_FAST_MODE', 'IDC_CHECK_SCRIPTS_ON_STARTUP')) {
     Assert-Contains $advancedDialog $control "Advanced control missing: $control"
     if ($generalDialog -match $control) { throw "Advanced control must not be in General: $control" }
 }

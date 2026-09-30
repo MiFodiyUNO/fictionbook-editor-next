@@ -35,6 +35,7 @@
 #include "recovery\\RecoveryService.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
+#include "ScriptDiagnostics.h"
 #include "plugins\\PluginManager.h"
 #include "plugins\\PluginApiV2.h"
 #include "UiMetrics.h"
@@ -3060,7 +3061,12 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 	HMENU mainMenu = m_MenuBar.GetMenu();
 	if(m_scripts.Initialize(_Settings.GetScriptsFolder(), _Settings.GetScriptCommandIds(), serializedCommandIds, ::GetSubMenu(mainMenu, 6),
 		FbeLoadRuntimeStringByKey(L"fbe.menu.scripts.empty", L"No scripts"),
-		[this](const CString& path) { ScriptDiscoveryRuntime runtime(this); return runtime.Started() && SUCCEEDED(ScriptLoad(path)) && ScriptFindFunc(L"Run"); },
+		[this](const CString& path) {
+			if(!_Settings.CheckScriptsOnStartup()) return true;
+			FbeScriptDiagnostics::ScopedDialogSuppression suppressDialogs;
+			ScriptDiscoveryRuntime runtime(this);
+			return runtime.Started() && SUCCEEDED(ScriptLoad(path)) && ScriptFindFunc(L"Run");
+		},
 		[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
 			if(!script.isFolder && visual.icon != NULL) AddTbButton(m_ScriptsToolbar, script.name, command, TBSTATE_ENABLED, visual.icon);
 			if(!script.isFolder) { TBBUTTONS catalog; bool available = GetAvailableButtons(m_ScriptsToolbar, catalog); for(int index = 0; available && index < catalog.GetSize(); ++index) if(catalog[index].idCommand == static_cast<int>(command)) available = false; if(available) { TBBUTTON button = {}; button.iBitmap = I_IMAGENONE; button.idCommand = command; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE; AddToolbarButton(m_ScriptsToolbar, button, script.name); } }

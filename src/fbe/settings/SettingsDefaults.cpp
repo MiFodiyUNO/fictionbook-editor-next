@@ -54,6 +54,7 @@ void CSettings::SetDefaults()
 	ThemeManager::SetSelectedTheme(m_interface_theme);
 	m_genre_catalog			= GenreCatalog::Standard;
 	m_scripts_folder		= GetDefaultScriptsFolderStored();
+	m_check_scripts_on_startup = true;
 	m_insimage_ask			= true;
 	m_ins_clear_image		= false;
 	m_create_backup_file		= true;

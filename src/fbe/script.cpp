@@ -452,7 +452,8 @@ public:
 		} 
 		else
 		{
-			U::MessageBox(MB_ICONERROR|MB_OK, IDS_SCRIPT_MSG_CPT, IDS_SCRIPT_MSG);
+			if (!FbeScriptDiagnostics::DialogsSuppressed())
+				U::MessageBox(MB_ICONERROR|MB_OK, IDS_SCRIPT_MSG_CPT, IDS_SCRIPT_MSG);
 			return S_OK;
 		}
 	}

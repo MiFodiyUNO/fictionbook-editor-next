@@ -13,16 +13,19 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	::SetDlgItemText(m_hWnd, IDC_DEFAULT_SCRIPTS_FOLDER, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_other.default_scripts_folder", L"Default folder"));
 	::SetDlgItemText(m_hWnd, IDC_SELECT_SCRIPTS_FOLDER_BUTTON, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_other.browse", L"..."));
 	::SetDlgItemText(m_hWnd, IDC_FAST_MODE, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.fast_mode", L"Fast mode"));
+	::SetDlgItemText(m_hWnd, IDC_CHECK_SCRIPTS_ON_STARTUP, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_other.check_scripts_on_startup", L"Check scripts on startup"));
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_INTERFACE_GROUP, FbeLoadRuntimeStringByKey(L"fbe.settings.advanced.group", L"Advanced"));
 	m_defaultScriptsFolder = GetDlgItem(IDC_DEFAULT_SCRIPTS_FOLDER);
 	m_scriptsFolder = GetDlgItem(IDC_SCRIPTS_FOLDER_PATH);
 	m_selectScriptsFolder = GetDlgItem(IDC_SELECT_SCRIPTS_FOLDER_BUTTON);
 	m_fastMode = GetDlgItem(IDC_FAST_MODE);
+	m_checkScriptsOnStartup = GetDlgItem(IDC_CHECK_SCRIPTS_ON_STARTUP);
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_scriptsFolder, L"fbe.settings.tooltip.advanced.scripts_folder", L"Folder from which FictionBook Editor Next loads user scripts.");
 	m_tooltips.Add(m_defaultScriptsFolder, L"fbe.settings.tooltip.advanced.default_scripts_folder", L"Uses the standard Scripts folder for this installation or portable copy.");
 	m_tooltips.Add(m_selectScriptsFolder, L"fbe.settings.tooltip.advanced.browse", L"Choose a folder containing user scripts.");
 	m_tooltips.Add(m_fastMode, L"fbe.settings.tooltip.advanced.fast_mode", L"Uses the application's reduced-feature fast mode.");
+	m_tooltips.Add(m_checkScriptsOnStartup, L"fbe.settings.tooltip.advanced.check_scripts_on_startup", L"Checks every script for syntax errors and a Run function before showing it.");
 	m_tooltips.Add(GetDlgItem(IDC_SETTINGS_OTHER_SCRIPTS), L"fbe.settings.tooltip.advanced.scripts_folder", L"Folder from which FictionBook Editor Next loads user scripts.");
 	m_initialScriptsFolder = _Settings.GetResolvedScriptsFolder();
 	m_defaultScriptsFolder.SetCheck(_Settings.IsDefaultScriptsFolder());
@@ -32,6 +35,7 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_scriptsSwitched = _Settings.IsDefaultScriptsFolder();
 	UpdateScriptsFolderTooltip();
 	m_fastMode.SetCheck(_Settings.FastMode());
+	m_checkScriptsOnStartup.SetCheck(_Settings.CheckScriptsOnStartup());
 	return 1;
 }
 LRESULT CSettingsAdvancedPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
@@ -68,6 +72,9 @@ void CSettingsAdvancedPage::Commit()
 	_Settings.SetScriptsFolder(m_scriptsSwitched || folder.IsEmpty() ? _Settings.GetDefaultScriptsFolderStored() : folder, true);
 	if(m_initialScriptsFolder.CompareNoCase(_Settings.GetResolvedScriptsFolder()) != 0) _Settings.SetNeedRestart();
 	_Settings.SetFastMode(m_fastMode.GetCheck() == BST_CHECKED);
+	const bool checkScriptsOnStartup = m_checkScriptsOnStartup.GetCheck() == BST_CHECKED;
+	if(checkScriptsOnStartup != _Settings.CheckScriptsOnStartup()) _Settings.SetNeedRestart();
+	_Settings.SetCheckScriptsOnStartup(checkScriptsOnStartup, true);
 }
 LRESULT CSettingsAdvancedPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
 bool CSettingsAdvancedPage::CancelChanges() { return true; }

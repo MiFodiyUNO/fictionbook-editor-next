@@ -7,7 +7,7 @@
 
 class CSettingsAdvancedPage : public CAxDialogImpl<CSettingsAdvancedPage>, public ISettingsPage
 {
-	CButton m_defaultScriptsFolder, m_fastMode;
+	CButton m_defaultScriptsFolder, m_fastMode, m_checkScriptsOnStartup;
 	CEdit m_scriptsFolder;
 	CButton m_selectScriptsFolder;
 	bool m_scriptsSwitched;

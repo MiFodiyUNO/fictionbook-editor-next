@@ -577,6 +577,7 @@
 #define IDC_HOTKEYS_SHORTCUT_LABEL      1622
 #define IDC_WORDS_ACTIONS_GROUP         1623
 #define IDC_WORDS_SELECTION_GROUP       1624
+#define IDC_CHECK_SCRIPTS_ON_STARTUP     1643
 #define IDC_SPELL_UNDO                  1109
 #define IDC_FAST_MODE                   1110
 #define IDC_IDT                         1111
