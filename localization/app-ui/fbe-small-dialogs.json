@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "description": "Weblate-friendly seed-каталог малых DIALOGEX-диалогов FBE: IDD_TABLE, IDD_INPUTBOX, IDD_ADDIMAGE, IDD_TOOLS_SETTINGS, IDD_ABOUTBOX.",
+  "description": "Weblate-friendly seed-каталог малых DIALOGEX-диалогов FBE, включая Find/Replace и IDD_REGEX_HELP.",
   "targetLanguages": [
     "en-US",
     "ru-RU",
@@ -37,7 +37,8 @@
     "IDD_SETTINGS_ADVANCED",
     "IDD_FIND_RESULTS",
     "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE",
-    "IDD_SCRIPT_TOOLBAR_MANAGER"
+    "IDD_SCRIPT_TOOLBAR_MANAGER",
+    "IDD_REGEX_HELP"
   ],
   "resourceType": "DIALOGEX",
   "strings": {
@@ -3278,6 +3279,7 @@
     "fbe.search_preset.name_prompt": {"resource":"IDD_FIND","kind":"VALUE","targetId":"","translations":{"en-US":"Template name:","ru-RU":"Имя шаблона:"}},
     "fbe.search_preset.delete_confirm": {"resource":"IDD_FIND","kind":"VALUE","targetId":"","translations":{"en-US":"Delete the selected search template?","ru-RU":"Удалить выбранный шаблон поиска?"}},
     "fbe.search_preset.save_failed": {"resource":"IDD_FIND","kind":"VALUE","targetId":"","translations":{"en-US":"Could not save search templates.","ru-RU":"Не удалось сохранить шаблоны поиска."}},
+    "fbe.search_preset.load_failed": {"resource":"IDD_FIND","kind":"VALUE","targetId":"","translations":{"en-US":"Search templates could not be loaded. The file was not changed.","ru-RU":"Не удалось загрузить шаблоны поиска. Файл не был изменён."}},
     "fbe.regex_help.design.caption": {"resource":"IDD_REGEX_HELP","kind":"CAPTION","targetId":"","translations":{"en-US":"Regular expression help — Design","ru-RU":"Справка по регулярным выражениям — Дизайн"}},
     "fbe.regex_help.source.caption": {"resource":"IDD_REGEX_HELP","kind":"CAPTION","targetId":"","translations":{"en-US":"Regular expression help — Source","ru-RU":"Справка по регулярным выражениям — Код"}},
     "fbe.tooltip.find.unicode_properties_source": {"resource":"IDD_FIND","kind":"VALUE","targetId":"","translations":{"en-US":"Unicode UCP applies to PCRE2 in Design mode and is unavailable for the current Source regex engine.","ru-RU":"Unicode UCP применяется к PCRE2 в режиме Дизайн и недоступен для текущего regex-движка режима Код."}},

@@ -831,6 +831,7 @@ public:
 	bool IsFindDialogOpen() const;
 	bool IsReplaceDialogOpen() const;
 	void SyncSearchOptionsToOpenDialogs(FRBase* source);
+	void RefreshOpenSearchPresetPanels(FRBase* source);
 
 private:
 	void NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom);

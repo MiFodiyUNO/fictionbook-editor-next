@@ -60,6 +60,8 @@ public:
         return FbeSearchPresets::SearchUiContext::Design;
     }
 
+    virtual void InvalidateSearchSelectionState() {}
+
     HWND DialogWindow() const
     {
         const HWND text = const_cast<FRBase*>(this)->GetDlgItem(IDC_TEXT);
@@ -97,7 +99,9 @@ public:
         const HWND dialog = DialogWindow();
         if (!dialog) return;
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_APPLY), preset != NULL);
-        ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_SAVE), TRUE);
+        const HWND textControl = GetDlgItem(IDC_TEXT);
+        const int findTextLength = textControl ? ::GetWindowTextLength(textControl) : 0;
+        ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_SAVE), findTextLength > 0);
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_UPDATE), custom);
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_RENAME), custom);
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_DELETE), custom);
@@ -164,8 +168,11 @@ public:
             RECT rectangle = {}; ::GetWindowRect(dialog, &rectangle);
             m_compactDialogWidth = rectangle.right - rectangle.left;
         }
+        RECT rectangle = {};
+        ::GetWindowRect(dialog, &rectangle);
+        const int currentHeight = rectangle.bottom - rectangle.top;
         ::SetWindowPos(dialog, NULL, 0, 0, visible ? m_compactDialogWidth + PresetPanelWidth() : m_compactDialogWidth,
-            0, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+            currentHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
         m_templatesExpanded = visible;
         if (visible) RefreshPresetPanel();
     }
@@ -199,6 +206,28 @@ public:
         return false;
     }
 
+    bool LoadUserPresetsForMutation(std::vector<FbeSearchPresets::SearchPreset>& presets)
+    {
+        FbeSearchPresets::SearchPresetStore store;
+        if (store.Load(presets)) return true;
+        ThemeManager::MessageBox(DialogWindow(),
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.load_failed", L"Search templates could not be loaded. The file was not changed."),
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.caption", L"Templates"), MB_OK | MB_ICONEXCLAMATION);
+        return false;
+    }
+
+    FbeSearchPresets::SearchPreset BuildUpdatedPreset(const FbeSearchPresets::SearchPreset& existing) const
+    {
+        FbeSearchPresets::SearchPreset preset = CurrentPreset(existing.name);
+        preset.id = existing.id;
+        if (!IsReplaceDialog())
+        {
+            preset.hasReplacement = existing.hasReplacement;
+            preset.replacementText = existing.replacementText;
+        }
+        return preset;
+    }
+
     void ApplySelectedPreset()
     {
         const FbeSearchPresets::SearchPreset* preset = SelectedPreset();
@@ -210,10 +239,13 @@ public:
             (preset->matchCase ? CFBEView::FRF_CASE : 0) | (preset->wholeWord ? CFBEView::FRF_WHOLE : 0);
         if (SearchContext() == FbeSearchPresets::SearchUiContext::Design)
             m_view->m_fo.unicodeProperties = preset->unicodeProperties;
+        InvalidateSearchSelectionState();
+        m_view->m_startMatch = m_view->m_endMatch = 0;
         m_view->m_fo.ClearMatch();
         m_view->m_design_search.ClearReplacePreview();
         PutData();
         UpdateUnicodeControl();
+        UpdatePresetActions();
         m_view->SyncSearchOptionsToOpenDialogs(this);
         if (GetDlgItem(IDC_FIND_STATUS)) ::SetTimer(DialogWindow(), 0x4F01, 150, NULL);
         ::SetFocus(GetDlgItem(IDC_TEXT));
@@ -223,32 +255,70 @@ public:
     LRESULT OnApplyPreset(WORD, WORD, HWND, BOOL&) { ApplySelectedPreset(); return 0; }
     LRESULT OnSavePreset(WORD, WORD, HWND, BOOL&)
     {
-        GetData(); CString name;
+        GetData();
+        if (m_view->m_fo.pattern.IsEmpty()) return 0;
+        CString name;
         if (AU::InputBox(name, FbeLoadRuntimeStringByKey(L"fbe.search_preset.save_title", L"Save search template"),
             FbeLoadRuntimeStringByKey(L"fbe.search_preset.name_prompt", L"Template name:")) != IDYES || name.Trim().IsEmpty()) return 0;
-        std::vector<FbeSearchPresets::SearchPreset> users; FbeSearchPresets::SearchPresetStore().Load(users);
-        users.push_back(CurrentPreset(name)); if (SaveUserPresets(users)) RefreshPresetPanel(); return 0;
+        std::vector<FbeSearchPresets::SearchPreset> users;
+        if (!LoadUserPresetsForMutation(users)) return 0;
+        users.push_back(CurrentPreset(name));
+        if (SaveUserPresets(users))
+            m_view->RefreshOpenSearchPresetPanels(this);
+        return 0;
     }
     LRESULT OnUpdatePreset(WORD, WORD, HWND, BOOL&)
     {
-        const FbeSearchPresets::SearchPreset* selected = SelectedPreset(); if (!selected || selected->builtIn) return 0;
-        GetData(); std::vector<FbeSearchPresets::SearchPreset> users; FbeSearchPresets::SearchPresetStore().Load(users);
-        for (size_t index = 0; index < users.size(); ++index) if (users[index].id == selected->id) { FbeSearchPresets::SearchPreset replacement = CurrentPreset(selected->name); replacement.id = selected->id; users[index] = replacement; break; }
-        if (SaveUserPresets(users)) RefreshPresetPanel(); return 0;
+        const FbeSearchPresets::SearchPreset* selected = SelectedPreset();
+        if (!selected || selected->builtIn) return 0;
+        const CString selectedId = selected->id;
+        GetData();
+        std::vector<FbeSearchPresets::SearchPreset> users;
+        if (!LoadUserPresetsForMutation(users)) return 0;
+        for (size_t index = 0; index < users.size(); ++index)
+            if (users[index].id == selectedId)
+            {
+                users[index] = BuildUpdatedPreset(users[index]);
+                break;
+            }
+        if (SaveUserPresets(users))
+            m_view->RefreshOpenSearchPresetPanels(this);
+        return 0;
     }
     LRESULT OnRenamePreset(WORD, WORD, HWND, BOOL&)
     {
-        const FbeSearchPresets::SearchPreset* selected = SelectedPreset(); if (!selected || selected->builtIn) return 0;
-        CString name(selected->name); if (AU::InputBox(name, FbeLoadRuntimeStringByKey(L"fbe.search_preset.rename_title", L"Rename search template"), FbeLoadRuntimeStringByKey(L"fbe.search_preset.name_prompt", L"Template name:")) != IDYES || name.Trim().IsEmpty()) return 0;
-        std::vector<FbeSearchPresets::SearchPreset> users; FbeSearchPresets::SearchPresetStore().Load(users); for (size_t index = 0; index < users.size(); ++index) if (users[index].id == selected->id) users[index].name = name;
-        if (SaveUserPresets(users)) RefreshPresetPanel(); return 0;
+        const FbeSearchPresets::SearchPreset* selected = SelectedPreset();
+        if (!selected || selected->builtIn) return 0;
+        const CString selectedId = selected->id;
+        CString name(selected->name);
+        if (AU::InputBox(name, FbeLoadRuntimeStringByKey(L"fbe.search_preset.rename_title", L"Rename search template"),
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.name_prompt", L"Template name:")) != IDYES || name.Trim().IsEmpty()) return 0;
+        std::vector<FbeSearchPresets::SearchPreset> users;
+        if (!LoadUserPresetsForMutation(users)) return 0;
+        for (size_t index = 0; index < users.size(); ++index)
+            if (users[index].id == selectedId)
+                users[index].name = name;
+        if (SaveUserPresets(users))
+            m_view->RefreshOpenSearchPresetPanels(this);
+        return 0;
     }
     LRESULT OnDeletePreset(WORD, WORD, HWND, BOOL&)
     {
-        const FbeSearchPresets::SearchPreset* selected = SelectedPreset(); if (!selected || selected->builtIn) return 0;
+        const FbeSearchPresets::SearchPreset* selected = SelectedPreset();
+        if (!selected || selected->builtIn) return 0;
+        const CString selectedId = selected->id;
         if (ThemeManager::MessageBox(DialogWindow(), FbeLoadRuntimeStringByKey(L"fbe.search_preset.delete_confirm", L"Delete the selected search template?"), FbeLoadRuntimeStringByKey(L"fbe.search_preset.caption", L"Templates"), MB_YESNO | MB_ICONQUESTION) != IDYES) return 0;
-        std::vector<FbeSearchPresets::SearchPreset> users; FbeSearchPresets::SearchPresetStore().Load(users); for (std::vector<FbeSearchPresets::SearchPreset>::iterator item = users.begin(); item != users.end(); ++item) if (item->id == selected->id) { users.erase(item); break; }
-        if (SaveUserPresets(users)) RefreshPresetPanel(); return 0;
+        std::vector<FbeSearchPresets::SearchPreset> users;
+        if (!LoadUserPresetsForMutation(users)) return 0;
+        for (std::vector<FbeSearchPresets::SearchPreset>::iterator item = users.begin(); item != users.end(); ++item)
+            if (item->id == selectedId)
+            {
+                users.erase(item);
+                break;
+            }
+        if (SaveUserPresets(users))
+            m_view->RefreshOpenSearchPresetPanels(this);
+        return 0;
     }
     LRESULT OnPresetChanged(int, LPNMHDR, BOOL&) { UpdatePresetActions(); return 0; }
     LRESULT OnPresetDblClick(int, LPNMHDR, BOOL&) { ApplySelectedPreset(); return 0; }
@@ -494,6 +564,7 @@ public:
 	LRESULT OnTextChanged(WORD, WORD /* unused: wID */, HWND, BOOL&)
 	{
 		CheckInput();
+		UpdatePresetActions();
 		// Find All is debounced so editing a query never synchronously invokes
 		// PCRE2 on every keystroke. Replace keeps its existing explicit flow.
 		if (GetDlgItem(IDC_FIND_STATUS))
@@ -852,9 +923,11 @@ public:
   LRESULT OnTextChanged(WORD, WORD /* unused: wID */, HWND, BOOL& bHandled) {
     SendMessage(DM_SETDEFID,IDOK);
 	m_selvalid=false;
+	UpdatePresetActions();
     bHandled=FALSE;
     return 0;
   }
+  virtual void InvalidateSearchSelectionState() { m_selvalid = false; }
   LRESULT OnReplChanged(WORD, WORD /* unused: wID */, HWND, BOOL& bHandled) {
     SendMessage(DM_SETDEFID,IDC_REPLACE_ONE);
     bHandled=FALSE;

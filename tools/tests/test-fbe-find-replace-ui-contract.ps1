@@ -107,7 +107,18 @@ Require $dialog 'fbe\.tooltip\.find\.regex_help' 'Regex-help button tooltip'
 Require $dialog 'fbe\.search_preset\.custom_description' 'Custom preset description'
 Require $dialog 'SetPresetPanelVisible\(!m_templatesExpanded\)' 'template panel expand/collapse integration'
 Require $dialog 'MapDialogRect\(dialog, &units\)' 'DPI-aware template panel width'
+Require $dialog 'const int currentHeight = rectangle\.bottom - rectangle\.top;' 'template panel preserves current height'
+Require $dialog 'currentHeight, SWP_NOMOVE \| SWP_NOZORDER \| SWP_NOACTIVATE' 'template panel changes width without moving, activating, or changing z-order'
+if ($dialog -match 'SetWindowPos\(dialog, NULL, 0, 0, visible \?[^\r\n]*\r?\n\s*0, SWP_NOMOVE') { throw 'Template panel must not set dialog height to zero.' }
 Require $dialog 'ShowWindow\(GetDlgItem\(controls\[index\]\), visible \? SW_SHOW : SW_HIDE\)' 'hidden panel controls leave tab navigation'
+Require $dialog 'virtual void InvalidateSearchSelectionState\(\) \{\}' 'search selection invalidation hook'
+Require $dialog 'virtual void InvalidateSearchSelectionState\(\) \{ m_selvalid = false; \}' 'Replace preset application invalidates m_selvalid'
+Require $dialog 'InvalidateSearchSelectionState\(\);[\s\S]*?m_view->m_startMatch = m_view->m_endMatch = 0;[\s\S]*?m_view->m_fo\.ClearMatch\(\);[\s\S]*?m_view->m_design_search\.ClearReplacePreview\(\);' 'preset application clears stale Replace state'
+Require $dialog 'LoadUserPresetsForMutation' 'failed user-preset load blocks mutations'
+Require $dialog 'fbe\.search_preset\.load_failed' 'distinct localized preset-load failure'
+Require $dialog 'if \(!IsReplaceDialog\(\)\)[\s\S]*?preset\.hasReplacement = existing\.hasReplacement;[\s\S]*?preset\.replacementText = existing\.replacementText;' 'Find update preserves hidden replacement'
+Require $dialog 'EnableWindow\(GetDlgItem\(IDC_FIND_PRESET_SAVE\), findTextLength > 0\);' 'empty Find cannot be saved'
+Require $dialog 'RefreshOpenSearchPresetPanels\(this\)' 'open template panels refresh after mutation'
 Require $dialog 'SearchContext\(\) == FbeSearchPresets::SearchUiContext::Design' 'explicit Design/Source UCP behavior'
 Require $dialog 'GetBuiltInPresets\(SearchContext\(\), IsReplaceDialog\(\)' 'context-filtered built-in presets'
 Require $presetCatalog 'if \(definition\.context != context \|\| \(forReplace && !definition\.hasReplacement\)\)' 'Replace excludes find-only presets'
@@ -120,6 +131,7 @@ foreach ($key in @('fbe.search_preset.templates', 'fbe.search_preset.caption', '
     'fbe.search_preset.duplicate_word.name', 'fbe.search_preset.duplicate_word.description',
     'fbe.search_preset.source_repeated_punctuation.name', 'fbe.search_preset.source_repeated_punctuation.description',
     'fbe.search_preset.custom_description',
+    'fbe.search_preset.load_failed',
     'fbe.tooltip.find.templates', 'fbe.tooltip.find.regex_help')) { RequireLocalized $key }
 $builtInLocalizationKeys = @(
     'fbe.search_preset.normalize_spaces.name', 'fbe.search_preset.normalize_spaces.description',

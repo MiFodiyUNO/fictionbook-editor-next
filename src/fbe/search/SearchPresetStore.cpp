@@ -270,6 +270,8 @@ bool SearchPresetStore::Save(const std::vector<SearchPreset>& presets) const
     }
     xml += L"</SearchTemplates>\r\n";
 
+    if (static_cast<size_t>(xml.GetLength()) * sizeof(wchar_t) > kMaximumFileBytes) return false;
+
 #if defined(FBE_SEARCH_PRESET_STORE_TESTING)
     const bool failBeforeReplace = m_failNextWrite;
     m_failNextWrite = false;

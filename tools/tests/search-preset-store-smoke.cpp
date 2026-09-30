@@ -107,6 +107,20 @@ int wmain()
         loaded.clear();
         if (result == 0 && (!store.Load(loaded) || loaded.size() != 2 || loaded[0].name == L"new value")) result = 11; // old good file survives failed atomic write
 #endif
+
+        if (result == 0 && !store.Save(expected)) result = 14;
+        std::vector<SearchPreset> oversized;
+        for (int index = 0; index != 256; ++index)
+        {
+            CString id;
+            id.Format(L"oversized-%d", index);
+            SearchPreset preset = MakePreset(id, SearchUiContext::Design, false);
+            preset.findText = CString(L'x', 8192);
+            oversized.push_back(preset);
+        }
+        if (result == 0 && store.Save(oversized)) result = 15;
+        loaded.clear();
+        if (result == 0 && (!store.Load(loaded) || loaded.size() != expected.size())) result = 16; // oversized save preserves old file
     }
     catch (...) { result = 12; }
     ::DeleteFileW(directory + L"\\SearchTemplates.xml");

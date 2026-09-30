@@ -3,6 +3,15 @@
   "scintilla": {
     "search": [
       {
+        "id": "scintilla_search_preset_repeated_punctuation",
+        "subject": "What?!",
+        "pattern": "[!?]{2,}",
+        "expectedFound": true,
+        "expectedStart": 4,
+        "expectedEnd": 6,
+        "note": "Встроенный Source-шаблон повторной пунктуации должен выполняться Scintilla в режиме C++11 regex."
+      },
+      {
         "id": "scintilla_digits_without_parentheses",
         "subject": "(1)",
         "pattern": "(\\d+)",

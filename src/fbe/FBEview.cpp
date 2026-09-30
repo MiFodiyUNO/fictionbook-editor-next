@@ -4509,6 +4509,14 @@ void CFBEView::SyncSearchOptionsToOpenDialogs(FRBase* source)
 		m_replace_dlg->SyncSearchOptionsFromView();
 }
 
+void CFBEView::RefreshOpenSearchPresetPanels(FRBase* /* source */)
+{
+	if (m_find_dlg != NULL && m_find_dlg->IsValid() && m_find_dlg->m_templatesExpanded)
+		m_find_dlg->RefreshPresetPanel();
+	if (m_replace_dlg != NULL && m_replace_dlg->IsValid() && m_replace_dlg->m_templatesExpanded)
+		m_replace_dlg->RefreshPresetPanel();
+}
+
 LRESULT CFBEView::OnCode(WORD /* unused: wCode */, WORD /* unused: wID */, HWND /* unused: hWnd */, BOOL& /* unused: bHandled */)
 {
 	return InsertCode();
