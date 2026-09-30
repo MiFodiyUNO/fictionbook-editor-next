@@ -29,7 +29,12 @@ void RegexQuickReferencePopup::AddRows(CListBox& list, std::vector<int>& rows, c
 }
 bool RegexQuickReferencePopup::Show(HWND owner, HWND anchor, FbeSearchPresets::SearchUiContext context, FbeSearchPresets::RegexQuickReferenceMode mode, const std::function<void(const FbeSearchPresets::RegexQuickReferenceEntry&)>& insert, const std::function<void()>& fullHelp) {
     m_insert = insert; m_openFullHelp = fullHelp; m_context = context; m_mode = mode; FbeSearchPresets::GetRegexQuickReferenceEntries(context, mode, m_entries); if(m_entries.empty()) return false;
-    const UINT dpi = UiMetrics::DpiForWindow(anchor); RECT rc = {}; ::GetWindowRect(anchor, &rc); const int width = UiMetrics::ScaleForDpi(390, dpi), height = UiMetrics::ScaleForDpi(270, dpi); HMONITOR monitor = MonitorFromWindow(anchor, MONITOR_DEFAULTTONEAREST); MONITORINFO info = { sizeof(info) }; GetMonitorInfo(monitor, &info);
+    const UINT dpi = UiMetrics::DpiForWindow(anchor); RECT rc = {}; ::GetWindowRect(anchor, &rc); HMONITOR monitor = MonitorFromWindow(anchor, MONITOR_DEFAULTTONEAREST); MONITORINFO info = { sizeof(info) }; GetMonitorInfo(monitor, &info);
+    const int workMargin = UiMetrics::ScaleForDpi(12, dpi);
+    const int maxWidth = max(1, info.rcWork.right - info.rcWork.left - workMargin * 2);
+    const int maxHeight = max(1, info.rcWork.bottom - info.rcWork.top - workMargin * 2);
+    const int width = min(UiMetrics::ScaleForDpi(560, dpi), maxWidth);
+    const int height = min(UiMetrics::ScaleForDpi(360, dpi), maxHeight);
     int x = rc.right + width <= info.rcWork.right ? rc.right : rc.left - width; int y = rc.bottom + height <= info.rcWork.bottom ? rc.bottom : rc.top - height;
     x = max(info.rcWork.left, min(x, info.rcWork.right - width)); y = max(info.rcWork.top, min(y, info.rcWork.bottom - height));
     HWND hwnd = Create(owner, CRect(x, y, x + width, y + height), NULL, WS_POPUP | WS_BORDER, WS_EX_TOOLWINDOW);

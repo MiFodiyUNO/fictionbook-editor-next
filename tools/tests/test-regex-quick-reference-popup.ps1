@@ -17,4 +17,7 @@ if($popupHeader -notmatch 'public CMessageFilter') { throw 'Popup must be regist
 if($popup -match 'ShowWindow\(SW_SHOW\)\s*!=\s*FALSE') { throw 'ShowWindow return value must not control popup ownership.' }
 if($popup -notmatch 'HWND hwnd = Create\(' -or $popup -notmatch 'if\(hwnd == NULL\) return false;' -or $popup -notmatch 'ShowWindow\(SW_SHOW\);\s*UpdateWindow\(\);\s*return true;') { throw 'Show must transfer ownership only after a valid HWND was created.' }
 if($popup -notmatch 'const std::function<void\(\)> callback = m_openFullHelp;\s*DestroyWindow\(\);\s*if\(callback\) callback\(\);') { throw 'Full Help callback must be copied before self-destruction.' }
+foreach($token in @('ScaleForDpi(560, dpi)', 'ScaleForDpi(360, dpi)', 'workMargin', 'info.rcWork.right - info.rcWork.left', 'info.rcWork.bottom - info.rcWork.top')) {
+    if($popup -notmatch [regex]::Escape($token)) { throw "Popup must use the available monitor work area for its expanded geometry: $token" }
+}
 Write-Host 'Regex quick-reference popup contract passed.'
