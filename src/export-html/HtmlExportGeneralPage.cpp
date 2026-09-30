@@ -97,6 +97,7 @@ void HtmlExportGeneralPage::UpdateEnabledState()
     if (!splitSupported) CComboBox(GetDlgItem(IDC_DOCUMENT_STRUCTURE)).SetCurSel(0);
     ::EnableWindow(GetDlgItem(IDC_DOCUMENT_STRUCTURE), splitSupported);
     ::EnableWindow(GetDlgItem(IDC_DOCUMENT_STRUCTURE_LABEL), splitSupported);
+    UpdateStructureTooltip();
 }
 
 LRESULT HtmlExportGeneralPage::OnIncludeToc(WORD, WORD, HWND, BOOL&)
@@ -146,7 +147,7 @@ void HtmlExportGeneralPage::InitTooltips()
     AddTooltip(IDC_TOCDEPTH, IDS_TOOLTIP_TOC_DEPTH);
     AddTooltip(IDC_TEMPLATE, IDS_TOOLTIP_TEMPLATE);
     AddTooltip(IDC_BROWSE, IDS_TOOLTIP_BROWSE_TEMPLATE);
-    AddTooltip(IDC_DOCUMENT_STRUCTURE, IDS_TOOLTIP_DOCUMENT_STRUCTURE);
+    AddDisabledStructureTooltip();
 }
 
 void HtmlExportGeneralPage::AddTooltip(UINT id, UINT textId)
@@ -163,6 +164,49 @@ void HtmlExportGeneralPage::AddTooltip(UINT id, UINT textId)
     info.uId = reinterpret_cast<UINT_PTR>(control);
     info.lpszText = const_cast<LPTSTR>(static_cast<LPCTSTR>(text));
     ::SendMessage(m_tooltip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&info));
+}
+
+UINT HtmlExportGeneralPage::StructureTooltipTextId() const
+{
+    if (!m_splitSupported)
+        return IDS_TOOLTIP_DOCUMENT_STRUCTURE_FORMAT;
+    if (!m_templateSupportsSplit)
+        return IDS_TOOLTIP_DOCUMENT_STRUCTURE_CUSTOM_TEMPLATE;
+    return IDS_TOOLTIP_DOCUMENT_STRUCTURE;
+}
+
+void HtmlExportGeneralPage::AddDisabledStructureTooltip()
+{
+    HWND label = GetDlgItem(IDC_DOCUMENT_STRUCTURE_LABEL);
+    HWND combo = GetDlgItem(IDC_DOCUMENT_STRUCTURE);
+    if (!label || !combo) return;
+    RECT labelRect = {}, comboRect = {}, area = {};
+    ::GetWindowRect(label, &labelRect);
+    ::GetWindowRect(combo, &comboRect);
+    ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<LPPOINT>(&labelRect), 2);
+    ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<LPPOINT>(&comboRect), 2);
+    ::UnionRect(&area, &labelRect, &comboRect);
+    m_structureTooltipText = LoadExportHtmlString(StructureTooltipTextId());
+    TOOLINFO info = {};
+    info.cbSize = sizeof(info);
+    info.uFlags = TTF_SUBCLASS;
+    info.hwnd = m_hWnd;
+    info.uId = IDC_DOCUMENT_STRUCTURE;
+    info.rect = area;
+    info.lpszText = const_cast<LPTSTR>(static_cast<LPCTSTR>(m_structureTooltipText));
+    ::SendMessage(m_tooltip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&info));
+}
+
+void HtmlExportGeneralPage::UpdateStructureTooltip()
+{
+    if (!m_tooltip) return;
+    m_structureTooltipText = LoadExportHtmlString(StructureTooltipTextId());
+    TOOLINFO info = {};
+    info.cbSize = sizeof(info);
+    info.hwnd = m_hWnd;
+    info.uId = IDC_DOCUMENT_STRUCTURE;
+    info.lpszText = const_cast<LPTSTR>(static_cast<LPCTSTR>(m_structureTooltipText));
+    ::SendMessage(m_tooltip, TTM_UPDATETIPTEXT, 0, reinterpret_cast<LPARAM>(&info));
 }
 
 LRESULT HtmlExportGeneralPage::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)

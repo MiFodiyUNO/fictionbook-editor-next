@@ -188,7 +188,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		struct HtmlExportDialogState { struct { UINT nFilterIndex; } m_ofn; wchar_t m_szFileName[MAX_PATH]; CString m_template, m_customCss; bool m_usingCustomTemplate, m_includedesc; int m_tocdepth, m_imageMaxWidth, m_imageMaxHeight; } dlg = {};
 		// The portable, self-contained document is the safest default: it cannot
 		// lose its CSS or images when moved to another folder or machine.
-		dlg.m_ofn.nFilterIndex = 4;
+		dlg.m_ofn.nFilterIndex = static_cast<UINT>(ExportHtmlFormatMode::Standalone);
 		wchar_t testModeEnabled[4] = {}, dialogTestScenario[32] = {}, testOutput[MAX_PATH] = {};
 		const bool deterministicTestExport = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testModeEnabled, _countof(testModeEnabled)) == 1 &&
 			testModeEnabled[0] == L'1' && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", dialogTestScenario, _countof(dialogTestScenario)) == wcslen(L"export-html") &&
@@ -197,7 +197,9 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		if (testOutputLength > 0 && testOutputLength < _countof(testOutput)) {
 			wchar_t testExportMode[8] = {};
 			const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_MODE", testExportMode, _countof(testExportMode));
-			dlg.m_ofn.nFilterIndex = testModeLength ? max(1, min(4, _wtoi(testExportMode))) : 4;
+			dlg.m_ofn.nFilterIndex = static_cast<UINT>(testModeLength
+				? ExportHtmlFormatModeFromFilterIndex(static_cast<UINT>(max(0, _wtoi(testExportMode))))
+				: ExportHtmlFormatMode::Standalone);
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), testOutput, _TRUNCATE);
 			dlg.m_template = U::GetProgDirFile(L"html.xsl");
 			dlg.m_usingCustomTemplate = false;
@@ -227,9 +229,9 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			ModernFileDialog::Request request;
 			request.save = true; request.pathMustExist = true; request.overwritePrompt = true; request.defaultExtension = L"html";
 			request.okButtonLabel = LoadExportHtmlString(IDS_SAVE_BUTTON).GetString();
-			request.initialFileName = filename ? filename : L""; request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size()); request.filterIndex = 4;
+			request.initialFileName = filename ? filename : L""; request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size()); request.filterIndex = static_cast<UINT>(ExportHtmlFormatMode::Standalone);
 			request.events = events;
-            options.SetSplitSupported(request.filterIndex == 1 || request.filterIndex == 3);
+            options.SetSplitSupported(ExportHtmlFormatSupportsSplit(ExportHtmlFormatModeFromFilterIndex(request.filterIndex)));
 			request.customize = [](IFileDialogCustomize* customize) {
 				CString button = LoadExportHtmlString(IDS_HTML_EXPORT_OPTIONS_TITLE);
 				button += L"...";
@@ -246,16 +248,17 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			dlg.m_template = exportSettings.templatePath; dlg.m_customCss = exportSettings.customCss; dlg.m_usingCustomTemplate = exportSettings.usingCustomTemplate;
 			dlg.m_includedesc = exportSettings.includeDescription; dlg.m_tocdepth = exportSettings.tocDepth; dlg.m_imageMaxWidth = exportSettings.imageMaxWidth; dlg.m_imageMaxHeight = exportSettings.imageMaxHeight;
 			options.Persist();
-			dlg.m_ofn.nFilterIndex = result.filterIndex;
+			dlg.m_ofn.nFilterIndex = static_cast<UINT>(ExportHtmlFormatModeFromFilterIndex(result.filterIndex));
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), result.paths.front().c_str(), _TRUNCATE);
 		}
-		bool    fMIME = dlg.m_ofn.nFilterIndex == 2;
-		bool    fExternalImages = dlg.m_ofn.nFilterIndex == 1;
-		bool    fEmbeddedImages = dlg.m_ofn.nFilterIndex == 4;
+		const ExportHtmlFormatMode formatMode = ExportHtmlFormatModeFromFilterIndex(dlg.m_ofn.nFilterIndex);
+		bool    fMIME = formatMode == ExportHtmlFormatMode::MHT;
+		bool    fExternalImages = formatMode == ExportHtmlFormatMode::ExternalImages;
+		bool    fEmbeddedImages = formatMode == ExportHtmlFormatMode::Standalone;
 		bool    fImages = fExternalImages || fMIME || fEmbeddedImages;
-		// Split is intentionally limited to the bundled XSL and modes 1/3. MHT and
+		// Split is intentionally limited to the bundled XSL and external-images/HTML-only modes. MHT and
 		// standalone retain their byte-for-byte single-file writer paths.
-		const bool fSplit = exportSettings.documentStructure == 1 && !dlg.m_usingCustomTemplate && (fExternalImages || (!fMIME && !fEmbeddedImages));
+		const bool fSplit = exportSettings.documentStructure == 1 && !dlg.m_usingCustomTemplate && ExportHtmlFormatSupportsSplit(formatMode);
 		CString customCss;
 		if (!LoadUtf8TextFile(dlg.m_customCss, customCss)) {
 			strMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, (LPCTSTR)dlg.m_customCss,
@@ -294,8 +297,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		// Keep XSL parameters behind a value-model adapter; ExportCore remains a writer.
 		HtmlExportXslParameters::Apply(proc, exportSettings, customCss);
 
-		// 1 = HTML and an adjacent resource folder, 2 = MHT,
-		// 3 = HTML without images, 4 = self-contained HTML with data: URIs.
+		// Standalone = 1, ExternalImages = 2, MHT = 3, HtmlOnly = 4.
 		HtmlExportWriter::Options writerOptions;
 		writerOptions.targetPath = fSplit ? SplitIndexPath(dlg.m_szFileName) : std::wstring(dlg.m_szFileName);
 		writerOptions.mime = fMIME;

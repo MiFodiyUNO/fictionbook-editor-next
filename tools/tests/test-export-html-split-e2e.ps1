@@ -16,7 +16,7 @@ try {
     $selected = Join-Path $directory 'chosen-name.html'
     $old = @($env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_EXPORT_HTML_PATH, $env:FBE_NEXT_TEST_EXPORT_HTML_MODE, $env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT)
     try {
-        $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='export-html'; $env:FBE_NEXT_TEST_EXPORT_HTML_PATH=$selected; $env:FBE_NEXT_TEST_EXPORT_HTML_MODE='1'; $env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT='1'
+        $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='export-html'; $env:FBE_NEXT_TEST_EXPORT_HTML_PATH=$selected; $env:FBE_NEXT_TEST_EXPORT_HTML_MODE='2'; $env:FBE_NEXT_TEST_EXPORT_HTML_SPLIT='1'
         $report = Join-Path $directory 'split.tsv'; $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE did not finish split export.' }
         if ($process.ExitCode -ne 0) { throw "FBE split export failed: $($process.ExitCode)" }
@@ -42,14 +42,14 @@ try {
     }
     # A generated index is not silently overwritten when its confirmation is declined.
     [IO.File]::WriteAllText($index, 'original-index', [Text.UTF8Encoding]::new($false))
-    Invoke-SplitExport $selected 1 0 '0'
+    Invoke-SplitExport $selected 2 0 '0'
     if ([IO.File]::ReadAllText($index, [Text.UTF8Encoding]::new($false)) -ne 'original-index') { throw 'Existing index.html was overwritten without confirmation.' }
     $htmlOnlyDirectory = Join-Path $directory 'html-only'; New-Item -ItemType Directory -Path $htmlOnlyDirectory | Out-Null
-    Invoke-SplitExport (Join-Path $htmlOnlyDirectory 'chosen.html') 3
+    Invoke-SplitExport (Join-Path $htmlOnlyDirectory 'chosen.html') 4
     $htmlOnlyIndex = Join-Path $htmlOnlyDirectory 'index.html'
     if (-not (Test-Path -LiteralPath $htmlOnlyIndex) -or (Get-Content -Raw -LiteralPath $htmlOnlyIndex) -match '<img\b') { throw 'Split HTML-without-images mode regressed.' }
     $bookEndDirectory = Join-Path $directory 'book-end'; New-Item -ItemType Directory -Path $bookEndDirectory | Out-Null
-    Invoke-SplitExport (Join-Path $bookEndDirectory 'chosen.html') 1 1
+    Invoke-SplitExport (Join-Path $bookEndDirectory 'chosen.html') 2 1
     $bookEndIndex = Get-Content -Raw -LiteralPath (Join-Path $bookEndDirectory 'index.html')
     $bookEndFirst = Get-Content -Raw -LiteralPath ((Get-ChildItem -LiteralPath $bookEndDirectory -Filter 'section-1-*.html').FullName)
     if ($bookEndIndex -notmatch 'class="notes"' -or $bookEndFirst -notmatch 'index.html#note') { throw 'End-of-book split notes or links regressed.' }
@@ -61,7 +61,7 @@ try {
 "@ | Set-Content -LiteralPath $nestedFixture -Encoding utf8
     $fixture = $nestedFixture
     $sectionEndDirectory = Join-Path $directory 'section-end'; New-Item -ItemType Directory -Path $sectionEndDirectory | Out-Null
-    Invoke-SplitExport (Join-Path $sectionEndDirectory 'chosen.html') 1 2
+    Invoke-SplitExport (Join-Path $sectionEndDirectory 'chosen.html') 2 2
     $sectionEndFirst = Get-Content -Raw -LiteralPath ((Get-ChildItem -LiteralPath $sectionEndDirectory -Filter 'section-1-*.html').FullName)
     if ($sectionEndFirst -notmatch 'class="notes"') { throw 'End-of-section split notes regressed.' }
     Write-Host 'ExportHTML split production E2E passed.'

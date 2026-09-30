@@ -29,8 +29,12 @@ private:
     bool m_splitSupported = true;
     bool m_templateSupportsSplit = true;
     std::vector<CString> m_tooltipTexts;
+    CString m_structureTooltipText;
     void InitTooltips();
     void AddTooltip(UINT id, UINT textId);
+    void AddDisabledStructureTooltip();
+    void UpdateStructureTooltip();
+    UINT StructureTooltipTextId() const;
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnIncludeToc(WORD, WORD, HWND, BOOL&);
     LRESULT OnBrowseTemplate(WORD, WORD, HWND, BOOL&);

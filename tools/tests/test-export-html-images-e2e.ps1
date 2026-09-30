@@ -82,24 +82,24 @@ try {
             if ($process.ExitCode -ne 0) { throw "FBE returned $($process.ExitCode) for ExportHTML mode $Mode." }
         } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TEST_EXPORT_HTML_PATH,$env:FBE_NEXT_TEST_EXPORT_HTML_MODE,$env:FBE_NEXT_TEST_EXPORT_HTML_DOM_PATH = $old }
     }
-    $self = Join-Path $directory 'book.html'; Invoke-Export 4 $self
+    $self = Join-Path $directory 'book.html'; Invoke-Export 1 $self
     $selfText = Get-Content -Raw -LiteralPath $self
     if (@([regex]::Matches($selfText, 'data:image/(?:png|jpeg);base64,')).Count -lt 3 -or $selfText -match '_files/') { throw 'Self-contained ExportHTML did not embed cover, PNG and JPEG.' }
     Assert-HtmlImages $self $directory $true
-    $external = Join-Path $directory 'external.html'; Invoke-Export 1 $external
+    $external = Join-Path $directory 'external.html'; Invoke-Export 2 $external
     $externalText = Get-Content -Raw -LiteralPath $external; $resources = Join-Path $directory 'external_files'
     if (-not (Test-Path -LiteralPath $resources) -or @([IO.Directory]::GetFiles($resources)).Count -lt 3 -or $externalText -notmatch 'external_files/') { throw 'External-image ExportHTML did not create resolvable resources.' }
     Assert-HtmlImages $external $directory $false
-    $htmlOnly = Join-Path $directory 'html-only.html'; Invoke-Export 3 $htmlOnly
+    $htmlOnly = Join-Path $directory 'html-only.html'; Invoke-Export 4 $htmlOnly
     if (-not (Test-Path -LiteralPath $htmlOnly) -or (Get-Content -Raw -LiteralPath $htmlOnly) -match '<img\b') { throw 'HTML-only ExportHTML left image references.' }
-    $mht = Join-Path $directory 'book.mht'; Invoke-Export 2 $mht
+    $mht = Join-Path $directory 'book.mht'; Invoke-Export 3 $mht
     $mhtText = Get-Content -Raw -LiteralPath $mht
     if ($mhtText -notmatch 'multipart/related' -or @([regex]::Matches($mhtText, 'Content-Transfer-Encoding: base64')).Count -lt 3) { throw 'MHT ExportHTML is missing image MIME parts.' }
     $unicodeDirectory = Join-Path $directory 'Проверка HTML'; [void](New-Item -ItemType Directory -Path $unicodeDirectory)
-    $unicodeSelf = Join-Path $unicodeDirectory 'книга.html'; Invoke-Export 4 $unicodeSelf
+    $unicodeSelf = Join-Path $unicodeDirectory 'книга.html'; Invoke-Export 1 $unicodeSelf
     if (-not (Test-Path -LiteralPath $unicodeSelf) -or @([regex]::Matches((Get-Content -Raw -LiteralPath $unicodeSelf), 'data:image/(?:png|jpeg);base64,')).Count -lt 3) { throw 'Self-contained Unicode ExportHTML path failed.' }
     Assert-HtmlImages $unicodeSelf $unicodeDirectory $true
-    $unicodeExternal = Join-Path $unicodeDirectory 'внешние.html'; Invoke-Export 1 $unicodeExternal
+    $unicodeExternal = Join-Path $unicodeDirectory 'внешние.html'; Invoke-Export 2 $unicodeExternal
     if (-not (Test-Path -LiteralPath $unicodeExternal) -or (Get-Content -Raw -LiteralPath $unicodeExternal) -match 'src="data:;base64,"') { throw 'External-image Unicode ExportHTML path failed.' }
     Assert-HtmlImages $unicodeExternal $unicodeDirectory $false
     Write-Host 'ExportHTML images production E2E passed (modes 1-4).'

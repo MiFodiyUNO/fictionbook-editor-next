@@ -18,6 +18,29 @@ inline void BuildHtmlModernFileTypes(const CString& value, std::vector<CString>&
     for(size_t i=0;i<labels.size();++i) filters.push_back({labels[i],patterns[i]});
 }
 
+enum class ExportHtmlFormatMode : UINT
+{
+    Standalone = 1,
+    ExternalImages = 2,
+    MHT = 3,
+    HtmlOnly = 4
+};
+
+inline ExportHtmlFormatMode ExportHtmlFormatModeFromFilterIndex(UINT filterIndex)
+{
+    switch (filterIndex) {
+    case static_cast<UINT>(ExportHtmlFormatMode::ExternalImages): return ExportHtmlFormatMode::ExternalImages;
+    case static_cast<UINT>(ExportHtmlFormatMode::MHT): return ExportHtmlFormatMode::MHT;
+    case static_cast<UINT>(ExportHtmlFormatMode::HtmlOnly): return ExportHtmlFormatMode::HtmlOnly;
+    default: return ExportHtmlFormatMode::Standalone;
+    }
+}
+
+inline bool ExportHtmlFormatSupportsSplit(ExportHtmlFormatMode mode)
+{
+    return mode == ExportHtmlFormatMode::ExternalImages || mode == ExportHtmlFormatMode::HtmlOnly;
+}
+
 class CHtmlExportOptionsDialog : public CDialogImpl<CHtmlExportOptionsDialog>
 {
 public:
@@ -66,7 +89,7 @@ public:
     STDMETHOD(OnFileOk)(IFileDialog*) { return S_OK; } STDMETHOD(OnFolderChanging)(IFileDialog*, IShellItem*) { return S_OK; }
     STDMETHOD(OnFolderChange)(IFileDialog*) { return S_OK; } STDMETHOD(OnSelectionChange)(IFileDialog*) { return S_OK; }
     STDMETHOD(OnShareViolation)(IFileDialog*, IShellItem*, FDE_SHAREVIOLATION_RESPONSE* r) { if (r) *r=FDESVR_DEFAULT; return S_OK; }
-    STDMETHOD(OnTypeChange)(IFileDialog* dialog) { UINT type = 4; if (dialog) dialog->GetFileTypeIndex(&type); if (options) options->SetSplitSupported(type == 1 || type == 3); return S_OK; } STDMETHOD(OnOverwrite)(IFileDialog*, IShellItem*, FDE_OVERWRITE_RESPONSE* r) { if (r) *r=FDEOR_DEFAULT; return S_OK; }
+    STDMETHOD(OnTypeChange)(IFileDialog* dialog) { UINT type = static_cast<UINT>(ExportHtmlFormatMode::Standalone); if (dialog) dialog->GetFileTypeIndex(&type); if (options) options->SetSplitSupported(ExportHtmlFormatSupportsSplit(ExportHtmlFormatModeFromFilterIndex(type))); return S_OK; } STDMETHOD(OnOverwrite)(IFileDialog*, IShellItem*, FDE_OVERWRITE_RESPONSE* r) { if (r) *r=FDEOR_DEFAULT; return S_OK; }
     STDMETHOD(OnItemSelected)(IFileDialogCustomize*, DWORD, DWORD) { return S_OK; } STDMETHOD(OnCheckButtonToggled)(IFileDialogCustomize*, DWORD, BOOL) { return S_OK; }
     STDMETHOD(OnControlActivating)(IFileDialogCustomize*, DWORD) { return S_OK; }
     STDMETHOD(OnButtonClicked)(IFileDialogCustomize* customize, DWORD id);

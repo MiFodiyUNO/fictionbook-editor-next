@@ -21,7 +21,11 @@ $dialogPath = Join-Path $repoRoot "src\export-html\HtmlExportOptionsDialog.h"
 $pluginCatalog = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'localization\plugin-ui\catalog.json') | ConvertFrom-Json
 $appCatalog = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'localization\app-ui\catalog.json') | ConvertFrom-Json
 if ((@($pluginCatalog.targetLanguages) -join '|') -ne (@($appCatalog.targetLanguages) -join '|')) { throw 'plugin-ui.targetLanguages must match app-ui.targetLanguages.' }
-$newExportHtmlResourceIds = @('IDS_SAVE_BUTTON', 'IDS_OPTIONS_CSS_CLEAR', 'IDS_OPTIONS_IMAGES_FOLDER_NAME', 'IDS_OPTIONS_WARNING_MIB', 'IDS_TOOLTIP_INCLUDE_TOC', 'IDS_TOOLTIP_STYLE', 'IDS_TOOLTIP_FONT', 'IDS_TOOLTIP_FONT_SIZE', 'IDS_TOOLTIP_LINE_HEIGHT', 'IDS_TOOLTIP_CONTENT_WIDTH', 'IDS_TOOLTIP_MARGINS', 'IDS_TOOLTIP_TEXT_ALIGNMENT', 'IDS_TOOLTIP_HEADING_ALIGNMENT', 'IDS_TOOLTIP_CSS_CLEAR', 'IDS_TOOLTIP_COVER_MODE', 'IDS_TOOLTIP_IMAGES_FOLDER', 'IDS_TOOLTIP_IMAGES_FOLDER_NAME', 'IDS_TOOLTIP_WARNING_MIB', 'IDS_TOOLTIP_NOTE_PLACEMENT', 'IDS_TOOLTIP_METADATA', 'IDS_TOOLTIP_METADATA_CHILD', 'IDS_OPTIONS_DOCUMENT_STRUCTURE', 'IDS_OPTIONS_VALUE_SINGLE_HTML', 'IDS_OPTIONS_VALUE_SPLIT_SECTIONS', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE')
+$saveFilterEntry = $pluginCatalog.strings.'export_html.runtime.save_file_filter'
+if ($null -eq $saveFilterEntry) { throw 'ExportHTML Save-dialog filter catalog entry is missing.' }
+if ($saveFilterEntry.source -notmatch '^Self-contained HTML \(\*\.html;\*\.htm\)\|\*\.htm;\*\.html\|Web Page, complete') { throw 'Standalone HTML must be the first localized Save-dialog filter.' }
+if ($saveFilterEntry.translations.'ru-RU' -notmatch '^Автономный HTML \(\*\.html;\*\.htm\)\|\*\.htm;\*\.html\|Веб-страница полностью') { throw 'Russian Save-dialog filter order must begin with standalone HTML.' }
+$newExportHtmlResourceIds = @('IDS_SAVE_BUTTON', 'IDS_OPTIONS_CSS_CLEAR', 'IDS_OPTIONS_IMAGES_FOLDER_NAME', 'IDS_OPTIONS_WARNING_MIB', 'IDS_TOOLTIP_INCLUDE_TOC', 'IDS_TOOLTIP_STYLE', 'IDS_TOOLTIP_FONT', 'IDS_TOOLTIP_FONT_SIZE', 'IDS_TOOLTIP_LINE_HEIGHT', 'IDS_TOOLTIP_CONTENT_WIDTH', 'IDS_TOOLTIP_MARGINS', 'IDS_TOOLTIP_TEXT_ALIGNMENT', 'IDS_TOOLTIP_HEADING_ALIGNMENT', 'IDS_TOOLTIP_CSS_CLEAR', 'IDS_TOOLTIP_COVER_MODE', 'IDS_TOOLTIP_IMAGES_FOLDER', 'IDS_TOOLTIP_IMAGES_FOLDER_NAME', 'IDS_TOOLTIP_WARNING_MIB', 'IDS_TOOLTIP_NOTE_PLACEMENT', 'IDS_TOOLTIP_METADATA', 'IDS_TOOLTIP_METADATA_CHILD', 'IDS_OPTIONS_DOCUMENT_STRUCTURE', 'IDS_OPTIONS_VALUE_SINGLE_HTML', 'IDS_OPTIONS_VALUE_SPLIT_SECTIONS', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE_FORMAT', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE_CUSTOM_TEMPLATE')
 $identicalTechnicalTermAllowlist = @{
     # Only resource IDs and locales explicitly listed here may intentionally match English.
 }
@@ -145,7 +149,10 @@ $requiredResourceIds = @(
     "IDS_TOOLTIP_WARNING_MIB",
     "IDS_TOOLTIP_NOTE_PLACEMENT",
     "IDS_TOOLTIP_METADATA",
-    "IDS_TOOLTIP_METADATA_CHILD"
+    "IDS_TOOLTIP_METADATA_CHILD",
+    "IDS_TOOLTIP_DOCUMENT_STRUCTURE",
+    "IDS_TOOLTIP_DOCUMENT_STRUCTURE_FORMAT",
+    "IDS_TOOLTIP_DOCUMENT_STRUCTURE_CUSTOM_TEMPLATE"
 )
 
 

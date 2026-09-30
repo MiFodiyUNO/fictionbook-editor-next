@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
 $pluginSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\export-html\ExportHTMLPlugin.cpp')
-if ($pluginSource -notmatch 'dlg\.m_ofn\.nFilterIndex\s*=\s*4') {
+if ($pluginSource -notmatch 'dlg\.m_ofn\.nFilterIndex\s*=\s*static_cast<UINT>\(ExportHtmlFormatMode::Standalone\)') {
     throw 'Автономный HTML должен быть выбранным по умолчанию форматом сохранения.'
 }
 if ($pluginSource -notmatch 'proc->put_input\(variant_t\(\(IDispatch\*\)source\)\)') {

@@ -44,9 +44,17 @@ if (([regex]::Matches($project, '<ClInclude Include="HtmlExportOptionsDialog\.h"
 if (([regex]::Matches($filters, '<ClInclude Include="HtmlExportOptionsDialog\.h"').Count) -ne 1) { throw 'ExportHTML.vcxproj.filters must contain one final options-dialog header entry.' }
 $generalPage = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportGeneralPage.cpp')
 $generalHeader = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportGeneralPage.h')
-foreach ($token in @('options.SetSplitSupported(request.filterIndex == 1 || request.filterIndex == 3)', 'OnTypeChange)(IFileDialog* dialog)', 'type == 1 || type == 3', 'm_templateSupportsSplit', 'IDC_DOCUMENT_STRUCTURE')) {
+foreach ($token in @('enum class ExportHtmlFormatMode', 'Standalone = 1', 'ExternalImages = 2', 'MHT = 3', 'HtmlOnly = 4', 'ExportHtmlFormatModeFromFilterIndex', 'ExportHtmlFormatSupportsSplit', 'mode == ExportHtmlFormatMode::ExternalImages || mode == ExportHtmlFormatMode::HtmlOnly', 'OnTypeChange)(IFileDialog* dialog)', 'm_templateSupportsSplit', 'IDC_DOCUMENT_STRUCTURE')) {
     if ($allSource + $generalPage -notmatch [regex]::Escape($token)) { throw "Split availability contract is missing: $token" }
 }
+if ($plugin -notmatch 'request\.filterIndex\s*=\s*static_cast<UINT>\(ExportHtmlFormatMode::Standalone\)') { throw 'Standalone HTML must be the initial Save-dialog filter.' }
+if ($plugin -match 'filterIndex\s*==\s*[1-4]|nFilterIndex\s*==\s*[1-4]') { throw 'ExportHTML format selection must not use numeric mode magic values.' }
+$structureTooltipContracts = @('AddDisabledStructureTooltip()', 'StructureTooltipTextId()', 'TTF_SUBCLASS', 'info.hwnd = m_hWnd', '::UnionRect', 'TTM_ADDTOOL', 'TTM_UPDATETIPTEXT', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE_FORMAT', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE_CUSTOM_TEMPLATE')
+foreach ($contract in $structureTooltipContracts) { if (($generalPage + $generalHeader) -notmatch [regex]::Escape($contract)) { throw "Document structure tooltip contract is missing: $contract" } }
+$structureTooltipFunction = $generalPage.Substring($generalPage.IndexOf('UINT HtmlExportGeneralPage::StructureTooltipTextId() const'))
+$formatTooltipIndex = $structureTooltipFunction.IndexOf('if (!m_splitSupported)')
+$customTooltipIndex = $structureTooltipFunction.IndexOf('if (!m_templateSupportsSplit)')
+if ($formatTooltipIndex -lt 0 -or $customTooltipIndex -lt $formatTooltipIndex) { throw 'Disabled format tooltip must take precedence over the custom-template tooltip.' }
 $templatePathIndex = $generalPage.IndexOf('candidate.templatePath = U::GetWindowText')
 $customTemplateIndex = $generalPage.IndexOf('candidate.usingCustomTemplate = !ExportHtmlPathsEqual')
 $structureIndex = $generalPage.IndexOf('candidate.documentStructure = m_splitSupported && m_templateSupportsSplit')
@@ -59,7 +67,7 @@ Write-Host 'HTML export options dialog contract passed.'
 
 $runtimeLocalization = Get-Content -Raw (Join-Path $root 'src\export-html\RuntimeLocalization.cpp')
 $catalog = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'localization\plugin-ui\catalog.json') | ConvertFrom-Json
-$requiredTooltipIds = @('IDS_TOOLTIP_INCLUDE_TOC', 'IDS_TOOLTIP_STYLE', 'IDS_TOOLTIP_FONT', 'IDS_TOOLTIP_FONT_SIZE', 'IDS_TOOLTIP_LINE_HEIGHT', 'IDS_TOOLTIP_CONTENT_WIDTH', 'IDS_TOOLTIP_MARGINS', 'IDS_TOOLTIP_TEXT_ALIGNMENT', 'IDS_TOOLTIP_HEADING_ALIGNMENT', 'IDS_TOOLTIP_CSS_CLEAR', 'IDS_TOOLTIP_COVER_MODE', 'IDS_TOOLTIP_IMAGES_FOLDER', 'IDS_TOOLTIP_IMAGES_FOLDER_NAME', 'IDS_TOOLTIP_WARNING_MIB', 'IDS_TOOLTIP_NOTE_PLACEMENT', 'IDS_TOOLTIP_METADATA', 'IDS_TOOLTIP_METADATA_CHILD', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE')
+$requiredTooltipIds = @('IDS_TOOLTIP_INCLUDE_TOC', 'IDS_TOOLTIP_STYLE', 'IDS_TOOLTIP_FONT', 'IDS_TOOLTIP_FONT_SIZE', 'IDS_TOOLTIP_LINE_HEIGHT', 'IDS_TOOLTIP_CONTENT_WIDTH', 'IDS_TOOLTIP_MARGINS', 'IDS_TOOLTIP_TEXT_ALIGNMENT', 'IDS_TOOLTIP_HEADING_ALIGNMENT', 'IDS_TOOLTIP_CSS_CLEAR', 'IDS_TOOLTIP_COVER_MODE', 'IDS_TOOLTIP_IMAGES_FOLDER', 'IDS_TOOLTIP_IMAGES_FOLDER_NAME', 'IDS_TOOLTIP_WARNING_MIB', 'IDS_TOOLTIP_NOTE_PLACEMENT', 'IDS_TOOLTIP_METADATA', 'IDS_TOOLTIP_METADATA_CHILD', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE_FORMAT', 'IDS_TOOLTIP_DOCUMENT_STRUCTURE_CUSTOM_TEMPLATE')
 foreach ($id in @('IDS_OPTIONS_CSS_CLEAR') + $requiredTooltipIds) {
     if ($runtimeLocalization -notmatch [regex]::Escape($id)) { throw "Runtime localization binding is missing: $id" }
     $entry = @($catalog.strings.PSObject.Properties | Where-Object { $_.Value.resourceId -eq $id -and $_.Value.component -like 'export-html.*' })
