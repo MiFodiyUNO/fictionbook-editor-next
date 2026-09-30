@@ -29,6 +29,17 @@ if ($plugin -notmatch 'Outcome::Cancelled[\s\S]*Outcome::Failed[\s\S]*options\.P
 if ($implementation -match 'OnInitDialog[^{]*\{[^}]*HtmlExportSettingsStore::Load') { throw 'HTML options OnInitDialog must not reload persistent settings.' }
 if ($plugin -notmatch 'options\.LoadSettings\(\);[\s\S]*ModernFileDialog::Show') { throw 'HTML options must load settings once before opening Save dialog.' }
 if ($implementation -notmatch 'OnCancel[\s\S]*EndDialog\(IDCANCEL\)') { throw 'Nested HTML options Cancel must leave the current object unchanged.' }
+if ($plugin -notmatch 'request\.okButtonLabel\s*=\s*LoadExportHtmlString\(IDS_SAVE_BUTTON\)\.GetString\(\)') { throw 'ExportHTML Save dialog must request the localized Save caption.' }
+$settingsModalIndex = $implementation.IndexOf('options->DoModal(h)')
+$restoreSaveCaptionIndex = $implementation.IndexOf('fileDialog->SetOkButtonLabel(LoadExportHtmlString(IDS_SAVE_BUTTON))')
+if ($settingsModalIndex -lt 0 -or $restoreSaveCaptionIndex -lt $settingsModalIndex) { throw 'ExportHTML must restore the Save caption after closing export options.' }
+if ($resource -notmatch 'COMBOBOX\s+IDC_CUSTOM_FONT[^\r\n]*CBS_DROPDOWN[^\r\n]*CBS_AUTOHSCROLL') { throw 'Custom font control must be an editable combo box.' }
+$customFontContracts = @('EnumFontFamiliesExW', 'EnumFontFamilyProc', 'ContainsFontFamily', 'std::sort', 'PopulateCustomFontCombo', 'combo.ResetContent()', 'combo.AddString(fonts[index])', 'combo.SetWindowText(selected)', 'candidate.customFontFamily = U::GetWindowText(GetDlgItem(IDC_CUSTOM_FONT))')
+foreach ($contract in $customFontContracts) { if ($appearanceSource -notmatch [regex]::Escape($contract)) { throw "Custom font picker contract is missing: $contract" } }
+if ($appearanceSource -notmatch 'name\[0\]\s*==\s*L''@''\s*\|\|\s*ContainsFontFamily') { throw 'Custom font list must exclude duplicate vertical font families.' }
+foreach ($preset in @('IDS_OPTIONS_VALUE_SERIF', 'IDS_OPTIONS_VALUE_SANS', 'IDS_OPTIONS_VALUE_SYSTEM', 'IDS_OPTIONS_VALUE_CUSTOM', 'max(0, min(3, CComboBox(GetDlgItem(IDC_FONT_FAMILY)).GetCurSel()))')) {
+    if ($appearanceSource -notmatch [regex]::Escape($preset)) { throw "Font preset regression: $preset" }
+}
 if (([regex]::Matches($project, '<ClInclude Include="HtmlExportOptionsDialog\.h"').Count) -ne 1) { throw 'ExportHTML.vcxproj must contain one final options-dialog header entry.' }
 if (([regex]::Matches($filters, '<ClInclude Include="HtmlExportOptionsDialog\.h"').Count) -ne 1) { throw 'ExportHTML.vcxproj.filters must contain one final options-dialog header entry.' }
 $generalPage = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExportGeneralPage.cpp')

@@ -5,6 +5,7 @@
 #include "..\\common\\ModernFileDialog.h"
 
 #include <vector>
+#include <algorithm>
 
 namespace {
 void BuildCssFileTypes(const CString& source, std::vector<CString>& labels, std::vector<CString>& patterns, std::vector<COMDLG_FILTERSPEC>& filters)
@@ -25,6 +26,40 @@ void BuildCssFileTypes(const CString& source, std::vector<CString>& labels, std:
     }
     for (size_t index = 0; index < labels.size(); ++index)
         filters.push_back({ labels[index], patterns[index] });
+}
+
+bool ContainsFontFamily(const std::vector<CString>& fonts, const CString& name)
+{
+    for (size_t index = 0; index < fonts.size(); ++index)
+        if (fonts[index].CompareNoCase(name) == 0)
+            return true;
+    return false;
+}
+
+int CALLBACK EnumFontFamilyProc(const LOGFONTW* logFont, const TEXTMETRICW*, DWORD, LPARAM data)
+{
+    std::vector<CString>* fonts = reinterpret_cast<std::vector<CString>*>(data);
+    if (!fonts || !logFont)
+        return 1;
+    CString name(logFont->lfFaceName);
+    name.Trim();
+    if (name.IsEmpty() || name[0] == L'@' || ContainsFontFamily(*fonts, name))
+        return 1;
+    fonts->push_back(name);
+    return 1;
+}
+
+void EnumerateInstalledFontFamilies(std::vector<CString>& fonts)
+{
+    fonts.clear();
+    HDC display = ::GetDC(NULL);
+    if (display) {
+        LOGFONTW request = {};
+        request.lfCharSet = DEFAULT_CHARSET;
+        ::EnumFontFamiliesExW(display, &request, reinterpret_cast<FONTENUMPROCW>(EnumFontFamilyProc), reinterpret_cast<LPARAM>(&fonts), 0);
+        ::ReleaseDC(NULL, display);
+    }
+    std::sort(fonts.begin(), fonts.end(), [](const CString& left, const CString& right) { return left.CompareNoCase(right) < 0; });
 }
 }
 
@@ -69,7 +104,10 @@ void HtmlExportAppearancePage::LoadFromSettings()
     FillCombo(IDC_PAGE_MARGINS, margins, _countof(margins), m_settings->pageMargins);
     FillCombo(IDC_TEXT_ALIGNMENT, text, _countof(text), m_settings->textAlignment);
     FillCombo(IDC_HEADING_ALIGNMENT, headings, _countof(headings), m_settings->headingAlignment);
-    SetDlgItemText(IDC_CUSTOM_FONT, m_settings->customFontFamily);
+    if (m_settings->fontFamily == 3)
+        PopulateCustomFontCombo(m_settings->customFontFamily);
+    else
+        SetDlgItemText(IDC_CUSTOM_FONT, m_settings->customFontFamily);
     SetDlgItemInt(IDC_FONT_SIZE, m_settings->fontSize, FALSE);
     SetDlgItemInt(IDC_CONTENT_WIDTH, m_settings->contentMaxWidth, FALSE);
     SetDlgItemText(IDC_CUSTOM_CSS, m_settings->customCss);
@@ -104,6 +142,19 @@ void HtmlExportAppearancePage::UpdateEnabledState()
     ::EnableWindow(GetDlgItem(IDC_CUSTOM_FONT), CComboBox(GetDlgItem(IDC_FONT_FAMILY)).GetCurSel() == 3);
 }
 
+void HtmlExportAppearancePage::PopulateCustomFontCombo(const CString& selected)
+{
+    CComboBox combo = GetDlgItem(IDC_CUSTOM_FONT);
+    if (!combo.IsWindow())
+        return;
+    std::vector<CString> fonts;
+    EnumerateInstalledFontFamilies(fonts);
+    combo.ResetContent();
+    for (size_t index = 0; index < fonts.size(); ++index)
+        combo.AddString(fonts[index]);
+    combo.SetWindowText(selected);
+}
+
 LRESULT HtmlExportAppearancePage::OnClearCss(WORD, WORD, HWND, BOOL&)
 {
     SetDlgItemText(IDC_CUSTOM_CSS, L"");
@@ -133,6 +184,8 @@ LRESULT HtmlExportAppearancePage::OnBrowseCss(WORD, WORD, HWND, BOOL&)
 
 LRESULT HtmlExportAppearancePage::OnFontFamily(WORD, WORD, HWND, BOOL&)
 {
+    if (CComboBox(GetDlgItem(IDC_FONT_FAMILY)).GetCurSel() == 3)
+        PopulateCustomFontCombo(U::GetWindowText(GetDlgItem(IDC_CUSTOM_FONT)));
     UpdateEnabledState();
     return 0;
 }

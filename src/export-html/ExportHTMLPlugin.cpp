@@ -226,6 +226,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			if (FAILED(eventHr)) return eventHr;
 			ModernFileDialog::Request request;
 			request.save = true; request.pathMustExist = true; request.overwritePrompt = true; request.defaultExtension = L"html";
+			request.okButtonLabel = LoadExportHtmlString(IDS_SAVE_BUTTON).GetString();
 			request.initialFileName = filename ? filename : L""; request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size()); request.filterIndex = 4;
 			request.events = events;
             options.SetSplitSupported(request.filterIndex == 1 || request.filterIndex == 3);

@@ -46,6 +46,17 @@
         "nl-NL": "HTML-exportopties", "cs-CZ": "Možnosti exportu HTML", "bg-BG": "Настройки за експортиране на HTML"
       }
     },
+    "export_html.dialog.save.button": {
+      "source": "Save",
+      "component": "export-html.dialog.save",
+      "resourceId": "IDS_SAVE_BUTTON",
+      "translations": {
+        "en-US": "Save", "ru-RU": "Сохранить", "uk-UA": "Зберегти",
+        "de-DE": "Speichern", "fr-FR": "Enregistrer", "es-ES": "Guardar",
+        "it-IT": "Salva", "pl-PL": "Zapisz", "pt-PT": "Guardar",
+        "nl-NL": "Opslaan", "cs-CZ": "Uložit", "bg-BG": "Запиши"
+      }
+    },
     "export_html.dialog.save.template_label": {
       "source": "XSL Template:",
       "component": "export-html.dialog.save",

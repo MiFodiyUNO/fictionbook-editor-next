@@ -93,6 +93,16 @@ LRESULT CHtmlExportOptionsDialog::OnOk(WORD, WORD, HWND, BOOL&)
 LRESULT CHtmlExportOptionsDialog::OnCancel(WORD, WORD, HWND, BOOL&) { EndDialog(IDCANCEL); return 0; }
 STDMETHODIMP CHtmlFileDialogEvents::OnButtonClicked(IFileDialogCustomize* customize, DWORD id)
 {
-    if (id==SettingsButtonId && options) { HWND h=owner; CComPtr<IOleWindow> w; if(customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&w)))) w->GetWindow(&h); options->DoModal(h); }
+    if (id==SettingsButtonId && options) {
+        HWND h=owner;
+        CComPtr<IOleWindow> w;
+        if(customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&w)))) w->GetWindow(&h);
+        options->DoModal(h);
+        if (customize) {
+            CComPtr<IFileDialog> fileDialog;
+            if (SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialog))) && fileDialog)
+                fileDialog->SetOkButtonLabel(LoadExportHtmlString(IDS_SAVE_BUTTON));
+        }
+    }
     return S_OK;
 }

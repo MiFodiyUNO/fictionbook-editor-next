@@ -125,6 +125,7 @@
 #define IDS_OPTIONS_VALUE_SINGLE_HTML     217
 #define IDS_OPTIONS_VALUE_SPLIT_SECTIONS 218
 #define IDS_TOOLTIP_DOCUMENT_STRUCTURE   219
+#define IDS_SAVE_BUTTON                  220
 #define IDC_OPTIONS_TABS                 1014
 #define IDC_INCLUDE_TOC                  1015
 #define IDC_FORMAT_VALUE                 1017

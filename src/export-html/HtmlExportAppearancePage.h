@@ -29,6 +29,7 @@ private:
     void InitTooltips();
     void AddTooltip(UINT id, UINT textId);
     void FillCombo(UINT id, const UINT* strings, size_t count, int selection);
+    void PopulateCustomFontCombo(const CString& selected);
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnClearCss(WORD, WORD, HWND, BOOL&);
