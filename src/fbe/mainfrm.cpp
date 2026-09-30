@@ -6670,15 +6670,15 @@ void CMainFrame::ApplyEditorBackgroundChanges()
 
 void CMainFrame::RestartProgram()
 {
-	BOOL b = false;
-	if(OnClose(0, 0, 0, b))
-	{
-		const CString filename = U::GetModulePath(_Module.GetModuleInstance());
-		CString ofn = m_doc->GetOpenFileName();
-//		if(wcschr(filename, L' '))
-		ofn.Format(L"\"%s\"", static_cast<LPCWSTR>(m_doc->GetOpenFileName()));
-		ShellExecute(0, L"open", filename, ofn, 0, SW_SHOW);
-	}
+	const HWND frame = m_hWnd;
+	const CString filename = U::GetModulePath(_Module.GetModuleInstance());
+	CString arguments;
+	if(m_doc)
+		arguments.Format(L"\"%s\"", static_cast<LPCWSTR>(m_doc->GetOpenFileName()));
+	BOOL handled = FALSE;
+	OnClose(0, 0, 0, handled);
+	if(!::IsWindow(frame))
+		ShellExecute(0, L"open", filename, arguments, 0, SW_SHOW);
 }
 
 void CMainFrame::ReleaseScriptResources()
