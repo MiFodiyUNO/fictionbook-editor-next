@@ -12,6 +12,6 @@ foreach ($contract in @('ResolveExportHtmlTemplateState', 'ExportHtmlPathsEqual'
 }
 $plugin = Get-Content -Raw -LiteralPath (Join-Path $root 'src\export-html\ExportHTMLPlugin.cpp')
 $guard = $plugin.IndexOf('fEmbeddedImages && dlg.m_usingCustomTemplate && !SupportsEmbeddedImages', [StringComparison]::Ordinal)
-$createFile = $plugin.IndexOf('CreateFile(dlg.m_szFileName', [StringComparison]::Ordinal)
-if ($guard -lt 0 -or $guard -gt $createFile) { throw 'Incompatible custom XSL must be rejected before the output file is created.' }
+$prepareWriter = $plugin.IndexOf('writer.Prepare()', [StringComparison]::Ordinal)
+if ($guard -lt 0 -or $prepareWriter -lt 0 -or $guard -gt $prepareWriter) { throw 'Incompatible custom XSL must be rejected before the writer prepares output resources.' }
 Write-Host 'ExportHTML template selection regression passed.'
