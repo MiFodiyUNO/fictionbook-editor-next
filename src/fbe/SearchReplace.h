@@ -10,7 +10,28 @@
 #include "search\\SearchPresetCatalog.h"
 #include "search\\SearchPresetStore.h"
 #include "search\\ui\\RegexHelpDialog.h"
+#include "search\\RegexQuickReference.h"
+#include "search\\ui\\RegexQuickReferencePopup.h"
 #include <vector>
+
+inline CString MakePresetPreviewValue(const CString& source, int limit = 112)
+{
+    CString value;
+    for(int index = 0; index < source.GetLength(); ++index) {
+        const wchar_t character = source[index];
+        if(character == L'\t') value += L"\\t";
+        else if(character == L'\r') value += L"\\r";
+        else if(character == L'\n') value += L"\\n";
+        else value += character;
+        if(value.GetLength() > limit) {
+            int end = limit;
+            if(end > 0 && end < value.GetLength() && value[end - 1] >= 0xD800 && value[end - 1] <= 0xDBFF && value[end] >= 0xDC00 && value[end] <= 0xDFFF) --end;
+            value = value.Left(end) + L"\x2026";
+            break;
+        }
+    }
+    return value;
+}
 
 extern CSettings _Settings;
 extern bool VBErr;
@@ -30,11 +51,30 @@ public:
 	CEdit		m_text;
 	CSettingsTooltips m_tooltips;
     bool m_templatesExpanded;
+    int m_lastRegexTarget;
     int m_compactDialogWidth;
     int m_compactDialogHeight;
     std::vector<FbeSearchPresets::SearchPreset> m_panelPresets;
 
-    FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0), m_templatesExpanded(false), m_compactDialogWidth(0), m_compactDialogHeight(0) { }
+    static std::vector<FRBase*>& OpenPresetPanels() { static std::vector<FRBase*> panels; return panels; }
+    void NotifyOpenPresetPanels()
+    {
+        std::vector<FRBase*>& panels = OpenPresetPanels();
+        for(std::vector<FRBase*>::iterator panel = panels.begin(); panel != panels.end();) {
+            if(*panel == NULL || !::IsWindow((*panel)->DialogWindow())) { panel = panels.erase(panel); continue; }
+            if(*panel != this && (*panel)->m_templatesExpanded) (*panel)->RefreshPresetPanel();
+            ++panel;
+        }
+    }
+
+    LRESULT OnDestroyPresetPanel(UINT, WPARAM, LPARAM, BOOL&)
+    {
+        std::vector<FRBase*>& panels = OpenPresetPanels();
+        panels.erase(std::remove(panels.begin(), panels.end(), this), panels.end());
+        return 0;
+    }
+
+    FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0), m_templatesExpanded(false), m_lastRegexTarget(IDC_TEXT), m_compactDialogWidth(0), m_compactDialogHeight(0) { }
 
   HWND	GetDlgItem(int id) { return X_GetDlgItem(id); }
   virtual HWND X_GetDlgItem(int id) = 0;
@@ -110,13 +150,22 @@ public:
         if (preset)
         {
             description = preset->description;
-            if (description.IsEmpty())
-                description.Format(FbeLoadRuntimeStringByKey(L"fbe.search_preset.custom_description", L"Find: %s"), static_cast<LPCWSTR>(preset->findText));
+            const CString findLabel = FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.find", L"Find: %s");
+            CString operation; operation.Format(findLabel, static_cast<LPCWSTR>(MakePresetPreviewValue(preset->findText)));
+            if(!description.IsEmpty()) description += L"\r\n\r\n";
+            description += operation;
+            if(preset->hasReplacement) {
+                const CString replacement = preset->replacementText.IsEmpty()
+                    ? FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.empty", L"<empty>")
+                    : MakePresetPreviewValue(preset->replacementText);
+                CString line; line.Format(FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.replace", L"Replace: %s"), static_cast<LPCWSTR>(replacement));
+                description += L"\r\n" + line;
+            }
         }
         ::SetWindowText(GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), description);
     }
 
-    void RefreshPresetPanel()
+    void RefreshPresetPanel(const CString& wantedId = CString(), bool selectUserRoot = false)
     {
         const HWND tree = GetDlgItem(IDC_FIND_PRESETS_TREE);
         if (!tree) return;
@@ -141,10 +190,15 @@ public:
         const size_t builtInCount = builtIns.size();
         const HTREEITEM userRoot = InsertPresetTreeItem(tree, TVI_ROOT,
             FbeLoadRuntimeStringByKey(L"fbe.search_preset.user", L"User"), -2);
-        for (size_t index = builtInCount; index < m_panelPresets.size(); ++index)
-            InsertPresetTreeItem(tree, userRoot, m_panelPresets[index].name, static_cast<LPARAM>(index));
+        HTREEITEM desired = NULL;
+        for (size_t index = builtInCount; index < m_panelPresets.size(); ++index) {
+            HTREEITEM item = InsertPresetTreeItem(tree, userRoot, m_panelPresets[index].name, static_cast<LPARAM>(index));
+            if(!wantedId.IsEmpty() && m_panelPresets[index].id == wantedId) desired = item;
+        }
         TreeView_Expand(tree, builtInRoot, TVE_EXPAND);
         TreeView_Expand(tree, userRoot, TVE_EXPAND);
+        if(!desired && selectUserRoot) desired = userRoot;
+        if(desired) { TreeView_SelectItem(tree, desired); TreeView_EnsureVisible(tree, desired); }
         UpdatePresetActions();
     }
 
@@ -293,8 +347,10 @@ public:
         std::vector<FbeSearchPresets::SearchPreset> users;
         if (!LoadUserPresetsForMutation(users)) return 0;
         users.push_back(CurrentPreset(name));
-        if (SaveUserPresets(users))
-            m_view->RefreshOpenSearchPresetPanels(this);
+        if (SaveUserPresets(users)) {
+            RefreshPresetPanel(users.back().id);
+            NotifyOpenPresetPanels();
+        }
         return 0;
     }
     LRESULT OnUpdatePreset(WORD, WORD, HWND, BOOL&)
@@ -311,8 +367,7 @@ public:
                 users[index] = BuildUpdatedPreset(users[index]);
                 break;
             }
-        if (SaveUserPresets(users))
-            m_view->RefreshOpenSearchPresetPanels(this);
+        if (SaveUserPresets(users)) { RefreshPresetPanel(selectedId); NotifyOpenPresetPanels(); }
         return 0;
     }
     LRESULT OnRenamePreset(WORD, WORD, HWND, BOOL&)
@@ -328,8 +383,7 @@ public:
         for (size_t index = 0; index < users.size(); ++index)
             if (users[index].id == selectedId)
                 users[index].name = name;
-        if (SaveUserPresets(users))
-            m_view->RefreshOpenSearchPresetPanels(this);
+        if (SaveUserPresets(users)) { RefreshPresetPanel(selectedId); NotifyOpenPresetPanels(); }
         return 0;
     }
     LRESULT OnDeletePreset(WORD, WORD, HWND, BOOL&)
@@ -340,14 +394,16 @@ public:
         if (ThemeManager::MessageBox(DialogWindow(), FbeLoadRuntimeStringByKey(L"fbe.search_preset.delete_confirm", L"Delete the selected search template?"), FbeLoadRuntimeStringByKey(L"fbe.search_preset.caption", L"Templates"), MB_YESNO | MB_ICONQUESTION) != IDYES) return 0;
         std::vector<FbeSearchPresets::SearchPreset> users;
         if (!LoadUserPresetsForMutation(users)) return 0;
+        CString nextId;
         for (std::vector<FbeSearchPresets::SearchPreset>::iterator item = users.begin(); item != users.end(); ++item)
             if (item->id == selectedId)
             {
+                if(item + 1 != users.end()) nextId = (item + 1)->id;
+                else if(item != users.begin()) nextId = (item - 1)->id;
                 users.erase(item);
                 break;
             }
-        if (SaveUserPresets(users))
-            m_view->RefreshOpenSearchPresetPanels(this);
+        if (SaveUserPresets(users)) { RefreshPresetPanel(nextId, nextId.IsEmpty()); NotifyOpenPresetPanels(); }
         return 0;
     }
     LRESULT OnPresetChanged(int, LPNMHDR, BOOL&) { UpdatePresetActions(); return 0; }
@@ -356,11 +412,31 @@ public:
     {
         NMTVKEYDOWN* key = reinterpret_cast<NMTVKEYDOWN*>(header); if (key && key->wVKey == VK_RETURN) ApplySelectedPreset(); return 0;
     }
-    LRESULT OnShowRegexHelp(WORD, WORD, HWND, BOOL&) { ShowRegexHelpDialog(DialogWindow(), SearchContext()); return 0; }
+    LRESULT OnShowRegexHelp(WORD, WORD, HWND, BOOL&)
+    {
+        HWND target = GetDlgItem(IDC_TEXT);
+        FbeSearchPresets::RegexQuickReferenceMode mode = FbeSearchPresets::RegexQuickReferenceMode::Search;
+        if(IsReplaceDialog() && (m_lastRegexTarget == IDC_REPLACE || ::GetFocus() == GetDlgItem(IDC_REPLACE))) { target = GetDlgItem(IDC_REPLACE); mode = FbeSearchPresets::RegexQuickReferenceMode::Replacement; }
+        RegexQuickReferencePopup* popup = new RegexQuickReferencePopup();
+        if(!popup->Show(DialogWindow(), GetDlgItem(IDC_FIND_REGEX_HELP), SearchContext(), mode,
+            [this, target, mode](const FbeSearchPresets::RegexQuickReferenceEntry& entry) {
+                int first = 0, last = 0; ::SendMessage(target, EM_GETSEL, reinterpret_cast<WPARAM>(&first), reinterpret_cast<LPARAM>(&last)); const int length = ::GetWindowTextLength(target); CString current; ::GetWindowText(target, current.GetBuffer(length + 1), length + 1); current.ReleaseBuffer();
+                const FbeSearchPresets::RegexQuickReferenceInsertion result = FbeSearchPresets::InsertRegexQuickReference(current, first, last, entry);
+                ::SetWindowText(target, result.text); ::SendMessage(target, EM_SETSEL, result.selectionStart, result.selectionStart + result.selectionLength); ::SetFocus(target);
+                if(!m_view->m_fo.fRegexp) { m_view->m_fo.fRegexp = true; ::CheckDlgButton(DialogWindow(), IDC_REGEXP, BST_CHECKED); UpdateUnicodeControl(); m_view->SyncSearchOptionsToOpenDialogs(this); }
+                if(mode == FbeSearchPresets::RegexQuickReferenceMode::Search) m_view->m_fo.pattern = result.text; else m_view->m_fo.replacement = result.text;
+                InvalidateSearchSelectionState();
+            },
+            [this]() { ShowRegexHelpDialog(DialogWindow(), SearchContext()); })) delete popup;
+        return 0;
+    }
 	BEGIN_MSG_MAP(FRBase)
 		ALT_MSG_MAP(1)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+        MESSAGE_HANDLER(WM_DESTROY, OnDestroyPresetPanel)
 		COMMAND_HANDLER(IDC_TEXT,CBN_EDITCHANGE, OnTextChanged)        COMMAND_ID_HANDLER(IDC_FIND_TEMPLATES, OnTogglePresets)
+        COMMAND_HANDLER(IDC_TEXT, CBN_SETFOCUS, OnRegexFieldFocus)
+        COMMAND_HANDLER(IDC_REPLACE, CBN_SETFOCUS, OnRegexFieldFocus)
         COMMAND_ID_HANDLER(IDC_FIND_REGEX_HELP, OnShowRegexHelp)
         COMMAND_ID_HANDLER(IDC_FIND_PRESET_APPLY, OnApplyPreset)
         COMMAND_ID_HANDLER(IDC_FIND_PRESET_SAVE, OnSavePreset)
@@ -493,6 +569,7 @@ public:
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL& bHandled)
 	{
 		bHandled = FALSE;
+		if(std::find(OpenPresetPanels().begin(), OpenPresetPanels().end(), this) == OpenPresetPanels().end()) OpenPresetPanels().push_back(this);
 
 		LoadHistoryImp(_T("SearchHistory"), m_fh, GetDlgItem(IDC_TEXT), m_view->m_fo.pattern);
 		LoadHistoryImp(_T("ReplaceHistory"), m_rh, GetDlgItem(IDC_REPLACE), m_view->m_fo.replacement);
@@ -602,6 +679,8 @@ public:
 			::SetTimer(::GetParent(GetDlgItem(IDC_TEXT)), 0x4F01, 150, NULL);
 		return 0;
 	}
+
+    LRESULT OnRegexFieldFocus(WORD, WORD id, HWND, BOOL&) { m_lastRegexTarget = id; return 0; }
 
   void	CheckInput() {
     ::EnableWindow(GetDlgItem(IDOK),::GetWindowTextLength(GetDlgItem(IDC_TEXT))>0);

@@ -109,7 +109,9 @@ Require $rc 'IDD_REGEX_HELP[\s\S]*?DEFPUSHBUTTON\s+"Close",IDCANCEL' 'Regex help
 Require $dialog 'fbe\.tooltip\.find\.templates' 'Templates button tooltip'
 Require $dialog 'fbe\.tooltip\.find\.regex_help_design' 'Design regex-help tooltip'
 Require $dialog 'fbe\.tooltip\.find\.regex_help_source' 'Source regex-help tooltip'
-Require $dialog 'fbe\.search_preset\.custom_description' 'Custom preset description'
+Require $dialog 'MakePresetPreviewValue' 'safe preset preview formatter'
+Require $dialog 'fbe\.search_preset\.preview\.find' 'Find preset preview localization'
+Require $dialog 'fbe\.search_preset\.preview\.replace' 'Replace preset preview localization'
 Require $dialog 'SetPresetPanelVisible\(!m_templatesExpanded\)' 'template panel expand/collapse integration'
 Require $dialog 'm_compactDialogHeight' 'separate compact dialog height'
 Require $dialog 'PresetPanelHeight' 'DPI-aware template panel height'
@@ -128,7 +130,8 @@ Require $dialog 'LoadUserPresetsForMutation' 'failed user-preset load blocks mut
 Require $dialog 'fbe\.search_preset\.load_failed' 'distinct localized preset-load failure'
 Require $dialog 'if \(!IsReplaceDialog\(\)\)[\s\S]*?preset\.hasReplacement = existing\.hasReplacement;[\s\S]*?preset\.replacementText = existing\.replacementText;' 'Find update preserves hidden replacement'
 Require $dialog 'EnableWindow\(GetDlgItem\(IDC_FIND_PRESET_SAVE\), findTextLength > 0\);' 'empty Find cannot be saved'
-Require $dialog 'RefreshOpenSearchPresetPanels\(this\)' 'open template panels refresh after mutation'
+Require $dialog 'NotifyOpenPresetPanels\(\)' 'all Design and Source template panels refresh after mutation'
+Require $dialog 'OpenPresetPanels\(\)' 'template panel notification has a shared registry'
 Require $dialog 'SearchContext\(\) == FbeSearchPresets::SearchUiContext::Design' 'explicit Design/Source UCP behavior'
 Require $dialog 'GetBuiltInPresets\(SearchContext\(\), IsReplaceDialog\(\)' 'context-filtered built-in presets'
 Require $presetCatalog 'if \(definition\.context != context \|\| \(forReplace && !definition\.hasReplacement\)\)' 'Replace excludes find-only presets'
@@ -140,7 +143,7 @@ foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fb
     'fbe.search_preset.normalize_spaces.name', 'fbe.search_preset.normalize_spaces.description',
     'fbe.search_preset.duplicate_word.name', 'fbe.search_preset.duplicate_word.description',
     'fbe.search_preset.source_repeated_punctuation.name', 'fbe.search_preset.source_repeated_punctuation.description',
-    'fbe.search_preset.custom_description',
+    'fbe.search_preset.preview.find', 'fbe.search_preset.preview.replace', 'fbe.search_preset.preview.empty',
     'fbe.search_preset.load_failed',
     'fbe.tooltip.find.templates', 'fbe.tooltip.find.regex_help_design', 'fbe.tooltip.find.regex_help_source')) { RequireLocalized $key }
 foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.tooltip.find.regex_help_design', 'fbe.tooltip.find.regex_help_source')) {

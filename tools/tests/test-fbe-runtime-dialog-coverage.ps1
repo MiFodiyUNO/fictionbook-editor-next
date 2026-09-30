@@ -19,7 +19,7 @@ $consumers = @{
     IDD_ABOUTBOX = @{ File = 'src\fbe\AboutBox.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_ABOUTBOX\)' }
     IDD_SETTINGS_WORDS = @{ File = 'src\fbe\settings\ui\SettingsWordsDlg.cpp'; Invocation = 'SetRuntimeSettingsWordsText' }
     IDD_HOTKEYS = @{ File = 'src\fbe\settings\ui\SettingsHotkeysDlg.cpp'; Invocation = 'SetRuntimeHotkeysText' }
-    IDD_FIND = @{ File = 'src\fbe\SearchReplace.h'; AdditionalFiles = @('src\fbe\FBEview.cpp', 'src\fbe\search\SearchPresetCatalog.cpp'); Invocation = 'SetRuntimeDialogTitle' }
+    IDD_FIND = @{ File = 'src\fbe\SearchReplace.h'; AdditionalFiles = @('src\fbe\FBEview.cpp', 'src\fbe\search\SearchPresetCatalog.cpp', 'src\fbe\search\RegexQuickReference.h', 'src\fbe\search\ui\RegexQuickReferencePopup.cpp'); Invocation = 'SetRuntimeDialogTitle' }
     IDD_REPLACE = @{ File = 'src\fbe\SearchReplace.h'; Invocation = 'SetRuntimeDialogTitle' }
     IDD_FIND_RESULTS = @{ File = 'src\fbe\FindResultsPane.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
     IDD_REGEX_HELP = @{ File = 'src\fbe\search\ui\RegexHelpDialog.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_REGEX_HELP\)' }

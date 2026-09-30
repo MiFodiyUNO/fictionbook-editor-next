@@ -9,14 +9,14 @@ namespace
 CString HelpText(FbeSearchPresets::SearchUiContext context)
 {
     if (context == FbeSearchPresets::SearchUiContext::Source)
-        return FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.text",
+        return FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.text.detail",
             L"Regular expressions — Source/Code\r\n\r\nEngine\r\n"
             L"Scintilla regular expressions / C++11 regex mode\r\n"
             L"Flags: SCFIND_REGEXP | SCFIND_CXX11REGEX\r\n\r\n"
             L"Basic syntax\r\n.  ^  $  [...]  \\d  \\s  \\w  \\b  *  +  ?  {n,m}  (...)  |\r\n\r\n"
             L"Replacement\r\nScintilla performs replacement. Back-reference \\1 is supported.\r\n\r\n"
             L"Limitations\r\nUnicode (UCP) applies to PCRE2 in Design mode and is unavailable for the current Source regex engine.");
-    return FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.text",
+    return FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.text.detail",
         L"Regular expressions — Design\r\n\r\nEngine\r\nPCRE2-16\r\n"
         L"UTF is always enabled. Unicode (UCP) is enabled by the Unicode (UCP) checkbox.\r\n\r\n"
         L"Basic syntax\r\n.  ^  $  [...]  [^...]  \\d  \\D  \\s  \\S  \\w  \\W  \\b  \\B  *  +  ?  *?  +?  ??  {n}  {n,}  {n,m}\r\n\r\n"
