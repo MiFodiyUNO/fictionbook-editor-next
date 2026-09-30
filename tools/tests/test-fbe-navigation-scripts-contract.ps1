@@ -77,6 +77,11 @@ Must $documentTreeHeader 'IsStructuralToolbarVisible' 'runtime test can verify s
 Must $documentTree 'm_tree\.RefreshModeControls\(\)' 'startup synchronizes the visible selector with the persisted mode'
 Must $documentTree 'UiMetrics::ScaleForDpi\(28, UiMetrics::DpiForWindow\(m_hWnd\)\)' 'mode selector has a DPI-aware initial height'
 Must $documentTree 'm_view_bar\.AutoSize\(\)' 'mode selector measures its text with the menu font'
+Must $documentTree 'TB_COMMANDTOINDEX' 'Elements selector is rendered as the active tab by its native toolbar index'
+Must $documentTree 'buttonIndex == 0' 'Elements selector is rendered as the active tab'
+Must $documentTree 'CDIS_HOT' 'Elements selector retains a hover state'
+Must $documentTree 'COLOR_3DLIGHT' 'light theme renders the selected Elements tab with a distinct surface'
+Must $documentTree 'pressed \? THEME_COLOR_PRESSED' 'dark theme renders the selected Elements tab with a distinct surface'
 if($frame.IndexOf('m_splitter.SetSplitterPos(_Settings.GetSplitterPos());') -gt $frame.IndexOf('TryRestoreRecovery();')) { throw 'Persisted splitter width must be restored before the recovery prompt.' }
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'initialImage == 0 && initialCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS' 'structure mode exposes the scripts target image and command'
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'scriptsImage == 1 && scriptsCommand == ID_DOCUMENT_TREE_MODE_STRUCTURE' 'scripts mode exposes the structure target image and command'

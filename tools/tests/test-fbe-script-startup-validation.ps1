@@ -35,7 +35,10 @@ Require $diagnostics 'class ScopedDialogSuppression' 'scoped diagnostic suppress
 Require $diagnostics 'if \(DialogsSuppressed\(\)\)' 'suppressed startup errors stay diagnostic-only'
 Require (Read 'src\fbe\script.cpp') 'if \(!FbeScriptDiagnostics::DialogsSuppressed\(\)\)' 'fallback parser error is also noninteractive at startup'
 Require $runtime 'function apiRunCmd\(path\)' 'actual invocation remains the deferred validation path'
-Require $runtime 'GetLocalizedString\("fbe\.script\.run_failed"\)' 'deferred script-launch error is runtime-localized'
+Require $runtime 'GetLocalizedStringOrDefault\("fbe\.script\.run_failed"' 'deferred script-launch error is runtime-localized'
+Require $runtime 'function GetLocalizedStringOrDefault\(key, fallback\)' 'localized runtime message has a reusable fallback helper'
+Require $runtime 'The script\\n\\n\{path\}' 'script-launch failure has a nonempty English fallback template'
+Require $runtime 'messageTemplate\.indexOf\("\{path\}"\)>=0' 'script-launch failure preserves the path when a translation omits its placeholder'
 if ($runtime -match 'Скрипт\\n\\n"\+path') { throw 'apiRunCmd must not retain the hard-coded Russian script-launch error.' }
 
 $portableState = Read 'src\fbe\testing\RuntimeTestPortableState.inl'

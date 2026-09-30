@@ -85,7 +85,7 @@ LRESULT CALLBACK DocumentTreeViewBarWindowThemeProc(HWND window, UINT message, W
 LRESULT CALLBACK DocumentTreeViewBarThemeProc(HWND window, UINT message, WPARAM wParam,
 	LPARAM lParam, UINT_PTR, DWORD_PTR reference)
 {
-	if(message != WM_NOTIFY || !ThemeManager::IsDark() || ThemeManager::IsHighContrast())
+	if(message != WM_NOTIFY)
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	LPNMHDR header = reinterpret_cast<LPNMHDR>(lParam);
 	HWND viewBar = reinterpret_cast<HWND>(reference);
@@ -93,32 +93,41 @@ LRESULT CALLBACK DocumentTreeViewBarThemeProc(HWND window, UINT message, WPARAM 
 		return ::DefSubclassProc(window, message, wParam, lParam);
 
 	NMTBCUSTOMDRAW* draw = reinterpret_cast<NMTBCUSTOMDRAW*>(header);
+	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	if(draw->nmcd.dwDrawStage == CDDS_PREPAINT)
 	{
 		RECT client = {}; ::GetClientRect(viewBar, &client);
-		::FillRect(draw->nmcd.hdc, &client, ThemeManager::ControlBrush());
+		::FillRect(draw->nmcd.hdc, &client, dark ? ThemeManager::ControlBrush() : ::GetSysColorBrush(COLOR_BTNFACE));
 		return CDRF_NOTIFYITEMDRAW;
 	}
 	if(draw->nmcd.dwDrawStage != CDDS_ITEMPREPAINT)
 		return CDRF_DODEFAULT;
 
 	const bool disabled = (draw->nmcd.uItemState & (CDIS_DISABLED | CDIS_GRAYED)) != 0;
-	const bool pressed = (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
+	const int buttonIndex = static_cast<int>(::SendMessage(viewBar, TB_COMMANDTOINDEX, draw->nmcd.dwItemSpec, 0));
+	const bool pressed = buttonIndex == 0 || (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
 	const bool hot = (draw->nmcd.uItemState & CDIS_HOT) != 0;
-	const ThemeColorRole surface = pressed ? THEME_COLOR_PRESSED : hot ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL;
-	::FillRect(draw->nmcd.hdc, &draw->nmcd.rc, ThemeManager::Brush(surface));
-	if(hot || pressed)
-		::FrameRect(draw->nmcd.hdc, &draw->nmcd.rc, ThemeManager::Brush(THEME_COLOR_BORDER));
+	if(dark)
+	{
+		const ThemeColorRole surface = pressed ? THEME_COLOR_PRESSED : hot ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL;
+		::FillRect(draw->nmcd.hdc, &draw->nmcd.rc, ThemeManager::Brush(surface));
+		if(hot || pressed) ::FrameRect(draw->nmcd.hdc, &draw->nmcd.rc, ThemeManager::Brush(THEME_COLOR_BORDER));
+	}
+	else
+	{
+		::FillRect(draw->nmcd.hdc, &draw->nmcd.rc, ::GetSysColorBrush(pressed ? COLOR_3DLIGHT : hot ? COLOR_3DFACE : COLOR_BTNFACE));
+		if(hot || pressed) ::FrameRect(draw->nmcd.hdc, &draw->nmcd.rc, ::GetSysColorBrush(COLOR_3DSHADOW));
+	}
 
 	wchar_t text[256] = {};
 	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_TEXT;
 	button.pszText = text; button.cchText = _countof(text);
 	::SendMessage(viewBar, TB_GETBUTTONINFOW, static_cast<WPARAM>(draw->nmcd.dwItemSpec), reinterpret_cast<LPARAM>(&button));
-	RECT textRect = draw->nmcd.rc; ::InflateRect(&textRect, -6, 0);
+	RECT textRect = draw->nmcd.rc; ::InflateRect(&textRect, -8, 0);
 	HFONT font = reinterpret_cast<HFONT>(::SendMessage(viewBar, WM_GETFONT, 0, 0));
 	HGDIOBJ oldFont = font ? ::SelectObject(draw->nmcd.hdc, font) : NULL;
 	::SetBkMode(draw->nmcd.hdc, TRANSPARENT);
-	::SetTextColor(draw->nmcd.hdc, disabled ? ThemeManager::DisabledTextColor() : ThemeManager::TextColor());
+	::SetTextColor(draw->nmcd.hdc, disabled ? (dark ? ThemeManager::DisabledTextColor() : ::GetSysColor(COLOR_GRAYTEXT)) : (dark ? ThemeManager::TextColor() : ::GetSysColor(COLOR_BTNTEXT)));
 	::DrawTextW(draw->nmcd.hdc, text, -1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
 	if(oldFont) ::SelectObject(draw->nmcd.hdc, oldFont);
 	return CDRF_SKIPDEFAULT;

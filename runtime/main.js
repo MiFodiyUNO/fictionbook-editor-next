@@ -144,6 +144,14 @@ function LocalizedBinaryMessage(key)
  return window.external.GetLocalizedString(key);
 }
 
+function GetLocalizedStringOrDefault(key, fallback)
+{
+ var localized="";
+ try { localized=window.external.GetLocalizedString(key); } catch(e) {}
+ if(localized==null || String(localized).replace(/^\s+|\s+$/g,"")==="") return fallback;
+ return String(localized);
+}
+
 function GetBinaryInput(binary, name)
 {
  if(!binary || !binary.all) return null;
@@ -1509,8 +1517,9 @@ function apiShowDesc(state)
 }
 function apiRunCmd(path)
 {
-	var messageTemplate=window.external.GetLocalizedString("fbe.script.run_failed");
-	window.msgText=messageTemplate.replace("{path}", path);
+	var messageTemplate=GetLocalizedStringOrDefault("fbe.script.run_failed", "The script\n\n{path}\n\ncould not be started because it could not be loaded successfully.\n\nThe file may no longer be at its expected path.");
+	var scriptPath=String(path==null ? "" : path);
+	window.msgText=messageTemplate.indexOf("{path}")>=0 ? messageTemplate.replace("{path}", scriptPath) : messageTemplate+"\n\n"+scriptPath;
 	window.Run=function() {
 	  if (window.msgText) alert(window.msgText);
 	};
