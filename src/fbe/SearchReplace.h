@@ -11,6 +11,7 @@
 #include "search\\SearchPresetStore.h"
 #include "search\\ui\\RegexHelpDialog.h"
 #include "search\\RegexQuickReference.h"
+#include "search\\ui\\ComboBoxEdit.h"
 #include "search\\ui\\RegexQuickReferencePopup.h"
 #include <vector>
 
@@ -421,9 +422,13 @@ public:
         // Show(false) means no HWND was created; on success the popup self-owns until WM_NCDESTROY.
         if(!popup->Show(DialogWindow(), GetDlgItem(IDC_FIND_REGEX_HELP), SearchContext(), mode,
             [this, target, mode](const FbeSearchPresets::RegexQuickReferenceEntry& entry) {
-                int first = 0, last = 0; ::SendMessage(target, EM_GETSEL, reinterpret_cast<WPARAM>(&first), reinterpret_cast<LPARAM>(&last)); const int length = ::GetWindowTextLength(target); CString current; ::GetWindowText(target, current.GetBuffer(length + 1), length + 1); current.ReleaseBuffer();
+                int first = 0, last = 0;
+                FbeComboBoxEdit::GetSelection(target, first, last);
+                const CString current = FbeComboBoxEdit::GetText(target);
                 const FbeSearchPresets::RegexQuickReferenceInsertion result = FbeSearchPresets::InsertRegexQuickReference(current, first, last, entry);
-                ::SetWindowText(target, result.text); ::SendMessage(target, EM_SETSEL, result.selectionStart, result.selectionStart + result.selectionLength); ::SetFocus(target);
+                FbeComboBoxEdit::SetText(target, result.text);
+                FbeComboBoxEdit::SetSelection(target, result.selectionStart, result.selectionStart + result.selectionLength);
+                ::SetFocus(target);
                 if(!m_view->m_fo.fRegexp) { m_view->m_fo.fRegexp = true; ::CheckDlgButton(DialogWindow(), IDC_REGEXP, BST_CHECKED); UpdateUnicodeControl(); m_view->SyncSearchOptionsToOpenDialogs(this); }
                 if(mode == FbeSearchPresets::RegexQuickReferenceMode::Search) m_view->m_fo.pattern = result.text; else m_view->m_fo.replacement = result.text;
                 InvalidateSearchSelectionState();

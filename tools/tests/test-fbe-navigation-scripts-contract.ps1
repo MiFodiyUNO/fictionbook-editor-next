@@ -80,6 +80,9 @@ Must $documentTree 'm_view_bar\.AutoSize\(\)' 'mode selector measures its text w
 Must $documentTree 'TB_COMMANDTOINDEX' 'Elements selector is rendered as the active tab by its native toolbar index'
 Must $documentTree 'buttonIndex == 0' 'Elements selector is rendered as the active tab'
 Must $documentTree 'CDIS_HOT' 'Elements selector retains a hover state'
+Must $documentTree 'active \? \(hot \? THEME_COLOR_HOVER : THEME_COLOR_PRESSED\)' 'dark theme distinguishes active and active-hover tab states'
+Must $documentTree 'active \? \(hot \? COLOR_HIGHLIGHT : COLOR_3DLIGHT\)' 'light theme distinguishes active and active-hover tab states'
+Must $documentTree 'ThemeManager::IsHighContrast\(\)' 'high contrast keeps native toolbar rendering'
 Must $documentTree 'COLOR_3DLIGHT' 'light theme renders the selected Elements tab with a distinct surface'
 Must $documentTree 'pressed \? THEME_COLOR_PRESSED' 'dark theme renders the selected Elements tab with a distinct surface'
 if($frame.IndexOf('m_splitter.SetSplitterPos(_Settings.GetSplitterPos());') -gt $frame.IndexOf('TryRestoreRecovery();')) { throw 'Persisted splitter width must be restored before the recovery prompt.' }

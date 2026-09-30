@@ -85,7 +85,7 @@ LRESULT CALLBACK DocumentTreeViewBarWindowThemeProc(HWND window, UINT message, W
 LRESULT CALLBACK DocumentTreeViewBarThemeProc(HWND window, UINT message, WPARAM wParam,
 	LPARAM lParam, UINT_PTR, DWORD_PTR reference)
 {
-	if(message != WM_NOTIFY)
+	if(message != WM_NOTIFY || ThemeManager::IsHighContrast())
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	LPNMHDR header = reinterpret_cast<LPNMHDR>(lParam);
 	HWND viewBar = reinterpret_cast<HWND>(reference);
@@ -105,18 +105,19 @@ LRESULT CALLBACK DocumentTreeViewBarThemeProc(HWND window, UINT message, WPARAM 
 
 	const bool disabled = (draw->nmcd.uItemState & (CDIS_DISABLED | CDIS_GRAYED)) != 0;
 	const int buttonIndex = static_cast<int>(::SendMessage(viewBar, TB_COMMANDTOINDEX, draw->nmcd.dwItemSpec, 0));
-	const bool pressed = buttonIndex == 0 || (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
+	const bool active = buttonIndex == 0;
+	const bool pressed = (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
 	const bool hot = (draw->nmcd.uItemState & CDIS_HOT) != 0;
 	if(dark)
 	{
-		const ThemeColorRole surface = pressed ? THEME_COLOR_PRESSED : hot ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL;
+		const ThemeColorRole surface = active ? (hot ? THEME_COLOR_HOVER : THEME_COLOR_PRESSED) : (pressed ? THEME_COLOR_PRESSED : hot ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL);
 		::FillRect(draw->nmcd.hdc, &draw->nmcd.rc, ThemeManager::Brush(surface));
-		if(hot || pressed) ::FrameRect(draw->nmcd.hdc, &draw->nmcd.rc, ThemeManager::Brush(THEME_COLOR_BORDER));
+		if(active || hot || pressed) ::FrameRect(draw->nmcd.hdc, &draw->nmcd.rc, ThemeManager::Brush(THEME_COLOR_BORDER));
 	}
 	else
 	{
-		::FillRect(draw->nmcd.hdc, &draw->nmcd.rc, ::GetSysColorBrush(pressed ? COLOR_3DLIGHT : hot ? COLOR_3DFACE : COLOR_BTNFACE));
-		if(hot || pressed) ::FrameRect(draw->nmcd.hdc, &draw->nmcd.rc, ::GetSysColorBrush(COLOR_3DSHADOW));
+		::FillRect(draw->nmcd.hdc, &draw->nmcd.rc, ::GetSysColorBrush(active ? (hot ? COLOR_HIGHLIGHT : COLOR_3DLIGHT) : (pressed ? COLOR_3DLIGHT : hot ? COLOR_3DFACE : COLOR_BTNFACE)));
+		if(active || hot || pressed) ::FrameRect(draw->nmcd.hdc, &draw->nmcd.rc, ::GetSysColorBrush(active && hot ? COLOR_HIGHLIGHTTEXT : COLOR_3DSHADOW));
 	}
 
 	wchar_t text[256] = {};
@@ -127,7 +128,7 @@ LRESULT CALLBACK DocumentTreeViewBarThemeProc(HWND window, UINT message, WPARAM 
 	HFONT font = reinterpret_cast<HFONT>(::SendMessage(viewBar, WM_GETFONT, 0, 0));
 	HGDIOBJ oldFont = font ? ::SelectObject(draw->nmcd.hdc, font) : NULL;
 	::SetBkMode(draw->nmcd.hdc, TRANSPARENT);
-	::SetTextColor(draw->nmcd.hdc, disabled ? (dark ? ThemeManager::DisabledTextColor() : ::GetSysColor(COLOR_GRAYTEXT)) : (dark ? ThemeManager::TextColor() : ::GetSysColor(COLOR_BTNTEXT)));
+	::SetTextColor(draw->nmcd.hdc, disabled ? (dark ? ThemeManager::DisabledTextColor() : ::GetSysColor(COLOR_GRAYTEXT)) : (dark ? ThemeManager::TextColor() : ::GetSysColor(active && hot ? COLOR_HIGHLIGHTTEXT : COLOR_BTNTEXT)));
 	::DrawTextW(draw->nmcd.hdc, text, -1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
 	if(oldFont) ::SelectObject(draw->nmcd.hdc, oldFont);
 	return CDRF_SKIPDEFAULT;

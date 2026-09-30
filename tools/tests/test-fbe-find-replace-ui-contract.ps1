@@ -25,6 +25,16 @@ function DialogBlock([string]$id) {
     if (-not $match.Success) { throw "Dialog $id was not found." }
     return $match.Value
 }
+function Get-ControlRect([string]$dialogBlock, [string]$control) {
+    $escapedControl = [regex]::Escape($control)
+    $match = [regex]::Match($dialogBlock, ('(?m)^[^\r\n]*\b{0}\b[^\r\n]*?,(\d+),(\d+),(\d+),(\d+)' -f $escapedControl))
+    if (-not $match.Success) { throw "Rectangle for $control was not found." }
+    return @{ left = [int]$match.Groups[1].Value; top = [int]$match.Groups[2].Value; width = [int]$match.Groups[3].Value; height = [int]$match.Groups[4].Value }
+}
+function Assert-NoOverlap($rectA, $rectB, [string]$description) {
+    $overlap = $rectA.left -lt ($rectB.left + $rectB.width) -and $rectB.left -lt ($rectA.left + $rectA.width) -and $rectA.top -lt ($rectB.top + $rectB.height) -and $rectB.top -lt ($rectA.top + $rectA.height)
+    if ($overlap) { throw "Controls overlap: $description." }
+}
 function RequireLocalized([string]$key) {
     $entry = $catalog.strings.$key
     if ($null -eq $entry -or [string]::IsNullOrWhiteSpace($entry.translations.'en-US') -or [string]::IsNullOrWhiteSpace($entry.translations.'ru-RU')) {
@@ -44,7 +54,7 @@ Require $find 'IDC_FIND_LABEL_TEXT,7,9,50,8[\s\S]*?IDC_TEXT,60,7,170,62' 'Find l
 Require $replace 'IDC_REPLACE_LABEL_TEXT,7,9,50,8[\s\S]*?IDC_TEXT,60,7,170,62' 'Replace label and input use the shared horizontal grid'
 foreach ($dialogBlock in @($find, $replace)) {
     Require $dialogBlock 'IDC_WHOLE,"Button",BS_AUTOCHECKBOX \| WS_TABSTOP,7,' 'common options start at x=7'
-    Require $dialogBlock 'IDC_FIND_SCOPE_LABEL,116,' 'Scope uses the shared middle column'
+    Require $dialogBlock 'IDC_FIND_SCOPE_LABEL,122,' 'Scope uses the shared middle column'
     Require $dialogBlock 'DIRECTION_GROUP,194,' 'Direction has a dedicated column'
     Require $dialogBlock 'ID_FIND_NEXT,254,7,64,14' 'Find Next uses the shared action column'
     Require $dialogBlock 'IDCANCEL,254,61,64,14' 'Cancel uses the shared action slot'
@@ -158,9 +168,18 @@ foreach ($dialogBlock in @($find, $replace)) {
 }
 Require $find 'IDC_FIND_TEMPLATES,254,82,64,14' 'Find Templates toggle is last in the action column'
 Require $replace 'IDC_FIND_TEMPLATES,254,100,64,14' 'Replace Templates toggle follows the common row offset'
-Require $find 'IDC_FIND_REGEX_HELP,108,60,12,13' 'Find regex help sits beside RegExp'
-Require $replace 'IDC_FIND_REGEX_HELP,108,78,12,13' 'Replace regex help follows the common row offset'
-foreach($control in @('IDC_TEXT,60,7,170', 'IDC_FIND_SCOPE,116', 'IDC_FIND_UNICODE_PROPERTIES,"Button"', 'ID_FIND_NEXT,254,7,64,14')) { Require $find $control "Find common grid: $control"; Require $replace $control "Replace common grid: $control" }
+Require $find 'IDC_FIND_REGEX_HELP,106,60,12,13' 'Find regex help sits beside RegExp'
+Require $replace 'IDC_FIND_REGEX_HELP,106,78,12,13' 'Replace regex help follows the common row offset'
+foreach($control in @('IDC_TEXT,60,7,170', 'IDC_FIND_SCOPE,122', 'IDC_FIND_UNICODE_PROPERTIES,"Button"', 'ID_FIND_NEXT,254,7,64,14')) { Require $find $control "Find common grid: $control"; Require $replace $control "Replace common grid: $control" }
+foreach($dialogName in @('Find', 'Replace')) {
+    $dialogBlock = if($dialogName -eq 'Find') { $find } else { $replace }
+    $directionGroup = if($dialogName -eq 'Find') { 'IDC_FIND_DIRECTION_GROUP' } else { 'IDC_REPLACE_DIRECTION_GROUP' }
+    $pairs = @(@('IDC_REGEXP', 'IDC_FIND_REGEX_HELP'), @('IDC_FIND_REGEX_HELP', 'IDC_FIND_UNICODE_PROPERTIES'), @('IDC_WHOLE', 'IDC_FIND_SCOPE_LABEL'), @('IDC_MATCHCASE', 'IDC_FIND_SCOPE'), @($directionGroup, 'ID_FIND_NEXT'), @('IDC_TEXT', 'ID_FIND_NEXT'))
+    if($dialogName -eq 'Find') { $pairs += ,@('IDC_FIND_TEMPLATES', 'IDC_FIND_STATUS') }
+    foreach($pair in $pairs) {
+        Assert-NoOverlap (Get-ControlRect $dialogBlock $pair[0]) (Get-ControlRect $dialogBlock $pair[1]) "$dialogName $($pair[0]) / $($pair[1])"
+    }
+}
 Require $find 'IDD_FIND DIALOGEX 0, 0, 326, 116' 'Find compact dimensions provide room for Scope and UCP'
 Require $replace 'IDD_REPLACE DIALOGEX 0, 0, 326, 134' 'Replace height equals Find plus one row offset'
 if ($presetCatalog -match 'L"\\x\{00A0\}"') { throw 'NBSP preset must use literal U+00A0 for production normalization.' }

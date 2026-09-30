@@ -2,6 +2,7 @@
 #include "RegexQuickReferencePopup.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\UiMetrics.h"
+#include "..\\..\\ThemeManager.h"
 
 RegexQuickReferencePopup::RegexQuickReferencePopup() : m_messageLoop(NULL) {}
 LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
@@ -21,6 +22,7 @@ LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     AddRows(m_left, m_leftRows, leftIndexes); AddRows(m_right, m_rightRows, rightIndexes);
     if(!m_leftRows.empty()) { m_left.SetCurSel(m_leftRows.size() > 1 ? 1 : 0); m_left.SetFocus(); }
     else if(!m_rightRows.empty()) { m_right.SetCurSel(m_rightRows.size() > 1 ? 1 : 0); m_right.SetFocus(); }
+    ThemeManager::ApplyToWindow(m_hWnd);
     return 0;
 }
 void RegexQuickReferencePopup::AddRows(CListBox& list, std::vector<int>& rows, const std::vector<int>& indexes) {
