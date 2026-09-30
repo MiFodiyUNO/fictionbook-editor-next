@@ -326,6 +326,9 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClCompile Include="$(FbeApiOutputDirectory)FBE_i.c"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="search\RegexBackend.cpp" />
     <ClCompile Include="search\RegexBackendPcre2.cpp" />
+    <ClCompile Include="search\SearchPresetCatalog.cpp" />
+    <ClCompile Include="search\SearchPresetStore.cpp" />
+    <ClCompile Include="search\ui\RegexHelpDialog.cpp" />
 	<ClCompile Include="search\SearchDocumentAdapter.cpp" />
 	<ClCompile Include="ReplacementPreflight.cpp" />
 	<ClCompile Include="search\DocumentSearchCoordinator.cpp" />
@@ -560,6 +563,10 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClInclude Include="resource.h" />
     <ClInclude Include="search\RegexBackend.h" />
     <ClInclude Include="search\RegexPcre2CodeCache.h" />
+    <ClInclude Include="search\SearchPreset.h" />
+    <ClInclude Include="search\SearchPresetCatalog.h" />
+    <ClInclude Include="search\SearchPresetStore.h" />
+    <ClInclude Include="search\ui\RegexHelpDialog.h" />
     <ClInclude Include="search\RegexPcre2MatchLoop.h" />
 	<ClInclude Include="search\SearchSession.h" />
 	<ClInclude Include="search\SearchResults.h" />

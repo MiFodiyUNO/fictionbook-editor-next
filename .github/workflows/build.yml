@@ -152,6 +152,9 @@ jobs:
           ./tools/tests/test-search-session.ps1
           ./tools/tests/test-literal-search-mshtml-differential.ps1
           ./tools/tests/test-search-document-adapter-mshtml.ps1
+          ./tools/tests/test-search-preset-store.ps1 -PlatformToolset v143
+          ./tools/tests/test-search-preset-catalog.ps1 -Configuration Release -UsePreparedPcre2 -PlatformToolset v143
+          ./tools/tests/test-fbe-find-replace-ui-contract.ps1
           ./tools/tests/test-pcre2-match-loop.ps1 -Configuration Release -UsePreparedPcre2
       - name: Run filesystem backup regression
         shell: pwsh

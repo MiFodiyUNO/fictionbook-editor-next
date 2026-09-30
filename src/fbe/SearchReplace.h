@@ -6,6 +6,11 @@
 #include "settings\\ui\\SettingsTooltips.h"
 #include "RuntimeLocalization.h"
 #include "utils.h"
+#include "apputils.h"
+#include "search\\SearchPresetCatalog.h"
+#include "search\\SearchPresetStore.h"
+#include "search\\ui\\RegexHelpDialog.h"
+#include <vector>
 
 extern CSettings _Settings;
 extern bool VBErr;
@@ -24,8 +29,11 @@ public:
 	int			m_scope;
 	CEdit		m_text;
 	CSettingsTooltips m_tooltips;
+    bool m_templatesExpanded;
+    int m_compactDialogWidth;
+    std::vector<FbeSearchPresets::SearchPreset> m_panelPresets;
 
-	FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0) { }
+    FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0), m_templatesExpanded(false), m_compactDialogWidth(0) { }
 
   HWND	GetDlgItem(int id) { return X_GetDlgItem(id); }
   virtual HWND X_GetDlgItem(int id) = 0;
@@ -47,10 +55,221 @@ public:
       ::SetWindowText(dialog, text);
   }
 
+    virtual FbeSearchPresets::SearchUiContext SearchContext() const
+    {
+        return FbeSearchPresets::SearchUiContext::Design;
+    }
+
+    HWND DialogWindow() const
+    {
+        const HWND text = const_cast<FRBase*>(this)->GetDlgItem(IDC_TEXT);
+        return text ? ::GetParent(text) : NULL;
+    }
+
+    bool IsReplaceDialog() const { return const_cast<FRBase*>(this)->GetDlgItem(IDC_REPLACE) != NULL; }
+
+    static HTREEITEM InsertPresetTreeItem(HWND tree, HTREEITEM parent, const CString& text, LPARAM data)
+    {
+        TVINSERTSTRUCTW item = {};
+        item.hParent = parent;
+        item.hInsertAfter = TVI_LAST;
+        item.item.mask = TVIF_TEXT | TVIF_PARAM;
+        item.item.pszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(text));
+        item.item.lParam = data;
+        return reinterpret_cast<HTREEITEM>(::SendMessage(tree, TVM_INSERTITEMW, 0, reinterpret_cast<LPARAM>(&item)));
+    }
+
+    const FbeSearchPresets::SearchPreset* SelectedPreset() const
+    {
+        const HWND tree = const_cast<FRBase*>(this)->GetDlgItem(IDC_FIND_PRESETS_TREE);
+        const HTREEITEM selected = tree ? TreeView_GetSelection(tree) : NULL;
+        if (!selected) return NULL;
+        TVITEM item = {}; item.mask = TVIF_PARAM; item.hItem = selected;
+        if (!TreeView_GetItem(tree, &item) || item.lParam < 0 ||
+            static_cast<size_t>(item.lParam) >= m_panelPresets.size()) return NULL;
+        return &m_panelPresets[static_cast<size_t>(item.lParam)];
+    }
+
+    void UpdatePresetActions()
+    {
+        const FbeSearchPresets::SearchPreset* preset = SelectedPreset();
+        const bool custom = preset != NULL && !preset->builtIn;
+        const HWND dialog = DialogWindow();
+        if (!dialog) return;
+        ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_APPLY), preset != NULL);
+        ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_SAVE), TRUE);
+        ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_UPDATE), custom);
+        ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_RENAME), custom);
+        ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_DELETE), custom);
+        CString description;
+        if (preset)
+        {
+            description = preset->description;
+            if (description.IsEmpty())
+                description.Format(FbeLoadRuntimeStringByKey(L"fbe.search_preset.custom_description", L"Find: %s"), static_cast<LPCWSTR>(preset->findText));
+        }
+        ::SetWindowText(GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), description);
+    }
+
+    void RefreshPresetPanel()
+    {
+        const HWND tree = GetDlgItem(IDC_FIND_PRESETS_TREE);
+        if (!tree) return;
+        m_panelPresets.clear();
+        std::vector<FbeSearchPresets::SearchPreset> builtIns;
+        FbeSearchPresets::GetBuiltInPresets(SearchContext(), IsReplaceDialog(), builtIns);
+        std::vector<FbeSearchPresets::SearchPreset> users;
+        FbeSearchPresets::SearchPresetStore store;
+        store.Load(users); // a damaged file never hides the built-in catalog
+        for (size_t index = 0; index < users.size(); ++index)
+            if (users[index].context == SearchContext() && (!IsReplaceDialog() || users[index].hasReplacement))
+                m_panelPresets.push_back(users[index]);
+
+        ::SendMessage(tree, TVM_DELETEITEM, 0, reinterpret_cast<LPARAM>(TVI_ROOT));
+        const HTREEITEM builtInRoot = InsertPresetTreeItem(tree, TVI_ROOT,
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.built_in", L"Built-in"), -1);
+        for (size_t index = 0; index < builtIns.size(); ++index)
+        {
+            m_panelPresets.insert(m_panelPresets.begin() + index, builtIns[index]);
+            InsertPresetTreeItem(tree, builtInRoot, builtIns[index].name, static_cast<LPARAM>(index));
+        }
+        const size_t builtInCount = builtIns.size();
+        const HTREEITEM userRoot = InsertPresetTreeItem(tree, TVI_ROOT,
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.user", L"User"), -2);
+        for (size_t index = builtInCount; index < m_panelPresets.size(); ++index)
+            InsertPresetTreeItem(tree, userRoot, m_panelPresets[index].name, static_cast<LPARAM>(index));
+        TreeView_Expand(tree, builtInRoot, TVE_EXPAND);
+        TreeView_Expand(tree, userRoot, TVE_EXPAND);
+        UpdatePresetActions();
+    }
+
+    int PresetPanelWidth() const
+    {
+        RECT units = { 0, 0, 152, 0 };
+        const HWND dialog = DialogWindow();
+        if (dialog) ::MapDialogRect(dialog, &units);
+        return units.right;
+    }
+
+    void SetPresetPanelVisible(bool visible)
+    {
+        const int controls[] = { IDC_FIND_PRESETS_LABEL, IDC_FIND_PRESETS_TREE, IDC_FIND_PRESET_DESCRIPTION,
+            IDC_FIND_PRESET_APPLY, IDC_FIND_PRESET_SAVE, IDC_FIND_PRESET_UPDATE, IDC_FIND_PRESET_RENAME, IDC_FIND_PRESET_DELETE };
+        for (size_t index = 0; index < _countof(controls); ++index)
+            ::ShowWindow(GetDlgItem(controls[index]), visible ? SW_SHOW : SW_HIDE);
+        const HWND dialog = DialogWindow();
+        if (!dialog) return;
+        if (m_compactDialogWidth == 0)
+        {
+            RECT rectangle = {}; ::GetWindowRect(dialog, &rectangle);
+            m_compactDialogWidth = rectangle.right - rectangle.left;
+        }
+        ::SetWindowPos(dialog, NULL, 0, 0, visible ? m_compactDialogWidth + PresetPanelWidth() : m_compactDialogWidth,
+            0, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        m_templatesExpanded = visible;
+        if (visible) RefreshPresetPanel();
+    }
+
+    FbeSearchPresets::SearchPreset CurrentPreset(const CString& name) const
+    {
+        FbeSearchPresets::SearchPreset preset;
+        preset.name = name;
+        GUID guid = {}; ::CoCreateGuid(&guid);
+        wchar_t id[40] = {}; ::StringFromGUID2(guid, id, _countof(id));
+        preset.id = id;
+        preset.id.Trim(L"{}");
+        preset.findText = m_view->m_fo.pattern;
+        preset.hasReplacement = IsReplaceDialog();
+        preset.replacementText = preset.hasReplacement ? m_view->m_fo.replacement : CString();
+        preset.regexp = m_view->m_fo.fRegexp;
+        preset.matchCase = (m_view->m_fo.flags & CFBEView::FRF_CASE) != 0;
+        preset.wholeWord = (m_view->m_fo.flags & CFBEView::FRF_WHOLE) != 0;
+        preset.unicodeProperties = SearchContext() == FbeSearchPresets::SearchUiContext::Design && m_view->m_fo.unicodeProperties;
+        preset.context = SearchContext();
+        return preset;
+    }
+
+    bool SaveUserPresets(const std::vector<FbeSearchPresets::SearchPreset>& presets)
+    {
+        FbeSearchPresets::SearchPresetStore store;
+        if (store.Save(presets)) return true;
+        ThemeManager::MessageBox(DialogWindow(),
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.save_failed", L"Could not save search templates."),
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.caption", L"Templates"), MB_OK | MB_ICONEXCLAMATION);
+        return false;
+    }
+
+    void ApplySelectedPreset()
+    {
+        const FbeSearchPresets::SearchPreset* preset = SelectedPreset();
+        if (!preset) return;
+        m_view->m_fo.pattern = preset->findText;
+        if (IsReplaceDialog() && preset->hasReplacement) m_view->m_fo.replacement = preset->replacementText;
+        m_view->m_fo.fRegexp = preset->regexp;
+        m_view->m_fo.flags = (m_view->m_fo.flags & CFBEView::FRF_REVERSE) |
+            (preset->matchCase ? CFBEView::FRF_CASE : 0) | (preset->wholeWord ? CFBEView::FRF_WHOLE : 0);
+        if (SearchContext() == FbeSearchPresets::SearchUiContext::Design)
+            m_view->m_fo.unicodeProperties = preset->unicodeProperties;
+        m_view->m_fo.ClearMatch();
+        m_view->m_design_search.ClearReplacePreview();
+        PutData();
+        UpdateUnicodeControl();
+        m_view->SyncSearchOptionsToOpenDialogs(this);
+        if (GetDlgItem(IDC_FIND_STATUS)) ::SetTimer(DialogWindow(), 0x4F01, 150, NULL);
+        ::SetFocus(GetDlgItem(IDC_TEXT));
+    }
+
+    LRESULT OnTogglePresets(WORD, WORD, HWND, BOOL&) { SetPresetPanelVisible(!m_templatesExpanded); return 0; }
+    LRESULT OnApplyPreset(WORD, WORD, HWND, BOOL&) { ApplySelectedPreset(); return 0; }
+    LRESULT OnSavePreset(WORD, WORD, HWND, BOOL&)
+    {
+        GetData(); CString name;
+        if (AU::InputBox(name, FbeLoadRuntimeStringByKey(L"fbe.search_preset.save_title", L"Save search template"),
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.name_prompt", L"Template name:")) != IDYES || name.Trim().IsEmpty()) return 0;
+        std::vector<FbeSearchPresets::SearchPreset> users; FbeSearchPresets::SearchPresetStore().Load(users);
+        users.push_back(CurrentPreset(name)); if (SaveUserPresets(users)) RefreshPresetPanel(); return 0;
+    }
+    LRESULT OnUpdatePreset(WORD, WORD, HWND, BOOL&)
+    {
+        const FbeSearchPresets::SearchPreset* selected = SelectedPreset(); if (!selected || selected->builtIn) return 0;
+        GetData(); std::vector<FbeSearchPresets::SearchPreset> users; FbeSearchPresets::SearchPresetStore().Load(users);
+        for (size_t index = 0; index < users.size(); ++index) if (users[index].id == selected->id) { FbeSearchPresets::SearchPreset replacement = CurrentPreset(selected->name); replacement.id = selected->id; users[index] = replacement; break; }
+        if (SaveUserPresets(users)) RefreshPresetPanel(); return 0;
+    }
+    LRESULT OnRenamePreset(WORD, WORD, HWND, BOOL&)
+    {
+        const FbeSearchPresets::SearchPreset* selected = SelectedPreset(); if (!selected || selected->builtIn) return 0;
+        CString name(selected->name); if (AU::InputBox(name, FbeLoadRuntimeStringByKey(L"fbe.search_preset.rename_title", L"Rename search template"), FbeLoadRuntimeStringByKey(L"fbe.search_preset.name_prompt", L"Template name:")) != IDYES || name.Trim().IsEmpty()) return 0;
+        std::vector<FbeSearchPresets::SearchPreset> users; FbeSearchPresets::SearchPresetStore().Load(users); for (size_t index = 0; index < users.size(); ++index) if (users[index].id == selected->id) users[index].name = name;
+        if (SaveUserPresets(users)) RefreshPresetPanel(); return 0;
+    }
+    LRESULT OnDeletePreset(WORD, WORD, HWND, BOOL&)
+    {
+        const FbeSearchPresets::SearchPreset* selected = SelectedPreset(); if (!selected || selected->builtIn) return 0;
+        if (ThemeManager::MessageBox(DialogWindow(), FbeLoadRuntimeStringByKey(L"fbe.search_preset.delete_confirm", L"Delete the selected search template?"), FbeLoadRuntimeStringByKey(L"fbe.search_preset.caption", L"Templates"), MB_YESNO | MB_ICONQUESTION) != IDYES) return 0;
+        std::vector<FbeSearchPresets::SearchPreset> users; FbeSearchPresets::SearchPresetStore().Load(users); for (std::vector<FbeSearchPresets::SearchPreset>::iterator item = users.begin(); item != users.end(); ++item) if (item->id == selected->id) { users.erase(item); break; }
+        if (SaveUserPresets(users)) RefreshPresetPanel(); return 0;
+    }
+    LRESULT OnPresetChanged(int, LPNMHDR, BOOL&) { UpdatePresetActions(); return 0; }
+    LRESULT OnPresetDblClick(int, LPNMHDR, BOOL&) { ApplySelectedPreset(); return 0; }
+    LRESULT OnPresetKeyDown(int, LPNMHDR header, BOOL&)
+    {
+        NMTVKEYDOWN* key = reinterpret_cast<NMTVKEYDOWN*>(header); if (key && key->wVKey == VK_RETURN) ApplySelectedPreset(); return 0;
+    }
+    LRESULT OnShowRegexHelp(WORD, WORD, HWND, BOOL&) { ShowRegexHelpDialog(DialogWindow(), SearchContext()); return 0; }
 	BEGIN_MSG_MAP(FRBase)
 		ALT_MSG_MAP(1)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
-		COMMAND_HANDLER(IDC_TEXT,CBN_EDITCHANGE, OnTextChanged)
+		COMMAND_HANDLER(IDC_TEXT,CBN_EDITCHANGE, OnTextChanged)        COMMAND_ID_HANDLER(IDC_FIND_TEMPLATES, OnTogglePresets)
+        COMMAND_ID_HANDLER(IDC_FIND_REGEX_HELP, OnShowRegexHelp)
+        COMMAND_ID_HANDLER(IDC_FIND_PRESET_APPLY, OnApplyPreset)
+        COMMAND_ID_HANDLER(IDC_FIND_PRESET_SAVE, OnSavePreset)
+        COMMAND_ID_HANDLER(IDC_FIND_PRESET_UPDATE, OnUpdatePreset)
+        COMMAND_ID_HANDLER(IDC_FIND_PRESET_RENAME, OnRenamePreset)
+        COMMAND_ID_HANDLER(IDC_FIND_PRESET_DELETE, OnDeletePreset)
+        NOTIFY_HANDLER(IDC_FIND_PRESETS_TREE, TVN_SELCHANGED, OnPresetChanged)
+        NOTIFY_HANDLER(IDC_FIND_PRESETS_TREE, NM_DBLCLK, OnPresetDblClick)
+        NOTIFY_HANDLER(IDC_FIND_PRESETS_TREE, TVN_KEYDOWN, OnPresetKeyDown)
 	END_MSG_MAP()
 
   BEGIN_DDX_MAP(FRBase)
@@ -82,7 +301,8 @@ public:
 
 		m_view->m_fo.flags = flags;
 		m_view->m_fo.fRegexp = m_regexp != 0;
-		m_view->m_fo.unicodeProperties = m_unicode != 0;
+		if (SearchContext() == FbeSearchPresets::SearchUiContext::Design)
+		    m_view->m_fo.unicodeProperties = m_unicode != 0;
 		HWND scope = FRBase::GetDlgItem(IDC_FIND_SCOPE);
 		if (scope)
 		{
@@ -98,7 +318,7 @@ public:
 		m_whole = (m_view->m_fo.flags & CFBEView::FRF_WHOLE) != 0;
 		m_dir = (m_view->m_fo.flags & CFBEView::FRF_REVERSE) == 0;
 		m_regexp = m_view->m_fo.fRegexp;
-		m_unicode = m_view->m_fo.unicodeProperties;
+		m_unicode = SearchContext() == FbeSearchPresets::SearchUiContext::Design && m_view->m_fo.unicodeProperties;
 		m_scope = static_cast<int>(m_view->m_fo.scope);
 		DoDataExchange(FALSE);
 	}
@@ -227,7 +447,15 @@ public:
 
 		// Set fields
 		PutData();
-		UpdateUnicodeControl();
+		UpdateUnicodeControl();        SetPresetPanelVisible(false);
+        SetRuntimeText(IDC_FIND_TEMPLATES, L"fbe.search_preset.templates", L"Templates...");
+        SetRuntimeText(IDC_FIND_REGEX_HELP, L"fbe.search_preset.regex_help", L"?");
+        SetRuntimeText(IDC_FIND_PRESETS_LABEL, L"fbe.search_preset.caption", L"Templates");
+        SetRuntimeText(IDC_FIND_PRESET_APPLY, L"fbe.search_preset.apply", L"Apply");
+        SetRuntimeText(IDC_FIND_PRESET_SAVE, L"fbe.search_preset.save_current", L"Save current...");
+        SetRuntimeText(IDC_FIND_PRESET_UPDATE, L"fbe.search_preset.update", L"Update");
+        SetRuntimeText(IDC_FIND_PRESET_RENAME, L"fbe.search_preset.rename", L"Rename...");
+        SetRuntimeText(IDC_FIND_PRESET_DELETE, L"fbe.search_preset.delete", L"Delete");
 		if (GetDlgItem(IDC_FIND_SCOPE) != NULL)
 		{
 			SetRuntimeText(IDC_FIND_SCOPE_LABEL,
@@ -243,9 +471,16 @@ public:
 				m_tooltips.Add(GetDlgItem(IDC_WHOLE), L"fbe.tooltip.find.whole_word", L"Match complete words only.");
 				m_tooltips.Add(GetDlgItem(IDC_MATCHCASE), L"fbe.tooltip.find.match_case", L"Distinguish uppercase and lowercase letters.");
 				m_tooltips.Add(GetDlgItem(IDC_REGEXP), L"fbe.tooltip.find.regexp", L"Interpret the query as a regular expression.");
+                m_tooltips.Add(GetDlgItem(IDC_FIND_TEMPLATES), L"fbe.tooltip.find.templates", L"Open built-in and saved search templates.");
+                m_tooltips.Add(GetDlgItem(IDC_FIND_REGEX_HELP), L"fbe.tooltip.find.regex_help", L"Show regular-expression help for the active Design or Source context.");
 				m_tooltips.Add(GetDlgItem(IDC_FIND_SCOPE), L"fbe.tooltip.find.scope", L"Choose where to search.");
-				m_tooltips.Add(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), L"fbe.tooltip.find.unicode_properties", L"Use Unicode properties for \\w, \\d, \\s and word boundaries \\b/\\B (for example with Cyrillic text). Available only when Regular expression is enabled.");
-				m_tooltips.AddDisabledControlArea(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), L"fbe.tooltip.find.unicode_properties", L"Use Unicode properties for \\w, \\d, \\s and word boundaries \\b/\\B (for example with Cyrillic text). Available only when Regular expression is enabled.");
+                const bool designContext = SearchContext() == FbeSearchPresets::SearchUiContext::Design;
+                const LPCWSTR ucpKey = designContext ? L"fbe.tooltip.find.unicode_properties" : L"fbe.tooltip.find.unicode_properties_source";
+                const LPCWSTR ucpFallback = designContext
+                    ? L"Use Unicode properties for \\w, \\d, \\s and word boundaries \\b/\\B (for example with Cyrillic text). Available only when Regular expression is enabled."
+                    : L"Unicode UCP applies to PCRE2 in Design mode and is unavailable for the current Source regex engine.";
+                m_tooltips.Add(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), ucpKey, ucpFallback);
+                m_tooltips.AddDisabledControlArea(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), ucpKey, ucpFallback);
 				if (!isReplaceDialog) m_tooltips.Add(GetDlgItem(IDC_FIND_STATUS), L"fbe.tooltip.find.status", L"Search status and complete regular-expression diagnostic.");
 				m_tooltips.Add(GetDlgItem(IDC_UP), L"fbe.tooltip.find.up", L"Search toward the beginning of the document.");
 				m_tooltips.Add(GetDlgItem(IDC_DOWN), L"fbe.tooltip.find.down", L"Search toward the end of the document.");
@@ -337,7 +572,7 @@ public:
 	{
 		HWND unicode = GetDlgItem(IDC_FIND_UNICODE_PROPERTIES);
 		if (unicode)
-			::EnableWindow(unicode, ::IsDlgButtonChecked(::GetParent(unicode), IDC_REGEXP) == BST_CHECKED);
+			::EnableWindow(unicode, SearchContext() == FbeSearchPresets::SearchUiContext::Design && ::IsDlgButtonChecked(::GetParent(unicode), IDC_REGEXP) == BST_CHECKED);
 	}
 
 	// Find and Replace are modeless views of the same CFBEView options.  Keep
@@ -349,7 +584,7 @@ public:
 		m_whole = (m_view->m_fo.flags & CFBEView::FRF_WHOLE) != 0;
 		m_dir = (m_view->m_fo.flags & CFBEView::FRF_REVERSE) == 0;
 		m_regexp = m_view->m_fo.fRegexp;
-		m_unicode = m_view->m_fo.unicodeProperties;
+		m_unicode = SearchContext() == FbeSearchPresets::SearchUiContext::Design && m_view->m_fo.unicodeProperties;
 		m_scope = static_cast<int>(m_view->m_fo.scope);
 		const HWND dialog = ::GetParent(GetDlgItem(IDC_TEXT));
 		if (dialog)
@@ -639,6 +874,8 @@ class CViewFindDlg: public CFindDlgBase
 {
 public:
 	CViewFindDlg(CFBEView* view) : CFindDlgBase(view) { }
+
+	virtual FbeSearchPresets::SearchUiContext SearchContext() const { return FbeSearchPresets::SearchUiContext::Design; }
 
 	virtual void DoFind()
 	{

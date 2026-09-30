@@ -285,6 +285,8 @@ $pcre2TestArguments = @{
 if ($PlatformToolset) {
     $pcre2TestArguments.PlatformToolset = $PlatformToolset
 }
+& (Join-Path $repoRoot "tools\tests\test-search-preset-store.ps1") -PlatformToolset $PlatformToolset
+& (Join-Path $repoRoot "tools\tests\test-search-preset-catalog.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-match-loop.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-wrapper.ps1") @pcre2TestArguments
@@ -337,6 +339,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-localization-export.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-mnemonics.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-find-replace-ui-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-runtime-dialog-coverage.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-dialog-layout-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-no-fbe-locale-resource-dll.ps1")

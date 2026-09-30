@@ -4128,6 +4128,7 @@ public:
     CFindDlgBase(view), m_source(src)
   {
   }
+  virtual FbeSearchPresets::SearchUiContext SearchContext() const { return FbeSearchPresets::SearchUiContext::Source; }
   void UpdatePattern()
   {
 	  m_view->m_fo.pattern=SciSelection(m_source);
@@ -4151,6 +4152,7 @@ public:
   {
   }
 
+  virtual FbeSearchPresets::SearchUiContext SearchContext() const { return FbeSearchPresets::SearchUiContext::Source; }
 	void UpdatePattern()
 	{
 		m_view->m_fo.pattern=SciSelection(m_source);

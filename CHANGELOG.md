@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Добавлена встроенная библиотека шаблонов Find/Replace, пользовательские persistent-шаблоны и контекстная regex-справка для PCRE2 Design и Scintilla Source.
+
 - Обновлены vendor-зависимости: Scintilla до 5.6.7, Lexilla до 5.5.4,
   Hunspell до 1.7.4 и libaom до 3.15.1. Эталонные `Scintilla.dll` и
   `Lexilla.dll` пересобраны для Win32 runtime.

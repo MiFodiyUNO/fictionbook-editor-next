@@ -2836,6 +2836,7 @@ stop:
 class CViewReplaceDlg : public CReplaceDlgBase {
 public:
   CViewReplaceDlg(CFBEView *view) : CReplaceDlgBase(view) { }
+  virtual FbeSearchPresets::SearchUiContext SearchContext() const { return FbeSearchPresets::SearchUiContext::Design; }
 
   virtual void DoFind() {
     if (!m_view->DoSearch())
