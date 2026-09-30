@@ -72,7 +72,10 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptToolbarRuntimeSize = IsFbeTestScenario(L"script-toolbar-runtime-size");
 	const bool navigationScriptsRuntime = IsFbeTestScenario(L"navigation-scripts-runtime");
 	const bool navigationScriptsReloadRuntime = IsFbeTestScenario(L"navigation-scripts-reload-runtime");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationScriptsReloadRuntime)
+	const bool scriptStartupValidationOn = IsFbeTestScenario(L"script-startup-validation-on");
+	const bool scriptStartupValidationOffWrite = IsFbeTestScenario(L"script-startup-validation-off-write");
+	const bool scriptStartupValidationOffRead = IsFbeTestScenario(L"script-startup-validation-off-read");
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationScriptsReloadRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -92,6 +95,40 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 	auto currentDefinitions = [&]() { std::vector<ScriptToolbarDefinition> result; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) result.push_back(m_scriptToolbars.Items()[index].definition); return result; };
 	auto mainHasDefault = [&]() { TBBUTTON button = {}; return m_ScriptsToolbar.GetButtonCount() > 0 && m_ScriptsToolbar.GetButton(0, &button) && button.idCommand == ID_LAST_SCRIPT; };
+	auto findBrokenScript = [&]() -> const ScriptDescriptor* {
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index) {
+			const ScriptDescriptor& script = m_scripts.Menu().Item(index);
+			if(!script.isFolder && script.relativePath == L"broken.js") return &script;
+		}
+		return NULL;
+	};
+	if(scriptStartupValidationOn)
+	{
+		_Settings.SetScriptsFolder(scriptsDirectory, true);
+		const bool rejected = InitializeScripts() && _Settings.CheckScriptsOnStartup() && findBrokenScript() == NULL;
+		CStringA report; report.Format("phase=script-startup-validation-on\nvalidation-on=%d\nbroken-in-catalog=%d\nresult=%s\n", _Settings.CheckScriptsOnStartup(), findBrokenScript() != NULL, rejected ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
+	if(scriptStartupValidationOffWrite)
+	{
+		_Settings.SetCheckScriptsOnStartup(false, true);
+		const bool saved = !_Settings.CheckScriptsOnStartup();
+		CStringA report; report.Format("phase=script-startup-validation-off-write\nvalidation-off=%d\nresult=%s\n", saved, saved ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
+	if(scriptStartupValidationOffRead)
+	{
+		const ScriptDescriptor* broken = findBrokenScript();
+		const bool ready = !_Settings.CheckScriptsOnStartup() && broken != NULL;
+		if(ready && m_doc) m_doc->RunScript(broken->path);
+		// The regular command route above remains the deferred user invocation.
+		// This direct load exercises its parser diagnostic without the startup-only
+		// ScopedDialogSuppression; the runtime harness closes that one dialog.
+		bool interactiveDiagnostic = false;
+		if(ready) { ScriptDiscoveryRuntime runtime(this); interactiveDiagnostic = runtime.Started() && !FbeScriptDiagnostics::DialogsSuppressed(); if(interactiveDiagnostic) ScriptLoad(broken->path); }
+		CStringA report; report.Format("phase=script-startup-validation-off-read\nvalidation-off=%d\nbroken-in-catalog=%d\ninteractive-run=%d\ndialogs-suppressed=%d\ninteractive-diagnostic=%d\nresult=%s\n", !_Settings.CheckScriptsOnStartup(), broken != NULL, ready, FbeScriptDiagnostics::DialogsSuppressed(), interactiveDiagnostic, ready && interactiveDiagnostic ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
 	if(scriptToolbarRuntimeSize)
 	{
 		::CreateDirectory(scriptsDirectory, NULL);

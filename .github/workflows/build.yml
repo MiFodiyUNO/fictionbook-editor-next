@@ -52,6 +52,7 @@ jobs:
           ./tools/tests/test-fbe-navigation-scripts-contract.ps1
           ./tools/tests/test-fbe-script-menu-builder.ps1
           ./tools/tests/test-fbe-script-command-ids.ps1
+          ./tools/tests/test-fbe-script-startup-validation.ps1
           ./tools/tests/test-portable-scripts-infrastructure.ps1
 
           ./tools/tests/test-script-toolbar-lifecycle-contract.ps1
