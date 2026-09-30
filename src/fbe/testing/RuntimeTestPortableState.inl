@@ -120,13 +120,9 @@ void CMainFrame::RunPortableStateTestScenario()
 	{
 		const ScriptDescriptor* broken = findBrokenScript();
 		const bool ready = !_Settings.CheckScriptsOnStartup() && broken != NULL;
-		if(ready && m_doc) m_doc->RunScript(broken->path);
-		// The regular command route above remains the deferred user invocation.
-		// This direct load exercises its parser diagnostic without the startup-only
-		// ScopedDialogSuppression; the runtime harness closes that one dialog.
-		bool interactiveDiagnostic = false;
-		if(ready) { ScriptDiscoveryRuntime runtime(this); interactiveDiagnostic = runtime.Started() && !FbeScriptDiagnostics::DialogsSuppressed(); if(interactiveDiagnostic) ScriptLoad(broken->path); }
-		CStringA report; report.Format("phase=script-startup-validation-off-read\nvalidation-off=%d\nbroken-in-catalog=%d\ninteractive-run=%d\ndialogs-suppressed=%d\ninteractive-diagnostic=%d\nresult=%s\n", !_Settings.CheckScriptsOnStartup(), broken != NULL, ready, FbeScriptDiagnostics::DialogsSuppressed(), interactiveDiagnostic, ready && interactiveDiagnostic ? "pass" : "fail");
+		const bool interactiveRun = ready && m_doc != NULL && !FbeScriptDiagnostics::DialogsSuppressed();
+		if(interactiveRun) m_doc->RunScript(broken->path);
+		CStringA report; report.Format("phase=script-startup-validation-off-read\nvalidation-off=%d\nbroken-in-catalog=%d\ninteractive-run=%d\ndialogs-suppressed=%d\nresult=%s\n", !_Settings.CheckScriptsOnStartup(), broken != NULL, interactiveRun, FbeScriptDiagnostics::DialogsSuppressed(), interactiveRun ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(scriptToolbarRuntimeSize)

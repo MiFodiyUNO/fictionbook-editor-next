@@ -1509,8 +1509,8 @@ function apiShowDesc(state)
 }
 function apiRunCmd(path)
 {
-        window.msgText="Скрипт\n\n"+path+"\n\nне был запущен, т.к. не удалось его успешно загрузить.\n\n"+
-                       "Возможная причина – файл скрипта отсутствует по тому пути, где он должен находиться.";
+	var messageTemplate=window.external.GetLocalizedString("fbe.script.run_failed");
+	window.msgText=messageTemplate.replace("{path}", path);
 	window.Run=function() {
 	  if (window.msgText) alert(window.msgText);
 	};

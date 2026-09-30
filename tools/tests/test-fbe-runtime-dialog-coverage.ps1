@@ -33,6 +33,7 @@ $consumers = @{
     IDD_SETTINGS_SPELLING = @{ File = 'src\fbe\settings\ui\SettingsSpellingPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SPELLING\)' }
     IDD_SETTINGS_SOURCE = @{ File = 'src\fbe\settings\ui\SettingsSourcePage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SOURCE\)' }
     IDD_SETTINGS_ADVANCED = @{ File = 'src\fbe\settings\ui\SettingsAdvancedPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_ADVANCED\)' }
+    'runtime/main.js' = @{ File = 'runtime\main.js'; Invocation = 'GetLocalizedString' }
     IDS_REPL_ALL_CAPT = @{ File = 'src\fbe\FBEview.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
     IDS_REPL_DONE_MSG = @{ File = 'src\fbe\FBEview.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
 }

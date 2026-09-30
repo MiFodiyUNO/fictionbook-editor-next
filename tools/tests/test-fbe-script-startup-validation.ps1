@@ -35,6 +35,12 @@ Require $diagnostics 'class ScopedDialogSuppression' 'scoped diagnostic suppress
 Require $diagnostics 'if \(DialogsSuppressed\(\)\)' 'suppressed startup errors stay diagnostic-only'
 Require (Read 'src\fbe\script.cpp') 'if \(!FbeScriptDiagnostics::DialogsSuppressed\(\)\)' 'fallback parser error is also noninteractive at startup'
 Require $runtime 'function apiRunCmd\(path\)' 'actual invocation remains the deferred validation path'
+Require $runtime 'GetLocalizedString\("fbe\.script\.run_failed"\)' 'deferred script-launch error is runtime-localized'
+if ($runtime -match 'Скрипт\\n\\n"\+path') { throw 'apiRunCmd must not retain the hard-coded Russian script-launch error.' }
+
+$portableState = Read 'src\fbe\testing\RuntimeTestPortableState.inl'
+Require $portableState 'm_doc->RunScript\(broken->path\)' 'OFF runtime smoke invokes the broken script through Doc::RunScript'
+if ($portableState -match '(?s)if\(scriptStartupValidationOffRead\).*?ScriptLoad\(broken->path\)') { throw 'OFF runtime smoke must not bypass Doc::RunScript with ScriptLoad.' }
 
 $entry = $catalog.strings.'fbe.dialog.idd_setting_other.check_scripts_on_startup'
 if ($null -eq $entry -or $entry.resource -ne 'IDD_SETTINGS_ADVANCED' -or $entry.targetId -ne 'IDC_CHECK_SCRIPTS_ON_STARTUP') { throw 'Локализация checkbox не привязана к Advanced.' }

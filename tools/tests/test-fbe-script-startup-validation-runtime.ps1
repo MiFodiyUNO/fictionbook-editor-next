@@ -66,7 +66,7 @@ try {
     $offWrite = Invoke-Scenario 'script-startup-validation-off-write'
     if($offWrite -notmatch '(?m)^validation-off=1$') { throw "OFF persistence write result is incorrect:`n$offWrite" }
     $offRead = Invoke-Scenario 'script-startup-validation-off-read' -ExpectDialog
-    if($offRead -notmatch '(?m)^validation-off=1$' -or $offRead -notmatch '(?m)^broken-in-catalog=1$' -or $offRead -notmatch '(?m)^interactive-run=1$' -or $offRead -notmatch '(?m)^dialogs-suppressed=0$' -or $offRead -notmatch '(?m)^interactive-diagnostic=1$') { throw "OFF restart result is incorrect:`n$offRead" }
+    if($offRead -notmatch '(?m)^validation-off=1$' -or $offRead -notmatch '(?m)^broken-in-catalog=1$' -or $offRead -notmatch '(?m)^interactive-run=1$' -or $offRead -notmatch '(?m)^dialogs-suppressed=0$') { throw "OFF restart result is incorrect:`n$offRead" }
     Write-Host 'Startup script validation runtime smoke passed.'
 } finally {
     if($hadIni) { [IO.File]::WriteAllText($portableIni, $oldIni, [Text.UTF8Encoding]::new($false)) } else { Remove-Item -LiteralPath $portableIni -Force -ErrorAction SilentlyContinue }
