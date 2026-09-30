@@ -289,6 +289,14 @@ if ($PlatformToolset) {
 }
 & (Join-Path $repoRoot "tools\tests\test-search-preset-store.ps1") -PlatformToolset $PlatformToolset
 & (Join-Path $repoRoot "tools\tests\test-search-preset-catalog.ps1") @pcre2TestArguments
+& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-runtime.ps1") -PlatformToolset $PlatformToolset
+& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-popup.ps1")
+& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-catalog.ps1")
+& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-insertion.ps1")
+& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-localization.ps1")
+& (Join-Path $repoRoot "tools\tests\test-search-preset-live-refresh.ps1")
+& (Join-Path $repoRoot "tools\tests\test-search-preset-preview.ps1")
+& (Join-Path $repoRoot "tools\tests\test-search-preset-nbsp.ps1")
 & (Join-Path $repoRoot "tools\tests\test-pcre2.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-match-loop.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-wrapper.ps1") @pcre2TestArguments

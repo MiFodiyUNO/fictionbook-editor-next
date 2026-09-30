@@ -18,15 +18,17 @@ void ApplyToWindow(HWND)
 
 namespace
 {
-bool Pump()
+void DispatchMessages(CMessageLoop& messageLoop)
 {
     MSG message = {};
     while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
     {
-        ::TranslateMessage(&message);
-        ::DispatchMessage(&message);
+        if (!messageLoop.PreTranslateMessage(&message))
+        {
+            ::TranslateMessage(&message);
+            ::DispatchMessage(&message);
+        }
     }
-    return true;
 }
 
 bool Check(bool value)
@@ -71,33 +73,74 @@ bool TestComboInsertion(HWND owner)
     return valid;
 }
 
-bool TestPopup(HWND owner, HWND anchor)
+LRESULT CALLBACK OutsideWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    int inserts = 0;
+    if (message == WM_LBUTTONDOWN)
+        ++*reinterpret_cast<int*>(::GetWindowLongPtr(window, GWLP_USERDATA));
+    return ::DefWindowProc(window, message, wParam, lParam);
+}
+
+bool ShowPopup(HWND owner, HWND anchor, int& inserts, int& fullHelp, HWND& popupWindow)
+{
     RegexQuickReferencePopup* popup = new RegexQuickReferencePopup();
     if (!popup->Show(owner, anchor, FbeSearchPresets::SearchUiContext::Design, FbeSearchPresets::RegexQuickReferenceMode::Search,
-        [&inserts](const FbeSearchPresets::RegexQuickReferenceEntry&) { ++inserts; }, [] {})) return false;
-    const HWND popupWindow = popup->m_hWnd;
+        [&inserts](const FbeSearchPresets::RegexQuickReferenceEntry&) { ++inserts; }, [&fullHelp]() { ++fullHelp; })) return false;
+    popupWindow = popup->m_hWnd;
     if (!Check(::IsWindow(popupWindow)) || !Check(::GetDlgItem(popupWindow, 3)) || !Check(::GetDlgItem(popupWindow, 1)) ||
         !Check(::GetDlgItem(popupWindow, 4)) || !Check(::GetDlgItem(popupWindow, 2)) ||
         !Check(::SendMessage(::GetDlgItem(popupWindow, 1), LB_GETCOUNT, 0, 0) > 0)) return false;
-    Pump();
-    if (!Check(::IsWindow(popupWindow))) return false;
-    ::DestroyWindow(popupWindow);
-    Pump();
-    return inserts == 0;
+    return true;
 }
 
-bool TestFullHelp(HWND owner, HWND anchor)
+bool TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
 {
-    int callbackCount = 0;
-    RegexQuickReferencePopup* popup = new RegexQuickReferencePopup();
-    if (!popup->Show(owner, anchor, FbeSearchPresets::SearchUiContext::Design, FbeSearchPresets::RegexQuickReferenceMode::Search,
-        [](const FbeSearchPresets::RegexQuickReferenceEntry&) {}, [&callbackCount]() { ++callbackCount; })) return false;
-    const HWND popupWindow = popup->m_hWnd;
-    ::SendMessage(popupWindow, WM_COMMAND, MAKEWPARAM(2, BN_CLICKED), reinterpret_cast<LPARAM>(::GetDlgItem(popupWindow, 2)));
-    Pump();
-    return callbackCount == 1 && !::IsWindow(popupWindow);
+    int inserts = 0;
+    int fullHelp = 0;
+    HWND popupWindow = NULL;
+
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
+    ::PostMessage(::GetDlgItem(popupWindow, 1), WM_KEYDOWN, VK_ESCAPE, 0);
+    DispatchMessages(messageLoop);
+    if (::IsWindow(popupWindow) || inserts != 0 || fullHelp != 0) return false;
+
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
+    ::PostMessage(::GetDlgItem(popupWindow, 1), WM_KEYDOWN, VK_RETURN, 0);
+    DispatchMessages(messageLoop);
+    if (::IsWindow(popupWindow) || inserts != 1 || fullHelp != 0) return false;
+
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
+    const HWND left = ::GetDlgItem(popupWindow, 1);
+    const HWND right = ::GetDlgItem(popupWindow, 4);
+    ::PostMessage(left, WM_KEYDOWN, VK_RIGHT, 0);
+    DispatchMessages(messageLoop);
+    if (::GetFocus() != right) return false;
+    ::PostMessage(right, WM_KEYDOWN, VK_LEFT, 0);
+    DispatchMessages(messageLoop);
+    if (::GetFocus() != left) return false;
+    ::DestroyWindow(popupWindow);
+    DispatchMessages(messageLoop);
+
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
+    ::PostMessage(::GetDlgItem(popupWindow, 1), WM_KEYDOWN, VK_F1, 0);
+    DispatchMessages(messageLoop);
+    if (::IsWindow(popupWindow) || inserts != 1 || fullHelp != 1) return false;
+
+    int outsideClicks = 0;
+    WNDCLASS windowClass = {};
+    windowClass.lpfnWndProc = OutsideWindowProc;
+    windowClass.hInstance = _Module.GetModuleInstance();
+    windowClass.lpszClassName = L"FBERegexQuickReferenceOutside";
+    if (!::RegisterClass(&windowClass) && ::GetLastError() != ERROR_CLASS_ALREADY_EXISTS) return false;
+    HWND outside = ::CreateWindowEx(0, windowClass.lpszClassName, L"outside", WS_CHILD | WS_VISIBLE,
+        60, 60, 80, 40, owner, NULL, _Module.GetModuleInstance(), NULL);
+    if (!outside) return false;
+    ::SetWindowLongPtr(outside, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&outsideClicks));
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) { ::DestroyWindow(outside); return false; }
+    ::PostMessage(outside, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(4, 4));
+    DispatchMessages(messageLoop);
+    const bool outsideResult = !::IsWindow(popupWindow) && outsideClicks == 1;
+    ::DestroyWindow(outside);
+    return outsideResult;
 }
 }
 
@@ -106,15 +149,17 @@ int wmain()
     INITCOMMONCONTROLSEX controls = { sizeof(controls), ICC_WIN95_CLASSES };
     if (!::InitCommonControlsEx(&controls)) return 1;
     _Module.Init(NULL, ::GetModuleHandle(NULL));
+    CMessageLoop messageLoop;
+    if (!_Module.AddMessageLoop(&messageLoop)) { _Module.Term(); return 1; }
     HWND owner = ::CreateWindowEx(0, WC_STATIC, L"owner", WS_OVERLAPPEDWINDOW, 0, 0, 320, 200, NULL, NULL, _Module.GetModuleInstance(), NULL);
     HWND anchor = ::CreateWindowEx(0, WC_BUTTON, L"?", WS_CHILD | WS_VISIBLE, 10, 10, 20, 20, owner, NULL, _Module.GetModuleInstance(), NULL);
     if (owner) ::ShowWindow(owner, SW_SHOW);
     int result = 0;
     if (!owner || !anchor) result = 1;
     else if (!TestComboInsertion(owner)) result = 2;
-    else if (!TestPopup(owner, anchor)) result = 3;
-    else if (!TestFullHelp(owner, anchor)) result = 4;
+    else if (!TestPopupMessageLoop(owner, anchor, messageLoop)) result = 3;
     if (owner) ::DestroyWindow(owner);
+    _Module.RemoveMessageLoop();
     _Module.Term();
     return result;
 }

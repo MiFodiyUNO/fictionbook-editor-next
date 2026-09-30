@@ -459,6 +459,7 @@
 	<ClInclude Include="search\SearchPresetCatalog.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchPresetStore.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\ui\RegexHelpDialog.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\ui\ComboBoxEdit.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\RegexPcre2MatchLoop.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchSession.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchResults.h"><Filter>Header Files\Search</Filter></ClInclude>
