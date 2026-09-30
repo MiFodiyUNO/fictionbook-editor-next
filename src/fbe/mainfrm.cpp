@@ -584,6 +584,14 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_EDIT_INS_POEM, L"fbe.menu.idr_mainframe.insert.poem" },
 	{ ID_EDIT_INS_CITE, L"fbe.menu.idr_mainframe.insert.cite" },
 	{ ID_INSERT_TABLE, L"fbe.menu.idr_mainframe.insert.table" },
+	{ ID_TABLE_INSERT_ROW_ABOVE, L"fbe.menu.idr_mainframe.table.insert_row_above" },
+	{ ID_TABLE_INSERT_ROW_BELOW, L"fbe.menu.idr_mainframe.table.insert_row_below" },
+	{ ID_TABLE_DELETE_ROW, L"fbe.menu.idr_mainframe.table.delete_row" },
+	{ ID_TABLE_INSERT_COLUMN_LEFT, L"fbe.menu.idr_mainframe.table.insert_column_left" },
+	{ ID_TABLE_INSERT_COLUMN_RIGHT, L"fbe.menu.idr_mainframe.table.insert_column_right" },
+	{ ID_TABLE_DELETE_COLUMN, L"fbe.menu.idr_mainframe.table.delete_column" },
+	{ ID_TABLE_MAKE_HEADER_CELLS, L"fbe.menu.idr_mainframe.table.make_header_cells" },
+	{ ID_TABLE_MAKE_NORMAL_CELLS, L"fbe.menu.idr_mainframe.table.make_normal_cells" },
 	{ ID_EDIT_ADD_IMAGE, L"fbe.menu.idr_mainframe.insert.section_image" },
 	{ ID_EDIT_ADDBINARY, L"fbe.menu.idr_mainframe.insert.binary" },
 	{ ID_STYLE_NORMAL, L"fbe.menu.idr_mainframe.style.normal" },
@@ -939,6 +947,11 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 		if(exportMenu != NULL && ::GetMenuItemID(exportMenu, 0) == IDCANCEL)
 			SetRuntimePlainMenuItemTextByPosition(exportMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.export");
 	}
+
+	HMENU insertMenu = ::GetSubMenu(menu, 3);
+	const int tableStructurePosition = FindTopLevelMenuPositionByCommand(insertMenu, ID_TABLE_INSERT_ROW_ABOVE);
+	if(tableStructurePosition >= 0)
+		SetRuntimeMenuItemTextByPosition(insertMenu, tableStructurePosition, L"fbe.menu.idr_mainframe.table.structure");
 
 	HMENU scriptsMenu = scriptsPosition >= 0 ? ::GetSubMenu(menu, scriptsPosition) : NULL;
 	if(scriptsMenu != NULL && ::GetMenuItemID(scriptsMenu, 0) == IDCANCEL)

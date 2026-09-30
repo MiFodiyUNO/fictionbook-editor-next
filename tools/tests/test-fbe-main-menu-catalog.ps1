@@ -120,6 +120,23 @@ if ([regex]::Matches($resourceText, 'ID_TOOLS_(DIAGNOSTIC_TRACE|OPEN_DIAGNOSTIC_
 foreach($required in @('static bool MenuContainsScriptCommand(HMENU menu)', 'commandId >= ID_SCRIPT_BASE && commandId < ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT', 'GetSubMenu(mainMenu, 6)', 'ApplyRuntimeMainFrameMenuLocalization(mainMenu);', 'FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.undo", L"&Undo")', 'FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.redo", L"&Redo")')) {
     if($frameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Runtime main-menu localization is missing: $required" }
 }
+$tableRuntimeBindings = @(
+    @{ Command = 'ID_TABLE_INSERT_ROW_ABOVE'; Key = 'fbe.menu.idr_mainframe.table.insert_row_above' },
+    @{ Command = 'ID_TABLE_INSERT_ROW_BELOW'; Key = 'fbe.menu.idr_mainframe.table.insert_row_below' },
+    @{ Command = 'ID_TABLE_DELETE_ROW'; Key = 'fbe.menu.idr_mainframe.table.delete_row' },
+    @{ Command = 'ID_TABLE_INSERT_COLUMN_LEFT'; Key = 'fbe.menu.idr_mainframe.table.insert_column_left' },
+    @{ Command = 'ID_TABLE_INSERT_COLUMN_RIGHT'; Key = 'fbe.menu.idr_mainframe.table.insert_column_right' },
+    @{ Command = 'ID_TABLE_DELETE_COLUMN'; Key = 'fbe.menu.idr_mainframe.table.delete_column' },
+    @{ Command = 'ID_TABLE_MAKE_HEADER_CELLS'; Key = 'fbe.menu.idr_mainframe.table.make_header_cells' },
+    @{ Command = 'ID_TABLE_MAKE_NORMAL_CELLS'; Key = 'fbe.menu.idr_mainframe.table.make_normal_cells' }
+)
+foreach($binding in $tableRuntimeBindings) {
+    $expectedBinding = '{{ {0}, L"{1}" }}' -f $binding.Command, $binding.Key
+    if($frameSource -notmatch ([regex]::Escape($expectedBinding))) { throw "Table command is not runtime-localized: $($binding.Command)" }
+}
+if($frameSource -notmatch 'FindTopLevelMenuPositionByCommand\(insertMenu, ID_TABLE_INSERT_ROW_ABOVE\)' -or $frameSource -notmatch 'fbe\.menu\.idr_mainframe\.table\.structure') {
+    throw 'Table structure popup is not runtime-localized.'
+}
 if($frameSource.IndexOf('::EnableMenuItem(scripts, ID_SCRIPT_BASE', [StringComparison]::Ordinal) -ge 0) {
     throw 'Idle processing must not mutate script popup items while the command bar can be tracking the menu.'
 }
