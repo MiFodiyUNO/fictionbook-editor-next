@@ -39,7 +39,7 @@ const Definition kDefinitions[] = {
         L"\\t+", true, L" ", false, SearchUiContext::Design },
     { L"design.nbsp-to-space", L"fbe.search_preset.nbsp_to_space.name", L"Non-breaking spaces to spaces",
         L"fbe.search_preset.nbsp_to_space.description", L"Replace non-breaking spaces with ordinary spaces.",
-        L"\\x{00A0}", true, L" ", false, SearchUiContext::Design },
+        L"\u00A0", true, L" ", false, SearchUiContext::Design },
     { L"design.duplicate-word", L"fbe.search_preset.duplicate_word.name", L"Repeated adjacent word",
         L"fbe.search_preset.duplicate_word.description", L"Find a repeated adjacent word, including Cyrillic text.",
         L"\\b(\\p{L}+)\\s+\\1\\b", false, L"", true, SearchUiContext::Design },

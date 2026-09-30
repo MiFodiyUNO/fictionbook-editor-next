@@ -31,9 +31,10 @@ public:
 	CSettingsTooltips m_tooltips;
     bool m_templatesExpanded;
     int m_compactDialogWidth;
+    int m_compactDialogHeight;
     std::vector<FbeSearchPresets::SearchPreset> m_panelPresets;
 
-    FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0), m_templatesExpanded(false), m_compactDialogWidth(0) { }
+    FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0), m_templatesExpanded(false), m_compactDialogWidth(0), m_compactDialogHeight(0) { }
 
   HWND	GetDlgItem(int id) { return X_GetDlgItem(id); }
   virtual HWND X_GetDlgItem(int id) = 0;
@@ -149,10 +150,25 @@ public:
 
     int PresetPanelWidth() const
     {
-        RECT units = { 0, 0, 152, 0 };
+        RECT units = { 0, 0, 212, 0 };
         const HWND dialog = DialogWindow();
         if (dialog) ::MapDialogRect(dialog, &units);
         return units.right;
+    }
+
+    int PresetPanelHeight() const
+    {
+        RECT units = { 0, 0, 0, 72 };
+        const HWND dialog = DialogWindow();
+        if (dialog) ::MapDialogRect(dialog, &units);
+        return units.bottom;
+    }
+
+    void UpdatePresetToggleCaption()
+    {
+        SetRuntimeText(IDC_FIND_TEMPLATES,
+            m_templatesExpanded ? L"fbe.search_preset.collapse" : L"fbe.search_preset.expand",
+            m_templatesExpanded ? L"Templates <" : L"Templates >");
     }
 
     void SetPresetPanelVisible(bool visible)
@@ -167,13 +183,27 @@ public:
         {
             RECT rectangle = {}; ::GetWindowRect(dialog, &rectangle);
             m_compactDialogWidth = rectangle.right - rectangle.left;
+            m_compactDialogHeight = rectangle.bottom - rectangle.top;
         }
         RECT rectangle = {};
         ::GetWindowRect(dialog, &rectangle);
-        const int currentHeight = rectangle.bottom - rectangle.top;
-        ::SetWindowPos(dialog, NULL, 0, 0, visible ? m_compactDialogWidth + PresetPanelWidth() : m_compactDialogWidth,
-            currentHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        const int width = visible ? m_compactDialogWidth + PresetPanelWidth() : m_compactDialogWidth;
+        const int height = visible ? m_compactDialogHeight + PresetPanelHeight() : m_compactDialogHeight;
+        int left = rectangle.left;
+        int top = rectangle.top;
+        if (visible)
+        {
+            const HMONITOR monitor = ::MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST);
+            MONITORINFO monitorInfo = {}; monitorInfo.cbSize = sizeof(monitorInfo);
+            if (monitor && ::GetMonitorInfo(monitor, &monitorInfo))
+            {
+                left = max(monitorInfo.rcWork.left, min(left, monitorInfo.rcWork.right - width));
+                top = max(monitorInfo.rcWork.top, min(top, monitorInfo.rcWork.bottom - height));
+            }
+        }
+        ::SetWindowPos(dialog, NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
         m_templatesExpanded = visible;
+        UpdatePresetToggleCaption();
         if (visible) RefreshPresetPanel();
     }
 
@@ -518,7 +548,6 @@ public:
 		// Set fields
 		PutData();
 		UpdateUnicodeControl();        SetPresetPanelVisible(false);
-        SetRuntimeText(IDC_FIND_TEMPLATES, L"fbe.search_preset.templates", L"Templates...");
         SetRuntimeText(IDC_FIND_REGEX_HELP, L"fbe.search_preset.regex_help", L"?");
         SetRuntimeText(IDC_FIND_PRESETS_LABEL, L"fbe.search_preset.caption", L"Templates");
         SetRuntimeText(IDC_FIND_PRESET_APPLY, L"fbe.search_preset.apply", L"Apply");
@@ -542,9 +571,11 @@ public:
 				m_tooltips.Add(GetDlgItem(IDC_MATCHCASE), L"fbe.tooltip.find.match_case", L"Distinguish uppercase and lowercase letters.");
 				m_tooltips.Add(GetDlgItem(IDC_REGEXP), L"fbe.tooltip.find.regexp", L"Interpret the query as a regular expression.");
                 m_tooltips.Add(GetDlgItem(IDC_FIND_TEMPLATES), L"fbe.tooltip.find.templates", L"Open built-in and saved search templates.");
-                m_tooltips.Add(GetDlgItem(IDC_FIND_REGEX_HELP), L"fbe.tooltip.find.regex_help", L"Show regular-expression help for the active Design or Source context.");
-				m_tooltips.Add(GetDlgItem(IDC_FIND_SCOPE), L"fbe.tooltip.find.scope", L"Choose where to search.");
                 const bool designContext = SearchContext() == FbeSearchPresets::SearchUiContext::Design;
+                m_tooltips.Add(GetDlgItem(IDC_FIND_REGEX_HELP),
+                    designContext ? L"fbe.tooltip.find.regex_help_design" : L"fbe.tooltip.find.regex_help_source",
+                    designContext ? L"PCRE2 regular-expression help" : L"Scintilla regular-expression help");
+				m_tooltips.Add(GetDlgItem(IDC_FIND_SCOPE), L"fbe.tooltip.find.scope", L"Choose where to search.");
                 const LPCWSTR ucpKey = designContext ? L"fbe.tooltip.find.unicode_properties" : L"fbe.tooltip.find.unicode_properties_source";
                 const LPCWSTR ucpFallback = designContext
                     ? L"Use Unicode properties for \\w, \\d, \\s and word boundaries \\b/\\B (for example with Cyrillic text). Available only when Regular expression is enabled."

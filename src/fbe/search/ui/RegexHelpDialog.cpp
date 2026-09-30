@@ -10,22 +10,22 @@ CString HelpText(FbeSearchPresets::SearchUiContext context)
 {
     if (context == FbeSearchPresets::SearchUiContext::Source)
         return FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.text",
-            L"Regular expressions — Source/Code\r\n\r\n"
-            L"Engine: Scintilla regular expressions / C++11 regex mode\r\n"
+            L"Regular expressions — Source/Code\r\n\r\nEngine\r\n"
+            L"Scintilla regular expressions / C++11 regex mode\r\n"
             L"Flags: SCFIND_REGEXP | SCFIND_CXX11REGEX\r\n\r\n"
-            L"Supported common syntax: .  ^  $  [...]  \\d  \\s  \\w  \\b  *  +  ?  {n,m}  (...)  |\r\n\r\n"
-            L"Replacement uses Scintilla. Back-reference \\1 is supported.\r\n\r\n"
-            L"Unicode (UCP) applies to PCRE2 in Design mode and is unavailable for the current Source regex engine.");
+            L"Basic syntax\r\n.  ^  $  [...]  \\d  \\s  \\w  \\b  *  +  ?  {n,m}  (...)  |\r\n\r\n"
+            L"Replacement\r\nScintilla performs replacement. Back-reference \\1 is supported.\r\n\r\n"
+            L"Limitations\r\nUnicode (UCP) applies to PCRE2 in Design mode and is unavailable for the current Source regex engine.");
     return FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.text",
-        L"Regular expressions — Design\r\n\r\n"
-        L"Engine: PCRE2-16\r\nUTF is always enabled. Unicode (UCP) is enabled by the Unicode (UCP) checkbox.\r\n\r\n"
-        L"Syntax: .  ^  $  [...]  [^...]  \\d  \\D  \\s  \\S  \\w  \\W  \\b  \\B  *  +  ?  *?  +?  ??  {n}  {n,}  {n,m}\r\n"
-        L"Groups and alternatives: (...)  (?:...)  |  (?=...)  (?!...)  (?<=...)  (?<!...)\r\n"
-        L"Unicode: \\p{...}  \\P{...}  \\R\r\n\r\n"
-        L"Replace syntax is implemented by FBE, not PCRE2.\r\n"
+        L"Regular expressions — Design\r\n\r\nEngine\r\nPCRE2-16\r\n"
+        L"UTF is always enabled. Unicode (UCP) is enabled by the Unicode (UCP) checkbox.\r\n\r\n"
+        L"Basic syntax\r\n.  ^  $  [...]  [^...]  \\d  \\D  \\s  \\S  \\w  \\W  \\b  \\B  *  +  ?  *?  +?  ??  {n}  {n,}  {n,m}\r\n\r\n"
+        L"Groups\r\n(...)  (?:...)  |  (?=...)  (?!...)  (?<=...)  (?<!...)\r\n\r\n"
+        L"Unicode\r\n\\p{...}  \\P{...}  \\R\r\n\r\n"
+        L"Replacement in FBE\r\nFBE implements replacement syntax, not PCRE2.\r\n"
         L"$0 or \\0 = whole match; $1..$9 or \\1..\\9 = capture groups; $+ or \\+ = last capture.\r\n"
-        L"\\U uppercase, \\L lowercase, \\T title case, \\Q ends formatting; \\S Strong/Bold; \\E Emphasis/Italic.\r\n"
-        L"Only groups 1..9 are available in Replace. Cross-paragraph replacement is rejected to protect the document structure.");
+        L"\\U uppercase, \\L lowercase, \\T title case, \\Q ends formatting; \\S Strong/Bold; \\E Emphasis/Italic.\r\n\r\n"
+        L"Limitations\r\nOnly groups 1..9 are available in Replace. Cross-paragraph replacement is rejected to protect the document structure.");
 }
 
 class RegexHelpDialog : public CDialogImpl<RegexHelpDialog>
@@ -46,8 +46,15 @@ public:
             m_context == FbeSearchPresets::SearchUiContext::Design ? L"fbe.regex_help.design.caption" : L"fbe.regex_help.source.caption",
             m_context == FbeSearchPresets::SearchUiContext::Design ? L"Regular expression help — Design" : L"Regular expression help — Source"));
         SetDlgItemText(IDC_REGEX_HELP_TEXT, HelpText(m_context));
+        const HWND text = GetDlgItem(IDC_REGEX_HELP_TEXT);
+        if (text)
+        {
+            ::SendMessage(text, EM_SETSEL, 0, 0);
+            ::SendMessage(text, EM_SCROLLCARET, 0, 0);
+        }
         ThemeManager::ApplyToWindow(m_hWnd);
-        return TRUE;
+        ::SetFocus(GetDlgItem(IDCANCEL));
+        return FALSE;
     }
 
     LRESULT OnClose(WORD, WORD, HWND, BOOL&) { EndDialog(IDCANCEL); return 0; }

@@ -69,7 +69,7 @@ int wmain()
     if (!trimLeading || !trimLeading->hasReplacement || !Matches(*trimLeading, L" \tword")) return 4;
     if (!trimTrailing || !trimTrailing->hasReplacement || !Matches(*trimTrailing, L"word \t")) return 5;
     if (!tabs || !tabs->hasReplacement || !Matches(*tabs, L"one\t\ttwo")) return 6;
-    if (!nbsp || !nbsp->hasReplacement || !Matches(*nbsp, L"one\x00A0two")) return 7;
+    if (!nbsp || !nbsp->hasReplacement || nbsp->findText != L"\u00A0" || !Matches(*nbsp, L"one\x00A0two")) return 7;
 
     const SearchPreset* duplicate = Find(design, L"design.duplicate-word");
     const SearchPreset* punctuation = Find(design, L"design.repeated-punctuation");

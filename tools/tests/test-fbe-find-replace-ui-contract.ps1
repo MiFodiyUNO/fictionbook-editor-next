@@ -40,14 +40,14 @@ foreach ($control in @('IDC_WHOLE', 'IDC_MATCHCASE', 'IDC_REGEXP', 'IDC_FIND_SCO
 }
 Require $find 'IDC_FIND_SCOPE[\s\S]*?IDC_FIND_UNICODE_PROPERTIES' 'Find UCP immediately follows Scope'
 Require $replace 'IDC_FIND_SCOPE[\s\S]*?IDC_FIND_UNICODE_PROPERTIES' 'Replace UCP immediately follows Scope'
-Require $find 'IDC_FIND_LABEL_TEXT,7,9,45,8[\s\S]*?IDC_TEXT,53,7,179,62' 'Find label and input use the shared horizontal grid'
-Require $replace 'IDC_REPLACE_LABEL_TEXT,7,9,45,8[\s\S]*?IDC_TEXT,53,7,179,62' 'Replace label and input use the shared horizontal grid'
+Require $find 'IDC_FIND_LABEL_TEXT,7,9,45,8[\s\S]*?IDC_TEXT,53,7,166,62' 'Find label and input use the shared horizontal grid'
+Require $replace 'IDC_REPLACE_LABEL_TEXT,7,9,45,8[\s\S]*?IDC_TEXT,53,7,166,62' 'Replace label and input use the shared horizontal grid'
 foreach ($dialogBlock in @($find, $replace)) {
     Require $dialogBlock 'IDC_WHOLE,"Button",BS_AUTOCHECKBOX \| WS_TABSTOP,7,' 'common options start at x=7'
-    Require $dialogBlock 'IDC_FIND_SCOPE_LABEL,105,' 'Scope starts at x=105'
+    Require $dialogBlock 'IDC_FIND_SCOPE_LABEL,120,' 'Scope leaves room for the regex help button'
     Require $dialogBlock 'DIRECTION_GROUP,172,' 'Direction starts at x=172'
-    Require $dialogBlock 'ID_FIND_NEXT,238,7,50,14' 'Find Next uses the shared action column'
-    Require $dialogBlock 'IDCANCEL,238,61,50,14' 'Cancel uses the shared bottom action slot'
+    Require $dialogBlock 'ID_FIND_NEXT,225,7,63,14' 'Find Next uses the widened shared action column'
+    Require $dialogBlock 'IDCANCEL,225,61,63,14' 'Cancel uses the shared bottom action slot'
 }
 Require $find 'IDC_FIND_ALL' 'Find All action'
 Require $replace 'IDC_REPLACE_ONE[\s\S]*?IDC_REPLACE_ALL' 'Replace-specific actions'
@@ -102,14 +102,24 @@ Require $regexHelp 'PCRE2-16' 'Design regex help engine'
 Require $regexHelp 'Scintilla regular expressions / C\+\+11 regex mode' 'Source regex help engine'
 Require $regexHelp 'ThemeManager::ApplyToWindow\(m_hWnd\)' 'Regex help theme integration'
 Require $regexHelp 'FbeApplyRuntimeDialogLocalization\(m_hWnd, IDD_REGEX_HELP\)' 'Regex help runtime localization'
+Require $regexHelp 'EM_SETSEL, 0, 0' 'Regex help clears its initial selection'
+Require $regexHelp 'EM_SCROLLCARET' 'Regex help scrolls to its beginning'
+Require $regexHelp 'SetFocus\(GetDlgItem\(IDCANCEL\)\)' 'Regex help focuses Close'
+Require $rc 'IDD_REGEX_HELP[\s\S]*?DEFPUSHBUTTON\s+"Close",IDCANCEL' 'Regex help uses Close rather than Cancel'
 Require $dialog 'fbe\.tooltip\.find\.templates' 'Templates button tooltip'
-Require $dialog 'fbe\.tooltip\.find\.regex_help' 'Regex-help button tooltip'
+Require $dialog 'fbe\.tooltip\.find\.regex_help_design' 'Design regex-help tooltip'
+Require $dialog 'fbe\.tooltip\.find\.regex_help_source' 'Source regex-help tooltip'
 Require $dialog 'fbe\.search_preset\.custom_description' 'Custom preset description'
 Require $dialog 'SetPresetPanelVisible\(!m_templatesExpanded\)' 'template panel expand/collapse integration'
-Require $dialog 'MapDialogRect\(dialog, &units\)' 'DPI-aware template panel width'
-Require $dialog 'const int currentHeight = rectangle\.bottom - rectangle\.top;' 'template panel preserves current height'
-Require $dialog 'currentHeight, SWP_NOMOVE \| SWP_NOZORDER \| SWP_NOACTIVATE' 'template panel changes width without moving, activating, or changing z-order'
-if ($dialog -match 'SetWindowPos\(dialog, NULL, 0, 0, visible \?[^\r\n]*\r?\n\s*0, SWP_NOMOVE') { throw 'Template panel must not set dialog height to zero.' }
+Require $dialog 'm_compactDialogHeight' 'separate compact dialog height'
+Require $dialog 'PresetPanelHeight' 'DPI-aware template panel height'
+Require $dialog 'visible \? m_compactDialogWidth \+ PresetPanelWidth\(\) : m_compactDialogWidth' 'expanded width differs from compact width'
+Require $dialog 'visible \? m_compactDialogHeight \+ PresetPanelHeight\(\) : m_compactDialogHeight' 'expanded height differs from compact height'
+Require $dialog 'MonitorFromWindow\(dialog, MONITOR_DEFAULTTONEAREST\)' 'expanded dialog is constrained to its current monitor'
+Require $dialog 'GetMonitorInfo\(monitor, &monitorInfo\)' 'expanded dialog uses monitor work area'
+Require $dialog 'UpdatePresetToggleCaption' 'template toggle caption changes by state'
+Require $dialog 'fbe\.search_preset\.expand' 'collapsed template caption localization'
+Require $dialog 'fbe\.search_preset\.collapse' 'expanded template caption localization'
 Require $dialog 'ShowWindow\(GetDlgItem\(controls\[index\]\), visible \? SW_SHOW : SW_HIDE\)' 'hidden panel controls leave tab navigation'
 Require $dialog 'virtual void InvalidateSearchSelectionState\(\) \{\}' 'search selection invalidation hook'
 Require $dialog 'virtual void InvalidateSearchSelectionState\(\) \{ m_selvalid = false; \}' 'Replace preset application invalidates m_selvalid'
@@ -126,13 +136,34 @@ Require $sourceView 'class CSciFindDlg[\s\S]*?SearchContext\(\) const \{ return 
 Require $sourceView 'class CSciReplaceDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Source;' 'CSciReplaceDlg Source context'
 Require $dialog 'class CViewFindDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Design;' 'CViewFindDlg Design context'
 Require $view 'class CViewReplaceDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Design;' 'CViewReplaceDlg Design context'
-foreach ($key in @('fbe.search_preset.templates', 'fbe.search_preset.caption', 'fbe.search_preset.apply', 'fbe.search_preset.save_current', 'fbe.search_preset.update', 'fbe.search_preset.rename', 'fbe.search_preset.delete', 'fbe.regex_help.design.caption', 'fbe.regex_help.source.caption', 'fbe.regex_help.design.text', 'fbe.regex_help.source.text', 'fbe.tooltip.find.unicode_properties_source',
+foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.search_preset.caption', 'fbe.search_preset.apply', 'fbe.search_preset.save_current', 'fbe.search_preset.update', 'fbe.search_preset.rename', 'fbe.search_preset.delete', 'fbe.regex_help.design.caption', 'fbe.regex_help.source.caption', 'fbe.regex_help.design.text', 'fbe.regex_help.source.text', 'fbe.tooltip.find.unicode_properties_source',
     'fbe.search_preset.normalize_spaces.name', 'fbe.search_preset.normalize_spaces.description',
     'fbe.search_preset.duplicate_word.name', 'fbe.search_preset.duplicate_word.description',
     'fbe.search_preset.source_repeated_punctuation.name', 'fbe.search_preset.source_repeated_punctuation.description',
     'fbe.search_preset.custom_description',
     'fbe.search_preset.load_failed',
-    'fbe.tooltip.find.templates', 'fbe.tooltip.find.regex_help')) { RequireLocalized $key }
+    'fbe.tooltip.find.templates', 'fbe.tooltip.find.regex_help_design', 'fbe.tooltip.find.regex_help_source')) { RequireLocalized $key }
+foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.tooltip.find.regex_help_design', 'fbe.tooltip.find.regex_help_source')) {
+    $entry = $catalog.strings.$key
+    foreach ($language in $catalog.targetLanguages) { if ([string]::IsNullOrWhiteSpace([string]$entry.translations.$language)) { throw "Missing $language localization for $key." } }
+}
+foreach ($dialogBlock in @($find, $replace)) {
+    Require $dialogBlock 'IDC_FIND_PRESETS_TREE,"SysTreeView32"[^\r\n]*,302,18,198,74' 'template tree has a readable multi-row height'
+    Require $dialogBlock 'IDC_FIND_PRESET_DESCRIPTION,302,96,198,34' 'template description has a readable multi-line height'
+    Require $dialogBlock 'IDC_FIND_PRESET_SAVE,350,135,92,14' 'Russian Save current caption has room'
+    Require $dialogBlock 'IDC_FIND_PRESET_RENAME,351,153,83,14' 'Russian Rename caption has room'
+}
+Require $find 'IDC_FIND_TEMPLATES,225,25,63,14' 'Find Templates toggle sits in the action column'
+Require $replace 'IDC_FIND_TEMPLATES,225,84,63,14' 'Replace Templates toggle sits at the compact pane right edge'
+Require $find 'IDC_FIND_REGEX_HELP,106,56,12,13' 'Find regex help sits beside RegExp'
+Require $replace 'IDC_FIND_REGEX_HELP,106,68,12,13' 'Replace regex help sits beside RegExp'
+if ($presetCatalog -match 'L"\\x\{00A0\}"') { throw 'NBSP preset must use literal U+00A0 for production normalization.' }
+Require $presetCatalog 'L"\\u00A0"' 'NBSP preset uses literal U+00A0'
+Require $view 'NormalizeSearchPatternNbsp[\s\S]*?pattern\.Replace\(L"\\u00A0", _Settings\.GetNBSPChar\(\)\)' 'production NBSP normalization replaces the literal preset character'
+$customNbsp = [string][char]0x25AB
+$normalizedNbspPreset = ([string][char]0x00A0).Replace([char]0x00A0, [char]0x25AB)
+if ($normalizedNbspPreset -ne $customNbsp -or 'x' + $normalizedNbspPreset + 'y' -notmatch ('x' + [regex]::Escape($customNbsp) + 'y')) { throw 'Built-in NBSP preset must find the configured U+25AB character.' }
+Require $presetCatalog 'L"\\u00A0", true, L" "' 'NBSP preset replacement remains an ordinary space'
 $builtInLocalizationKeys = @(
     'fbe.search_preset.normalize_spaces.name', 'fbe.search_preset.normalize_spaces.description',
     'fbe.search_preset.trim_before_punctuation.name', 'fbe.search_preset.trim_before_punctuation.description',
