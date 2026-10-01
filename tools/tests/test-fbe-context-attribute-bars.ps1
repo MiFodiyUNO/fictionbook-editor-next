@@ -45,7 +45,8 @@ foreach($required in @('m_colspanCaption.*ContextAttributeFieldWidth::Short', 'm
 }
 if($barsSource -match 'TBSTYLE_SEP') { throw 'Context attribute spacing must not use painted toolbar separators.' }
 Require $barsSource 'AttributePairGap\(' 'context pairs retain a fixed gap helper'
-Require $barsSource 'left \+= captionWidth \+ fieldWidth \+ AttributePairGap\(toolbar\)' 'context pair gap is fixed and DPI-aware'
+Require $barsSource 'info.cxMinChild = \(std::max\)\(1L, child.right - child.left\)' 'rebar preserves the explicit compact child width'
+Require $barsSource 'if\(index \+ 1 < count\) left \+= AttributePairGap\(toolbar\)' 'context pair gap is fixed and DPI-aware'
 foreach($token in @('CaptionHeight(', 'SetContextRowHeight(', 'TB_SETBUTTONSIZE', 'TB_GETBUTTONSIZE', 'HIWORD(buttonSize)', 'UiMetrics::ScaleForDpi(4', 'NormalizeRebarBands', 'RBBIM_CHILDSIZE', 'info.cyChild = height', 'info.cyMinChild = height', 'info.cyMaxChild = height', 'info.cyIntegral = height')) {
     if($barsSource -notmatch [regex]::Escape($token) -and $barsHeader -notmatch [regex]::Escape($token)) { throw "Context row height contract is missing $token." }
 }

@@ -273,9 +273,12 @@ void ContextAttributeBars::UpdateMetrics()
 	CComboBox* const table2[] = { &m_colspanBox, &m_rowspanBox, &m_rowAlignBox, &m_alignBox, &m_valignBox };
 	SetContextRowHeight(m_linksBar, links, _countof(links)); SetContextRowHeight(m_tableBar, table, _countof(table)); SetContextRowHeight(m_tableBar2, table2, _countof(table2));
 	UpdateLocalization();
-	// Rebuilding localized toolbar slots changes the child geometry.  Repeat the
+	// Rebuilding localized child placement changes the geometry.  Repeat the
 	// measurement so the rebar receives the actual height needed by the controls.
 	SetContextRowHeight(m_linksBar, links, _countof(links)); SetContextRowHeight(m_tableBar, table, _countof(table)); SetContextRowHeight(m_tableBar2, table2, _countof(table2));
+	// TB_AUTOSIZE has no buttons to measure: children are placed directly.  Lay
+	// them out once more after the final row measurement to retain that width.
+	UpdateLocalization();
 }
 
 void ContextAttributeBars::NormalizeRebarBands(CReBarCtrl& rebar)
@@ -290,6 +293,8 @@ void ContextAttributeBars::NormalizeRebarBands(CReBarCtrl& rebar)
 		if(!contextBar) continue;
 		const DWORD buttonSize = static_cast<DWORD>(::SendMessage(info.hwndChild, TB_GETBUTTONSIZE, 0, 0));
 		const UINT height = static_cast<UINT>((std::max)(1, static_cast<int>(HIWORD(buttonSize))));
+		RECT child = {}; ::GetWindowRect(info.hwndChild, &child);
+		info.cxMinChild = (std::max)(1L, child.right - child.left);
 		info.cyChild = height; info.cyMinChild = height; info.cyMaxChild = height; info.cyIntegral = height;
 		rebar.SetBandInfo(band, &info);
 	}
@@ -322,8 +327,10 @@ void ContextAttributeBars::UpdateLocalization()
 			const int controlTop = (rowHeight - controlHeight) / 2;
 			::SetWindowPos(bindings[index].caption->m_hWnd, NULL, left, captionTop, captionWidth, captionHeight, SWP_NOACTIVATE | SWP_NOZORDER);
 			::SetWindowPos(bindings[index].editor->m_hWnd, NULL, left + captionWidth, controlTop, fieldWidth, controlHeight, SWP_NOACTIVATE | SWP_NOZORDER);
-			left += captionWidth + fieldWidth + AttributePairGap(toolbar);
+			left += captionWidth + fieldWidth;
+			if(index + 1 < count) left += AttributePairGap(toolbar);
 		}
+		::SetWindowPos(toolbar, NULL, 0, 0, left, rowHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 		::SendMessage(toolbar, WM_SETREDRAW, TRUE, 0);
 		::RedrawWindow(toolbar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 	};
