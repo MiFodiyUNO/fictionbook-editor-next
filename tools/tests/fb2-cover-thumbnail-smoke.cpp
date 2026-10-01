@@ -86,6 +86,11 @@ int wmain(int argc, wchar_t* argv[])
     success = ExpectTrue(L"invalidImage.errorMessage", !invalidError.IsEmpty()) && success;
     success = ExpectTrue(L"invalidImage.empty", invalidImage.IsEmpty()) && success;
 
+    // IWIC objects must be released while the apartment that created them is
+    // still initialized. The smoke owns them until this point.
+    invalidImage.Reset();
+    thumbnailImage.Reset();
+    decodedImage.Reset();
     ::CoUninitialize();
     return success ? 0 : 3;
 }

@@ -51,8 +51,11 @@ $thumbnailSource = Get-Content -Raw -LiteralPath (Join-Path $commonDirectory 'Fb
 if ($thumbnailSource -match '#include\s+"stdafx\.h"') {
     throw 'Fb2CoverThumbnail must not use the FBE precompiled header.'
 }
-if ($thumbnailSource -notmatch [regex]::Escape('#include "..\win32\atlimage.h"')) {
-    throw 'Fb2CoverThumbnail must use the shared Win32 ATL image header.'
+if ($thumbnailSource -notmatch 'IWICBitmapFrameDecode' -or $thumbnailSource -notmatch 'IWICBitmapScaler' -or $thumbnailSource -notmatch 'IWICFormatConverter') {
+    throw 'Fb2CoverThumbnail must keep the IWICBitmapFrameDecode -> IWICBitmapScaler -> IWICFormatConverter pipeline.'
+}
+if ($thumbnailSource -match 'CImage|StretchBlt|atlimage\.h') {
+    throw 'Fb2CoverThumbnail thumbnail path must not restore legacy ATL/GDI scaling.'
 }
 
 Write-Host 'Common FB2 boundary contract passed.'
