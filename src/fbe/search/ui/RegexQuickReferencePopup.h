@@ -19,6 +19,7 @@ public:
     BEGIN_MSG_MAP(RegexQuickReferencePopup)
         MESSAGE_HANDLER(WM_CREATE, OnCreate)
         MESSAGE_HANDLER(WM_NCDESTROY, OnNcDestroy)
+        NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipGetDispInfo)
         MESSAGE_HANDLER(WM_KEYDOWN, OnKeyDown)
         MESSAGE_HANDLER(WM_KILLFOCUS, OnKillFocus)
         MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
@@ -31,6 +32,7 @@ public:
 private:
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnToolTipGetDispInfo(int, LPNMHDR, BOOL&);
     LRESULT OnKeyDown(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnKillFocus(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
@@ -46,6 +48,8 @@ private:
     int FirstEntryRow(const std::vector<int>& rows) const;
     CString Caption() const;
     CString CategoryCaption(FbeSearchPresets::RegexQuickReferenceCategory category) const;
+    bool DescriptionIsTruncated(HWND list, int row, const std::vector<int>& rows, CString& text) const;
+    void AddDescriptionToolTip(HWND list);
     CStatic m_caption;
     CListBox m_left;
     CListBox m_right;
@@ -60,4 +64,6 @@ private:
     CMessageLoop* m_messageLoop;
     HFONT m_monospaceFont;
     int m_syntaxColumnWidth;
+    HWND m_toolTip = NULL;
+    CString m_tooltipText;
 };

@@ -41,6 +41,9 @@ LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
             rightIndexes.push_back(static_cast<int>(index));
     }
     AddRows(m_left, m_leftRows, leftIndexes); AddRows(m_right, m_rightRows, rightIndexes);
+    m_toolTip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+    if (m_toolTip != NULL) { AddDescriptionToolTip(m_left); AddDescriptionToolTip(m_right); }
     const int leftFirst = FirstEntryRow(m_leftRows); const int rightFirst = FirstEntryRow(m_rightRows);
     if(leftFirst >= 0) { m_left.SetCurSel(leftFirst); m_left.SetFocus(); }
     else if(rightFirst >= 0) { m_right.SetCurSel(rightFirst); m_right.SetFocus(); }
@@ -119,6 +122,40 @@ LRESULT RegexQuickReferencePopup::OnDrawItem(UINT, WPARAM, LPARAM data, BOOL&) {
     return TRUE;
 }
 
+void RegexQuickReferencePopup::AddDescriptionToolTip(HWND list) {
+    TOOLINFOW tool = {}; tool.cbSize = sizeof(tool); tool.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+    tool.hwnd = m_hWnd; tool.uId = reinterpret_cast<UINT_PTR>(list); tool.lpszText = LPSTR_TEXTCALLBACKW;
+    ::SendMessage(m_toolTip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&tool));
+}
+
+bool RegexQuickReferencePopup::DescriptionIsTruncated(HWND list, int row, const std::vector<int>& rows, CString& text) const {
+    text.Empty(); if (row < 0 || static_cast<size_t>(row) >= rows.size() || rows[row] < 0) return false;
+    const int entryIndex = rows[row]; if (static_cast<size_t>(entryIndex) >= m_entries.size()) return false;
+    const FbeSearchPresets::RegexQuickReferenceEntry& entry = m_entries[entryIndex];
+    const CString description = FbeLoadRuntimeStringByKey(entry.descriptionKey, entry.descriptionFallback);
+    RECT item = {}; if (::SendMessage(list, LB_GETITEMRECT, row, reinterpret_cast<LPARAM>(&item)) == LB_ERR) return false;
+    const int padding = UiMetrics::ScaleForDpi(5, UiMetrics::DpiForWindow(m_hWnd));
+    const int available = item.right - item.left - padding * 3 - m_syntaxColumnWidth;
+    HDC dc = ::GetDC(list); HFONT old = static_cast<HFONT>(::SelectObject(dc, UiMetrics::DialogFont())); SIZE extent = {};
+    ::GetTextExtentPoint32(dc, description, description.GetLength(), &extent); if (old) ::SelectObject(dc, old); ::ReleaseDC(list, dc);
+    if (available <= 0 || extent.cx <= available) return false;
+    text.Format(L"%s — %s", static_cast<LPCWSTR>(entry.displaySyntax), static_cast<LPCWSTR>(description));
+    return true;
+}
+
+LRESULT RegexQuickReferencePopup::OnToolTipGetDispInfo(int, LPNMHDR header, BOOL&) {
+    NMTTDISPINFOW* notification = reinterpret_cast<NMTTDISPINFOW*>(header);
+    const HWND list = reinterpret_cast<HWND>(header->idFrom);
+    const std::vector<int>* rows = list == m_left ? &m_leftRows : list == m_right ? &m_rightRows : NULL;
+    if (rows == NULL) return 0;
+    POINT point = {}; ::GetCursorPos(&point); ::ScreenToClient(list, &point);
+    BOOL outside = FALSE; const int row = static_cast<int>(::SendMessage(list, LB_ITEMFROMPOINT, 0, MAKELPARAM(point.x, point.y)));
+    const LRESULT rowResult = ::SendMessage(list, LB_ITEMFROMPOINT, 0, MAKELPARAM(point.x, point.y));
+    outside = HIWORD(rowResult) != 0;
+    notification->lpszText = !outside && DescriptionIsTruncated(list, row, *rows, m_tooltipText)
+        ? const_cast<LPWSTR>(static_cast<LPCWSTR>(m_tooltipText)) : const_cast<LPWSTR>(L"");
+    return 0;
+}
 LRESULT RegexQuickReferencePopup::OnMeasureItem(UINT, WPARAM, LPARAM data, BOOL&) {
     MEASUREITEMSTRUCT* measure = reinterpret_cast<MEASUREITEMSTRUCT*>(data);
     if(!measure || (measure->CtlID != IDC_REGEX_QUICK_LEFT && measure->CtlID != IDC_REGEX_QUICK_RIGHT)) return 0;
@@ -200,4 +237,4 @@ LRESULT RegexQuickReferencePopup::OnFullHelp(WORD, WORD, HWND, BOOL&) { const st
 LRESULT RegexQuickReferencePopup::OnKeyDown(UINT, WPARAM key, LPARAM, BOOL&) { if(key == VK_ESCAPE) DestroyWindow(); else if(key == VK_RETURN) Activate(); else if(key == VK_F1) { BOOL ignored = FALSE; OnFullHelp(0, 0, NULL, ignored); } return 0; }
 LRESULT RegexQuickReferencePopup::OnKillFocus(UINT, WPARAM, LPARAM, BOOL&) { HWND focus = ::GetFocus(); if(focus != m_hWnd && !::IsChild(m_hWnd, focus)) PostMessage(WM_CLOSE); return 0; }
 LRESULT RegexQuickReferencePopup::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&) { ThemeManager::ApplyToWindow(m_hWnd); m_left.Invalidate(); m_right.Invalidate(); m_caption.Invalidate(); m_fullHelp.Invalidate(); return 0; }
-LRESULT RegexQuickReferencePopup::OnNcDestroy(UINT, WPARAM, LPARAM, BOOL& handled) { if(m_messageLoop) { m_messageLoop->RemoveMessageFilter(this); m_messageLoop = NULL; } handled = FALSE; return 0; }
+LRESULT RegexQuickReferencePopup::OnNcDestroy(UINT, WPARAM, LPARAM, BOOL& handled) { if(m_toolTip != NULL) { ::DestroyWindow(m_toolTip); m_toolTip = NULL; } if(m_messageLoop) { m_messageLoop->RemoveMessageFilter(this); m_messageLoop = NULL; } handled = FALSE; return 0; }

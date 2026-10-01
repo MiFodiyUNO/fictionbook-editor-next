@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 Проверяет контракт логических ролей оформления XML-редактора.
 #>
@@ -102,6 +102,15 @@ foreach($requiredText in @(
     if($documentation -notlike "*$requiredText*") {
         throw "В документации тем отсутствует обязательное описание: $requiredText"
     }
+}
+
+foreach($requiredMarginCall in @(
+    'SCI_SETMARGINBACKN, 0, windowBackground',
+    'SCI_SETMARGINBACKN, 2, windowBackground',
+    'SCI_SETFOLDMARGINCOLOUR, TRUE, windowBackground',
+    'SCI_SETFOLDMARGINHICOLOUR, TRUE, windowBackground'
+)) {
+    if($sourceEditor -notlike "*$requiredMarginCall*") { throw "Source editor does not color the required margin: $requiredMarginCall" }
 }
 
 Write-Host "Контракт логических ролей XML-подсветки прошёл проверку."

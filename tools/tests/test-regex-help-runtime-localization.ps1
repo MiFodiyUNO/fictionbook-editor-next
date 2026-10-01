@@ -17,6 +17,20 @@ foreach ($syntax in @('\K', '\G', '(?<name>...)', '\k<name>', '(?|...)', '(?(1)y
     if ($catalog.strings.'fbe.regex_help.design.advanced'.translations.'en-US'.IndexOf($syntax, [System.StringComparison]::Ordinal) -lt 0) { throw "Design Help omits compile-tested PCRE2 syntax $syntax." }
 }
 if ($catalog.strings.'fbe.regex_help.source.advanced'.translations.'en-US' -notmatch 'SCFIND_REGEXP \| SCFIND_CXX11REGEX') { throw 'Source Help must name its confirmed Scintilla C++11 mode.' }
+foreach ($property in $catalog.strings.psobject.Properties | Where-Object { $_.Name -like 'fbe.regex_help.*' }) {
+    foreach ($language in $catalog.targetLanguages) {
+        if (([string]$property.Value.translations.$language).Contains('\\r\\n')) { throw "Regex Help $($property.Name)/$language contains literal \\r\\n." }
+    }
+}
+$source = $catalog.strings.'fbe.regex_help.source.text.detail'.translations.'en-US'
+foreach ($section in @('Engine', 'Supported syntax', 'Classes', 'Anchors', 'Quantifiers', 'Groups and alternatives', 'Back-references', 'Replacement', 'Examples', 'Limitations')) {
+    if ($source.IndexOf($section, [System.StringComparison]::Ordinal) -lt 0) { throw "Source Help omits section $section." }
+}
+$design = $catalog.strings.'fbe.regex_help.design.advanced'.translations.'en-US'
+foreach ($section in @('Escaping and classes', 'Unicode and UCP', 'Anchors', 'Quantifiers', 'Groups, named groups and alternatives', 'Lookaround', 'Inline options', 'Advanced PCRE2', 'Replacement in FBE', 'Examples', 'Limitations')) {
+    if ($design.IndexOf($section, [System.StringComparison]::Ordinal) -lt 0) { throw "Design Help omits section $section." }
+}
+if ($dialog -match 'detail \+= L"\\r\\n\\r\\n" \+ advanced') { throw 'Design Help still concatenates the duplicate advanced mini-manual.' }
 foreach ($language in $expected.Keys) {
     if ($catalog.strings.'fbe.dialog.idd_regex_help.close'.translations.$language -ne $expected[$language]) { throw "Incorrect catalog close caption for $language." }
 }

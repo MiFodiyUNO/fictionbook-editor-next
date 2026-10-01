@@ -86,7 +86,7 @@ void SourceEditorControl::ApplyConfiguration(const SourceEditorConfig& config)
 	Send(SCI_SETWRAPMODE, config.wrap ? SC_WRAP_WORD : SC_WRAP_NONE);
 	Send(SCI_SETLAYOUTCACHE, SC_CACHE_DOCUMENT);
 	Send(SCI_SETXCARETPOLICY, CARET_SLOP | CARET_EVEN, 50); Send(SCI_SETYCARETPOLICY, CARET_SLOP | CARET_EVEN, 50);
-	ConfigureSpecialCharacterRepresentations(config); UpdateLineNumberMargin(true, config);
+	ConfigureSpecialCharacterRepresentations(config);
 	Send(SCI_SETMARGINWIDTHN, 1, 0); Send(SCI_SETFOLDFLAGS, 16);
 	Send(SCI_SETPROPERTY, reinterpret_cast<uptr_t>("fold"), reinterpret_cast<sptr_t>("1"));
 	Send(SCI_SETPROPERTY, reinterpret_cast<uptr_t>("fold.html"), reinterpret_cast<sptr_t>("1"));
@@ -132,7 +132,13 @@ void SourceEditorControl::ApplyStyles(const SourceEditorConfig& config)
 	const COLORREF windowBackground = highContrast ? ::GetSysColor(COLOR_WINDOW) : Color(config, SourceEditorColorEditorBackground);
 	Send(WM_SETREDRAW, FALSE); Send(SCI_STYLERESETDEFAULT);
 	CT2A font(config.fontName); Send(SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>(font.m_psz)); Send(SCI_STYLESETSIZE, STYLE_DEFAULT, config.fontSize); Send(SCI_STYLESETFORE, STYLE_DEFAULT, windowText); Send(SCI_STYLESETBACK, STYLE_DEFAULT, windowBackground);
-	Send(SCI_STYLECLEARALL); Send(SCI_STYLESETFORE, STYLE_LINENUMBER, highContrast ? windowText : Color(config, SourceEditorColorLineNumber)); Send(SCI_STYLESETBACK, STYLE_LINENUMBER, windowBackground); Send(SCI_SETCARETFORE, highContrast ? windowText : Color(config, SourceEditorColorCaret));
+	Send(SCI_STYLECLEARALL); Send(SCI_STYLESETFORE, STYLE_LINENUMBER, highContrast ? windowText : Color(config, SourceEditorColorLineNumber)); Send(SCI_STYLESETBACK, STYLE_LINENUMBER, windowBackground);
+	// Margins do not inherit STYLE_DEFAULT. Keep both used margins on the editor surface.
+	Send(SCI_SETMARGINBACKN, 0, windowBackground); Send(SCI_SETMARGINBACKN, 2, windowBackground);
+	Send(SCI_SETFOLDMARGINCOLOUR, TRUE, windowBackground); Send(SCI_SETFOLDMARGINHICOLOUR, TRUE, windowBackground);
+	// Measure after STYLE_DEFAULT, STYLECLEARALL, and STYLE_LINENUMBER have been applied.
+	UpdateLineNumberMargin(true, config);
+	Send(SCI_SETCARETFORE, highContrast ? windowText : Color(config, SourceEditorColorCaret));
 	if(highContrast) Send(SCI_SETCARETLINEVISIBLE, FALSE); else { Send(SCI_SETCARETLINEBACK, Color(config, SourceEditorColorCurrentLineBackground)); Send(SCI_SETCARETLINEVISIBLE, TRUE); }
 	Send(SCI_SETSELFORE, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) : Color(config, SourceEditorColorSelectionForeground)); Send(SCI_SETSELBACK, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) : Color(config, SourceEditorColorSelectionBackground));
 	Send(SCI_STYLESETFORE, STYLE_BRACELIGHT, highContrast ? windowText : Color(config, SourceEditorColorXmlTagName)); Send(SCI_STYLESETBACK, STYLE_BRACELIGHT, highContrast ? windowBackground : Color(config, SourceEditorColorMatchingTagBackground));

@@ -420,11 +420,11 @@ public:
         ::SetFocus(GetDlgItem(IDC_TEXT));
     }
 
-    HICON PresetPinIcon(bool pinned) const
+    HICON PresetPinIcon(bool pinned, int size) const
     {
-        static HICON pin = reinterpret_cast<HICON>(::LoadImage(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_FIND_PRESETS_PIN), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
-        static HICON pinOff = reinterpret_cast<HICON>(::LoadImage(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_FIND_PRESETS_PIN_OFF), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
-        return pinned ? pin : pinOff;
+        return reinterpret_cast<HICON>(::LoadImage(::GetModuleHandle(NULL),
+            MAKEINTRESOURCE(pinned ? IDI_FIND_PRESETS_PIN : IDI_FIND_PRESETS_PIN_OFF), IMAGE_ICON,
+            size, size, LR_DEFAULTCOLOR));
     }
 
     LRESULT OnDrawItem(UINT, WPARAM, LPARAM data, BOOL&)
@@ -434,16 +434,15 @@ public:
         const bool pinned = _Settings.SearchTemplatesPanelPinned();
         const bool hot = (draw->itemState & ODS_HOTLIGHT) != 0;
         ::FillRect(draw->hDC, &draw->rcItem, ThemeManager::ControlBrush());
-        const HICON icon = PresetPinIcon(pinned);
+        const UINT dpi = UiMetrics::DpiForWindow(draw->hwndItem);
+        const int iconSize = UiMetrics::ScaleForDpi(16, dpi);
+        const HICON icon = PresetPinIcon(pinned, iconSize);
         if (icon != NULL)
         {
-            HBRUSH foreground = ::CreateSolidBrush(pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor());
-            const int inset = hot ? 1 : 2;
-            ::DrawState(draw->hDC, foreground, NULL, reinterpret_cast<LPARAM>(icon), 0,
-                draw->rcItem.left + inset, draw->rcItem.top + inset,
-                (std::max)(1, static_cast<int>(draw->rcItem.right - draw->rcItem.left) - inset * 2),
-                (std::max)(1, static_cast<int>(draw->rcItem.bottom - draw->rcItem.top) - inset * 2), DST_ICON | DSS_MONO);
-            ::DeleteObject(foreground);
+            const int x = draw->rcItem.left + ((draw->rcItem.right - draw->rcItem.left) - iconSize) / 2;
+            const int y = draw->rcItem.top + ((draw->rcItem.bottom - draw->rcItem.top) - iconSize) / 2;
+            ::DrawIconEx(draw->hDC, x, y, icon, iconSize, iconSize, 0, NULL, DI_NORMAL);
+            ::DestroyIcon(icon);
         }
         if (draw->itemState & ODS_FOCUS) ::DrawFocusRect(draw->hDC, &draw->rcItem);
         return TRUE;

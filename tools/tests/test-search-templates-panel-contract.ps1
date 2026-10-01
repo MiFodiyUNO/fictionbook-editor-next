@@ -25,6 +25,10 @@ foreach ($control in @('IDC_FIND_PRESET_APPLY','IDC_FIND_PRESET_SAVE','IDC_FIND_
 foreach ($asset in @('src\fbe\res\icons\lucide\pin.svg','src\fbe\res\icons\lucide\pin-off.svg','src\fbe\res\icons\lucide\pin.ico','src\fbe\res\icons\lucide\pin-off.ico','src\fbe\res\icons\lucide\LICENSE.txt')) { if (-not (Test-Path (Join-Path $root $asset))) { throw "Missing asset $asset" } }
 if ($resources -notmatch 'IDI_FIND_PRESETS_PIN\s+ICON' -or $resources -notmatch 'IDI_FIND_PRESETS_PIN_OFF\s+ICON') { throw 'Native pin icon resources are missing.' }
 if ($source -match '::Ellipse\(draw->hDC|::Rectangle\(draw->hDC|::LineTo\(draw->hDC, center') { throw 'Unexpected manual pin drawing.' }
+Require 'LoadImage\([\s\S]*?IDI_FIND_PRESETS_PIN[\s\S]*?IMAGE_ICON' 'pin HICON loader'
+Require 'DrawIconEx\(' 'DrawIconEx pin rendering'
+Require 'UiMetrics::ScaleForDpi\(16, dpi\)' 'DPI-aware pin glyph rectangle'
+if ($source -match 'DrawState|DSS_MONO') { throw 'Pin glyph must not use monochrome DrawState rendering.' }
 $pin = $catalog.strings.'fbe.search_preset.pin'.translations
 foreach ($language in $catalog.targetLanguages) { if ([string]::IsNullOrWhiteSpace([string]$pin.$language)) { throw "Missing pin tooltip for $language." } }
 if ($pin.'en-US' -ne 'Always open the templates panel' -or $pin.'ru-RU' -ne 'Всегда открывать панель шаблонов') { throw 'Pin tooltip semantics are not canonical.' }

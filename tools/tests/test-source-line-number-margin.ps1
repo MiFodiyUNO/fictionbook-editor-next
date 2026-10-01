@@ -83,4 +83,12 @@ if ((Get-LineNumberSample 9999) -ne '9999' -or (Get-LineNumberSample 10000) -ne 
     throw 'ANSI digit samples have incorrect lengths.'
 }
 
+$styleStart = $source.IndexOf('void SourceEditorControl::ApplyStyles')
+$marginUpdate = $source.IndexOf('UpdateLineNumberMargin(true, config)', $styleStart)
+$defaultStyle = $source.IndexOf('SCI_STYLESETFONT, STYLE_DEFAULT', $styleStart)
+$styleClear = $source.IndexOf('SCI_STYLECLEARALL', $styleStart)
+$lineNumberStyle = $source.IndexOf('SCI_STYLESETFORE, STYLE_LINENUMBER', $styleStart)
+if($styleStart -lt 0 -or $marginUpdate -lt $lineNumberStyle -or $lineNumberStyle -lt $styleClear -or $styleClear -lt $defaultStyle) {
+    throw 'Line-number measurement must run after default font, STYLECLEARALL, and STYLE_LINENUMBER.'
+}
 Write-Host 'Source line-number margin thresholds passed.'

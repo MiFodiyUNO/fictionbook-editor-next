@@ -16,25 +16,23 @@ CString HelpText(FbeSearchPresets::SearchUiContext context)
 {
     if (context == FbeSearchPresets::SearchUiContext::Source)
     {
-        CString detail = FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.text.detail",
-            L"Regular expressions — Source/Code\r\n\r\nEngine\r\n"
-            L"Scintilla regular expressions / C++11 regex mode\r\n"
-            L"Flags: SCFIND_REGEXP | SCFIND_CXX11REGEX\r\n\r\n"
-            L"Basic syntax\r\n.  ^  $  [...]  \\d  \\s  \\w  \\b  *  +  ?  {n,m}  (...)  |\r\n\r\n"
-            L"Replacement\r\nScintilla performs replacement. Back-reference \\1 is supported.\r\n\r\n"
-            L"Limitations\r\nUnicode (UCP) applies to PCRE2 in Design mode and is unavailable for the current Source regex engine.");
-        const CString advanced = FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.advanced",
-            L"More Source examples\r\n\r\nPractical recipes\r\nDigits: \\d+.\r\nRepeated spaces: [ \\t]{2,}.\r\nA word: (\\w+) then \\1 in replacement.\r\n\r\nLimitations\r\nOnly the documented Scintilla C++11 subset is available.");
-        if (!advanced.IsEmpty()) detail += L"\r\n\r\n" + advanced;
-        return detail;
+        return FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.text.detail",
+            L"Regular expressions — Source/Code\r\n\r\nEngine\r\nScintilla regular expressions / C++11 regex mode\r\n"
+            L"Flags: SCFIND_REGEXP | SCFIND_CXX11REGEX\r\n\r\nSupported syntax\r\nOnly the documented Scintilla C++11 subset is available.\r\n\r\n"
+            L"Classes\r\n[abc], [^abc], [a-z], \\d, \\D, \\s, \\S, \\w and \\W.\r\n\r\nAnchors\r\n^ and $ match line boundaries; \\b and \\B match word boundaries.\r\n\r\n"
+            L"Quantifiers\r\nUse *, +, ?, {n} and {n,m}.\r\n\r\nGroups and alternatives\r\nCapturing groups (...) and alternation | are supported.\r\n\r\n"
+            L"Back-references\r\nUse \\1 in a replacement for the first captured group.\r\n\r\nReplacement\r\nScintilla performs replacement.\r\n\r\n"
+            L"Examples\r\nDigits: Find \\d+.\r\n\r\nLimitations\r\nThis is not PCRE2; Unicode (UCP) is only for PCRE2 in Design mode.");
     }
-    CString detail = FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.text.detail",
-        L"Regular expressions — Design\r\n\r\nEngine\r\nPCRE2-16\r\n\r\nBasic syntax\r\n.  ^  $  [...]  [^...]  \\d  \\D  \\s  \\S  \\w  \\W  \\b  \\B  *  +  ?  *?  +?  ??  {n}  {n,}  {n,m}\r\n\r\nGroups\r\n(...)  (?:...)  |  (?=...)  (?!...)  (?<=...) (?<!...)\r\n\r\nReplacement in FBE\r\n$0 or \\0 = whole match; $1..$9 or \\1..\\9 = capture groups.\r\n\r\nLimitations\r\nOnly groups 1..9 are available in Replace. Cross-paragraph replacement is rejected.");
-    const CString advanced = FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.advanced",
-        L"Advanced PCRE2\r\n\\K, \\G, named groups, branch reset, conditional and subroutine calls are supported and compile-tested.");
-    if (!advanced.IsEmpty()) detail += L"\r\n\r\n" + advanced;
-    return detail;
+    // The advanced entry is the complete Design manual and prevents base/advanced duplication.
+    return FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.advanced",
+        L"Regular expressions — Design\r\n\r\nEngine\r\nPCRE2-16\r\n\r\nEscaping and classes\r\nUse \\ to quote metacharacters.\r\n\r\nUnicode and UCP\r\nUTF is always on; enable UCP for Unicode properties.\r\n\r\n"
+        L"Anchors\r\n^/$, \\A/\\z and \\b/\\B.\r\n\r\nQuantifiers\r\n* + ? and {n,m}; lazy and possessive forms are available.\r\n\r\n"
+        L"Groups, named groups and alternatives\r\nCapturing, non-capturing, atomic and named groups are supported.\r\n\r\nLookaround\r\nLookahead and lookbehind are available.\r\n\r\n"
+        L"Inline options\r\n(?i), (?m), (?s) and (?x).\r\n\r\nAdvanced PCRE2\r\nCompile-tested advanced constructs are available.\r\n\r\n"
+        L"Replacement in FBE\r\n$0/\\0 and capture references are supported.\r\n\r\nExamples\r\nUse [ \\t]{2,} for repeated spaces.\r\n\r\nLimitations\r\nOnly groups 1..9 are replaceable.");
 }
+
 enum class HelpLineKind { Title, Heading, Body, Syntax, Example, Note };
 
 HelpLineKind ClassifyHelpLine(const CString& line, size_t index, bool beginsBlock)

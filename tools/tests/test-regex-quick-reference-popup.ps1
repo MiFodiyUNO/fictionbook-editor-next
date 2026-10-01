@@ -36,4 +36,7 @@ if($popupHeader -notmatch 'IDC_REGEX_QUICK_FULL_HELP, OnFullHelp') { throw 'Full
 foreach($token in @('ScaleForDpi(560, dpi)', 'ScaleForDpi(360, dpi)', 'workMargin', 'info.rcWork.right - info.rcWork.left', 'info.rcWork.bottom - info.rcWork.top')) {
     if($popup -notmatch [regex]::Escape($token)) { throw "Popup must use the available monitor work area for its expanded geometry: $token" }
 }
+foreach($token in @('TOOLTIPS_CLASS', 'TTF_IDISHWND | TTF_SUBCLASS', 'TTN_GETDISPINFOW', 'DescriptionIsTruncated', 'TTM_ADDTOOLW', 'displaySyntax), static_cast<LPCWSTR>(description)')) {
+    if($popup -notmatch [regex]::Escape($token) -and $popupHeader -notmatch [regex]::Escape($token)) { throw "Missing truncated-description tooltip behavior: $token" }
+}
 Write-Host 'Regex quick-reference popup contract passed.'
