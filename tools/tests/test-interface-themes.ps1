@@ -138,7 +138,7 @@ if($contextAttributeBars -notlike '*if(IsHighContrastEnabled()) return ::DefSubc
 foreach($required in @('IsEditableComboInput', 'ES_READONLY', 'CBS_DROPDOWNLIST', 'input ? ThemeManager::WindowColor()', 'input ? ThemeManager::WindowBrush()', 'ThemeManager::ControlColor()', 'ThemeManager::ControlBrush()')) {
     if($manager -notlike "*$required*") { throw "Editable Find/Replace palette contract is missing: $required." }
 }
-foreach($required in @('WM_CTLCOLOREDIT', 'WM_CTLCOLORLISTBOX', 'enabled ? COLOR_WINDOW : COLOR_BTNFACE', 'enabled ? COLOR_WINDOWTEXT : COLOR_GRAYTEXT', 'IsHighContrastEnabled()')) {
+foreach($required in @('WM_CTLCOLOREDIT', 'WM_CTLCOLORLISTBOX', 'WM_CTLCOLORSTATIC', 'control != window && ::GetParent(control) != window', 'enabled ? COLOR_WINDOW : COLOR_BTNFACE', 'enabled ? COLOR_WINDOWTEXT : COLOR_GRAYTEXT', 'IsHighContrastEnabled()')) {
     if($contextAttributeBars -notlike "*$required*") { throw "Context attribute enabled/disabled palette is incomplete: $required." }
 }foreach($required in @('ThemeManager::ControlBrush()', 'ThemeManager::TextColor()', 'ThemeManager::DisabledTextColor()', 'IsWindowEnabled(m_hWnd)')) {
 	if($contextAttributeControls -notlike "*$required*") { throw "Context attribute captions do not apply the theme palette: $required." }

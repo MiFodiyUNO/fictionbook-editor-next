@@ -35,15 +35,17 @@ Require $barsHeader 'SetTableAvailability\s*\(' 'table availability setter'
 Require $barsHeader 'ApplySelectionState\s*\(' 'selection state application'
 Require $barsHeader 'UpdateMetrics\s*\(' 'central metrics update'
 Require $barsHeader 'UpdateLocalization\s*\(' 'central localization update'
-Require $barsSource 'TB_DELETEBUTTON' 'context-owned caption-toolbar rebuild'
+Require $barsSource 'AttributePairGap' 'context-owned caption/control layout rebuild'
 if($barsSource -match '1234567890') { throw 'Context attribute layout must not size fields with digit placeholders.' }
-foreach($token in @('ContextAttributeFieldWidth::Short', 'ContextAttributeFieldWidth::Medium', 'ContextAttributeFieldWidth::Long', 'ContextAttributeFieldWidth::Dropdown', 'FieldWidth(', 'CaptionWidth(', 'GetTextExtentPoint32W', 'UiMetrics::ScaleForDpi', 'AddFixedWidthSlot', 'AddAttributePairSlots')) {
+foreach($token in @('ContextAttributeFieldWidth::Short', 'ContextAttributeFieldWidth::Medium', 'ContextAttributeFieldWidth::Long', 'ContextAttributeFieldWidth::Dropdown', 'FieldWidth(', 'CaptionWidth(', 'GetTextExtentPoint32W', 'UiMetrics::ScaleForDpi', 'AddAttributePairSlots')) {
     if($barsSource -notmatch [regex]::Escape($token)) { throw "Context attribute sizing must use $token." }
 }
 foreach($required in @('m_colspanCaption.*ContextAttributeFieldWidth::Short', 'm_rowspanCaption.*ContextAttributeFieldWidth::Short', 'm_hrefCaption.*ContextAttributeFieldWidth::Long', 'm_imageTitleCaption.*ContextAttributeFieldWidth::Long')) {
     if($barsSource -notmatch $required) { throw "Context attribute field class is missing: $required" }
 }
-if($barsSource -notmatch 'index \* 3 \+ 1') { throw 'Context attribute toolbar pairs must retain a separate fixed DPI gap slot.' }
+if($barsSource -match 'TBSTYLE_SEP') { throw 'Context attribute spacing must not use painted toolbar separators.' }
+Require $barsSource 'AttributePairGap\(' 'context pairs retain a fixed gap helper'
+Require $barsSource 'left \+= captionWidth \+ fieldWidth \+ AttributePairGap\(toolbar\)' 'context pair gap is fixed and DPI-aware'
 foreach($token in @('CaptionHeight(', 'SetContextRowHeight(', 'TB_SETBUTTONSIZE', 'TB_GETBUTTONSIZE', 'HIWORD(buttonSize)', 'UiMetrics::ScaleForDpi(4', 'NormalizeRebarBands', 'RBBIM_CHILDSIZE', 'info.cyChild = height', 'info.cyMinChild = height', 'info.cyMaxChild = height', 'info.cyIntegral = height')) {
     if($barsSource -notmatch [regex]::Escape($token) -and $barsHeader -notmatch [regex]::Escape($token)) { throw "Context row height contract is missing $token." }
 }
@@ -51,8 +53,8 @@ Require $mainSource 'UpdateMetrics\(\);[\s\S]{0,220}NormalizeRebarBands\(m_rebar
 Require $barsSource 'g_contextAttributeBoxNativeHeights' 'native closed ComboBox height is retained'
 Require $barsSource 'NativeControlHeight\(' 'row sizing uses the retained native height'
 Require $barsSource 'height = \(std::max\)\(height, NativeControlHeight' 'row height derives from native control height'
-Require $barsSource 'controlTop = editorRect\.top \+ \(rowHeight - controlHeight\) / 2' 'controls are vertically centred in their toolbar row'
-Require $barsSource 'captionTop = editorRect\.top \+ \(rowHeight - captionHeight\) / 2' 'captions are vertically centred in their toolbar row'
+Require $barsSource 'controlTop = \(rowHeight - controlHeight\) / 2' 'controls are vertically centred in their toolbar row'
+Require $barsSource 'captionTop = \(rowHeight - captionHeight\) / 2' 'captions are vertically centred in their toolbar row'
 if($barsSource -match 'editorRect\.bottom - editorRect\.top, SWP_NOACTIVATE \| SWP_NOZORDER') { throw 'Context controls must not be stretched to the toolbar slot height.' }
 if($barsHeader -match 'ContextBarMode|\bSetMode\s*\(|\bMode\s*\(' -or $barsSource -match 'ContextBarMode|\bSetMode\s*\(') { throw 'ContextAttributeBars must not retain test-only visibility modes.' }
 Require $controlsHeader 'class\s+CCustomEdit' 'custom edit moved from main frame'

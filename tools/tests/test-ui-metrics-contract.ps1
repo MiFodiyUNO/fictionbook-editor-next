@@ -37,7 +37,10 @@ Require $contextBars 'NativeControlHeight' 'context rows retain the native close
 Require $contextBars 'MulDiv\(saved->second\.height, static_cast<int>\(UiMetrics::DpiForWindow\(box\)\)' 'native control height scales for the current DPI'
 
 Require $contextBars 'controlHeight = \(std::min\)\(rowHeight, NativeControlHeight' 'context controls retain native height inside the row'
-Require $contextBars 'controlTop = editorRect\.top \+ \(rowHeight - controlHeight\) / 2' 'context controls use vertical centering'Require $contextBars 'TB_SETBUTTONSIZE' 'context rows explicitly set toolbar height'
+Require $contextBars 'controlTop = \(rowHeight - controlHeight\) / 2' 'context controls use vertical centering'
+if($contextBars -match 'TBSTYLE_SEP') { throw 'Context gaps must not be painted toolbar separators.' }
+Require $contextBars 'AttributePairGap\(toolbar\)' 'context gaps remain DPI-aware fixed spacing'
+Require $contextBars 'TB_SETBUTTONSIZE' 'context rows explicitly set toolbar height'
 Require $mainFrame 'NormalizeRebarBands' 'rebar bands follow context child height'
 Require $contextBars 'SetDialogFontForToolbarRow\(m_tableBar\);' 'first table row receives DialogFont'
 Require $contextBars 'SetDialogFontForToolbarRow\(m_tableBar2\);' 'second table row receives DialogFont'
