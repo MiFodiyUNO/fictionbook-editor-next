@@ -498,6 +498,7 @@ public:
   LRESULT OnFind(WORD, WORD, HWND, BOOL&);
   LRESULT OnFindNext(WORD, WORD, HWND, BOOL&);
   LRESULT OnReplace(WORD, WORD, HWND, BOOL&);
+  void SeedSearchPatternFromSelection();
   LRESULT OnStyleLink(WORD, WORD, HWND, BOOL&);
   LRESULT OnStyleFootnote(WORD, WORD, HWND, BOOL&);
   LRESULT OnStyleNolink(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_UNLINK); }

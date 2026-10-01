@@ -6,7 +6,7 @@
 #include "RuntimeLocalization.h"
 #include "UiMetrics.h"
 
-int CFindResultsPane::Scale(int logicalPixels) const { return UiMetrics::Scale(logicalPixels); }
+int CFindResultsPane::Scale(int logicalPixels) const { return UiMetrics::ScaleForDpi(logicalPixels, m_dpi); }
 
 LRESULT CFindResultsPane::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
@@ -26,9 +26,20 @@ LRESULT CFindResultsPane::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 void CFindResultsPane::ApplyDpi()
 {
 	if (!m_hWnd) return;
-	HFONT font = UiMetrics::DialogFont();
-	if (font) { m_header.SetFont(font); m_close.SetFont(font); m_list.SetFont(font); m_status.SetFont(font); }
+	m_dpi = UiMetrics::DpiForWindow(m_hWnd);
+	HFONT replacement = UiMetrics::CreateDialogFontForDpi(m_dpi);
+	const bool replacementOwned = replacement != NULL;
+	if (replacement == NULL) replacement = static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
+	HFONT previous = m_font;
+	const bool previousOwned = m_fontOwned;
+	m_font = replacement;
+	m_fontOwned = replacementOwned;
+	m_header.SetFont(m_font); m_close.SetFont(m_font); m_list.SetFont(m_font); m_status.SetFont(m_font);
+	const HWND header = ListView_GetHeader(m_list);
+	if (header != NULL) ::SendMessage(header, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
+	if (previousOwned && previous != NULL) ::DeleteObject(previous);
 	LayoutChildren();
+	m_list.Invalidate();
 }
 
 void CFindResultsPane::LayoutChildren()
@@ -48,6 +59,8 @@ void CFindResultsPane::LayoutChildren()
 }
 
 LRESULT CFindResultsPane::OnSize(UINT, WPARAM, LPARAM, BOOL&) { LayoutChildren(); return 0; }
+LRESULT CFindResultsPane::OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&) { ApplyDpi(); return 0; }
+LRESULT CFindResultsPane::OnDestroy(UINT, WPARAM, LPARAM, BOOL&) { if (m_fontOwned && m_font != NULL) ::DeleteObject(m_font); m_font = NULL; m_fontOwned = false; return 0; }
 
 void CFindResultsPane::Attach(CFBEView* view) { if (m_view != view) { m_view = view; m_revision = 0; } Refresh(); }
 void CFindResultsPane::Detach(CFBEView* view)
@@ -134,9 +147,7 @@ LRESULT CFindResultsPane::OnListCustomDraw(int, LPNMHDR header, BOOL&)
 	RECT cell = {}; if (!m_list.GetSubItemRect(item, 1, LVIR_BOUNDS, &cell)) return CDRF_DODEFAULT;
 	const RECT paintCell = cell;
 	cell.left += Scale(3); HDC dc = draw->nmcd.hdc;
-	HFONT listFont = UiMetrics::DialogFont();
-	if (listFont == NULL) listFont = reinterpret_cast<HFONT>(::SendMessage(m_list, WM_GETFONT, 0, 0));
-	HFONT oldFont = listFont != NULL ? static_cast<HFONT>(::SelectObject(dc, listFont)) : NULL;
+	HFONT oldFont = m_font != NULL ? static_cast<HFONT>(::SelectObject(dc, m_font)) : NULL;
 	const bool selected = (m_list.GetItemState(item, LVIS_SELECTED) & LVIS_SELECTED) != 0;
 	// Owner-data ListView can repaint a previous row after the selection has
 	// moved. Query the control's authoritative state and always erase the whole

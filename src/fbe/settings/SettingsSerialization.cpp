@@ -100,6 +100,7 @@ const wchar_t INTERFACE_THEME_KEY[] = L"InterfaceTheme";
 const wchar_t GENRE_CATALOG_KEY[]       = L"GenreCatalog";
 const wchar_t SCRIPTS_FOLDER_KEY[]		= L"ScriptsFolder";
 const wchar_t CHECK_SCRIPTS_ON_STARTUP_KEY[] = L"CheckScriptsOnStartup";
+const wchar_t SEARCH_TEMPLATES_PANEL_PINNED_KEY[] = L"SearchTemplatesPanelPinned";
 
 // Added by SeNS
 const wchar_t USESPELLER_CHECK_KEY[]	= L"UseSpellChecker";
@@ -177,6 +178,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(GENRE_CATALOG_KEY);
 	properties.push_back(SCRIPTS_FOLDER_KEY);
 	properties.push_back(CHECK_SCRIPTS_ON_STARTUP_KEY);
+	properties.push_back(SEARCH_TEMPLATES_PANEL_PINNED_KEY);
 	// SeNS
 	properties.push_back(USESPELLER_CHECK_KEY);
 	properties.push_back(HIGHLIGHT_CHECK_KEY);
@@ -411,6 +413,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == CHECK_SCRIPTS_ON_STARTUP_KEY)
 	{
 		property = GetStringedProperty(&m_check_scripts_on_startup, KEY_BOOL);
+		return true;
+	}
+	else if(sProperty == SEARCH_TEMPLATES_PANEL_PINNED_KEY)
+	{
+		property = GetStringedProperty(&m_search_templates_panel_pinned, KEY_BOOL);
 		return true;
 	}
 	// added SeNS
@@ -792,6 +799,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == CHECK_SCRIPTS_ON_STARTUP_KEY)
 	{
 		m_check_scripts_on_startup = StrToBool(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == SEARCH_TEMPLATES_PANEL_PINNED_KEY)
+	{
+		m_search_templates_panel_pinned = StrToBool(sValue.GetStringValue());
 		return true;
 	}
 	// SeNS

@@ -105,7 +105,7 @@ if ($catalog.strings.'fbe.tooltip.find.unicode_properties'.translations.'ru-RU' 
 if ($catalog.strings.'fbe.tooltip.find.unicode_properties'.translations.'en-US' -ne 'Use Unicode properties for \w, \d, \s and word boundaries \b/\B (for example with Cyrillic text). Available only when Regular expression is enabled.') { throw 'English UCP tooltip is not canonical.' }
 
 foreach ($dialogBlock in @($find, $replace)) {
-    foreach ($control in @('IDC_FIND_TEMPLATES', 'IDC_FIND_REGEX_HELP', 'IDC_FIND_PRESETS_LABEL', 'IDC_FIND_PRESETS_TREE', 'IDC_FIND_PRESET_DESCRIPTION', 'IDC_FIND_PRESET_APPLY', 'IDC_FIND_PRESET_SAVE', 'IDC_FIND_PRESET_UPDATE', 'IDC_FIND_PRESET_RENAME', 'IDC_FIND_PRESET_DELETE')) {
+    foreach ($control in @('IDC_FIND_TEMPLATES', 'IDC_FIND_REGEX_HELP', 'IDC_FIND_PRESETS_LABEL', 'IDC_FIND_PRESETS_TREE', 'IDC_FIND_PRESET_DESCRIPTION', 'IDC_FIND_PRESET_APPLY', 'IDC_FIND_PRESET_SAVE', 'IDC_FIND_PRESET_UPDATE', 'IDC_FIND_PRESET_RENAME', 'IDC_FIND_PRESET_DELETE', 'IDC_FIND_PRESETS_PIN')) {
         Require $dialogBlock $control "Find/Replace template control $control"
     }
     Require $dialogBlock 'DIALOGEX 0, 0, 326,' 'base compact dialog width provides a shared grid'
@@ -116,9 +116,15 @@ Require $regexHelp 'ThemeManager::ApplyToWindow\(m_hWnd\)' 'Regex help theme int
 Require $regexHelp 'FbeApplyRuntimeDialogLocalization\(m_hWnd, IDD_REGEX_HELP\)' 'Regex help runtime localization'
 Require $regexHelp 'EM_SETSEL, 0, 0' 'Regex help clears its initial selection'
 Require $regexHelp 'EM_SCROLLCARET' 'Regex help scrolls to its beginning'
-Require $regexHelp 'SetFocus\(GetDlgItem\(IDCANCEL\)\)' 'Regex help focuses Close'
+Require $regexHelp 'SetFocus\(GetDlgItem\(IDC_REGEX_HELP_CLOSE\)\)' 'Regex help focuses Close'
 Require $regexHelp 'ApplyParagraphHeadingStyle' 'Regex help formats paragraph headings'
 Require $regexHelp 'CFM_BOLD' 'Regex help uses bold formatting for headings'
+Require $regexHelp 'CFM_SIZE' 'Regex help gives its title a distinct size'
+Require $regexHelp 'PFM_SPACEBEFORE' 'Regex help spaces heading paragraphs'
+Require $regexHelp 'SYSTEM_FIXED_FONT' 'Regex help uses a system monospace face for syntax and examples'
+Require $regexHelp 'IDC_REGEX_HELP_CLOSE' 'Regex help uses its dedicated Close control for layout and dispatch'
+Require $regexHelp 'MonitorFromRect' 'Regex help restores its saved normal position on a valid monitor'
+Require $regexHelp 'WM_FBE_THEMECHANGED' 'Regex help reapplies its Rich Edit palette on app theme changes'
 Require $regexHelp 'WM_GETMINMAXINFO' 'Regex help enforces a minimum resizable size'
 Require $regexHelp 'WM_SIZE' 'Regex help lays out controls while resizing'
 Require $regexHelp '_Settings\.GetRegexHelpPlacement' 'Regex help restores its saved size'
@@ -130,9 +136,9 @@ Require $settings 'SetRegexHelpPlacement' 'Regex help placement setting setter'
 Require $settingsSerialization 'REGEX_HELP_PLACEMENT_KEY' 'Regex help placement serialized setting'
 Require $rc '(?s)IDD_REGEX_HELP.*?WS_THICKFRAME' 'Regex help dialog is resizable'
 Require $rc '(?s)IDD_REGEX_HELP.*?RICHEDIT50W' 'Regex help uses Rich Edit formatting'
-Require $pane 'HFONT listFont = UiMetrics::DialogFont\(\)' 'Results Pane custom context painting uses the dialog font'
-Require $pane 'SelectObject\(dc,\s*listFont\)' 'Results Pane selects the dialog font before drawing context'
-Require $rc 'IDD_REGEX_HELP[\s\S]*?DEFPUSHBUTTON\s+"Close",IDCANCEL' 'Regex help uses Close rather than Cancel'
+Require $pane 'UiMetrics::CreateDialogFontForDpi' 'Results Pane owns a DPI-specific dialog font'
+Require $pane 'SelectObject\(dc,\s*m_font\)' 'Results Pane custom draw selects its owned font'
+Require $rc 'IDD_REGEX_HELP[\s\S]*?DEFPUSHBUTTON\s+"Close",IDC_REGEX_HELP_CLOSE' 'Regex help uses Close rather than Cancel'
 Require $dialog 'fbe\.tooltip\.find\.templates' 'Templates button tooltip'
 Require $dialog 'fbe\.tooltip\.find\.regex_help_design' 'Design regex-help tooltip'
 Require $dialog 'fbe\.tooltip\.find\.regex_help_source' 'Source regex-help tooltip'
@@ -141,9 +147,15 @@ Require $dialog 'fbe\.search_preset\.preview\.find' 'Find preset preview localiz
 Require $dialog 'fbe\.search_preset\.preview\.replace' 'Replace preset preview localization'
 Require $dialog 'SetPresetPanelVisible\(!m_templatesExpanded\)' 'template panel expand/collapse integration'
 Require $dialog 'm_compactDialogHeight' 'separate compact dialog height'
-Require $dialog 'PresetPanelHeight' 'DPI-aware template panel height'
-Require $dialog 'visible \? m_compactDialogWidth \+ PresetPanelWidth\(\) : m_compactDialogWidth' 'expanded width differs from compact width'
-Require $dialog 'visible \? m_compactDialogHeight \+ PresetPanelHeight\(\) : m_compactDialogHeight' 'expanded height differs from compact height'
+Require $dialog 'LayoutPresetPanel' 'templates panel uses a dedicated downward layout'
+Require $dialog 'RECT units = \{ 0, 0, 0, 142 \}' 'templates panel reserves vertical space for tree, preview and actions'
+Require $dialog 'MakePresetPreviewValue\(preset->findText, 168\)' 'templates preview retains a useful clipped length'
+Require $rc 'IDC_FIND_PRESETS_PIN,"Button",BS_OWNERDRAW' 'templates pin uses an owner-drawn glyph rather than a text-only checkbox'
+Require $dialog 'SetSearchTemplatesPanelPinned' 'templates pin is persisted'
+Require $settings 'm_search_templates_panel_pinned' 'templates pin setting storage'
+Require $settingsSerialization 'SEARCH_TEMPLATES_PANEL_PINNED_KEY' 'templates pin serialized setting'
+Require $dialog 'const int width = m_compactDialogWidth' 'expanded templates keep compact width'
+Require $dialog 'visible \? m_compactDialogHeight \+ PresetPanelHeight\(\) : m_compactDialogHeight' 'expanded templates grow downward'
 Require $dialog 'MonitorFromWindow\(dialog, MONITOR_DEFAULTTONEAREST\)' 'expanded dialog is constrained to its current monitor'
 Require $dialog 'GetMonitorInfo\(monitor, &monitorInfo\)' 'expanded dialog uses monitor work area'
 Require $dialog 'UpdatePresetToggleCaption' 'template toggle caption changes by state'
@@ -171,7 +183,7 @@ foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fb
     'fbe.search_preset.duplicate_word.name', 'fbe.search_preset.duplicate_word.description',
     'fbe.search_preset.source_repeated_punctuation.name', 'fbe.search_preset.source_repeated_punctuation.description',
     'fbe.search_preset.preview.find', 'fbe.search_preset.preview.replace', 'fbe.search_preset.preview.empty',
-    'fbe.search_preset.load_failed',
+    'fbe.search_preset.load_failed', 'fbe.search_preset.pin',
     'fbe.tooltip.find.templates', 'fbe.tooltip.find.regex_help_design', 'fbe.tooltip.find.regex_help_source')) { RequireLocalized $key }
 foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.tooltip.find.regex_help_design', 'fbe.tooltip.find.regex_help_source')) {
     $entry = $catalog.strings.$key

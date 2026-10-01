@@ -786,6 +786,12 @@
 #define IDC_FIND_PRESET_RENAME          1660
 #define IDC_FIND_PRESET_DELETE          1661
 #define IDC_REGEX_HELP_TEXT             1662
+#define IDC_REGEX_QUICK_LEFT            1663
+#define IDC_REGEX_QUICK_RIGHT           1664
+#define IDC_REGEX_QUICK_CAPTION         1665
+#define IDC_REGEX_QUICK_FULL_HELP       1666
+#define IDC_REGEX_HELP_CLOSE            1667
+#define IDC_FIND_PRESETS_PIN           1668
 #define ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_FIRST 33033
 #define ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST  57599
 #define ID_DOCUMENT_TREE_MODE_STRUCTURE       57600
@@ -801,7 +807,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        268
 #define _APS_NEXT_COMMAND_VALUE         57602
-#define _APS_NEXT_CONTROL_VALUE         1663
+#define _APS_NEXT_CONTROL_VALUE         1669
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif

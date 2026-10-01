@@ -2879,9 +2879,17 @@ public:
   }
 };
 
+void CFBEView::SeedSearchPatternFromSelection()
+{
+	const CString selection = static_cast<LPCWSTR>(Selection());
+	m_fo.pattern = !selection.IsEmpty() && selection.GetLength() <= 120 &&
+		selection.Find(L'\r') < 0 && selection.Find(L'\n') < 0 ? selection : CString();
+}
+
 LRESULT CFBEView::OnFind(WORD, WORD, HWND, BOOL&)
 {
-	m_fo.pattern = (const wchar_t*)Selection();
+	const bool openingFind = !m_find_dlg || !m_find_dlg->IsValid();
+	if (openingFind) SeedSearchPatternFromSelection();
 	if(!m_find_dlg)
 		m_find_dlg = new CViewFindDlg(this);
 
@@ -2894,11 +2902,11 @@ LRESULT CFBEView::OnFind(WORD, WORD, HWND, BOOL&)
 
 LRESULT CFBEView::OnReplace(WORD, WORD, HWND, BOOL&)
 {
-	m_fo.pattern = (const wchar_t *)Selection();
+	const bool openingReplace = !m_replace_dlg || !m_replace_dlg->IsValid();
+	if (openingReplace) SeedSearchPatternFromSelection();
 	// Find and Replace share search criteria, including a stable Selection
 	// scope.  A reopened Replace dialog may reuse that scope after Find Next
 	// moved MSHTML's visible selection to a hit.
-	const bool openingReplace = !m_replace_dlg || !m_replace_dlg->IsValid();
 	if (openingReplace)
 	{
 		m_fo.ClearMatch();

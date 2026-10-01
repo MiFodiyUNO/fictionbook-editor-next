@@ -152,13 +152,13 @@ public:
         {
             description = preset->description;
             const CString findLabel = FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.find", L"Find: %s");
-            CString operation; operation.Format(findLabel, static_cast<LPCWSTR>(MakePresetPreviewValue(preset->findText)));
+            CString operation; operation.Format(findLabel, static_cast<LPCWSTR>(MakePresetPreviewValue(preset->findText, 168)));
             if(!description.IsEmpty()) description += L"\r\n\r\n";
             description += operation;
             if(preset->hasReplacement) {
                 const CString replacement = preset->replacementText.IsEmpty()
                     ? FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.empty", L"<empty>")
-                    : MakePresetPreviewValue(preset->replacementText);
+                    : MakePresetPreviewValue(preset->replacementText, 168);
                 CString line; line.Format(FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.replace", L"Replace: %s"), static_cast<LPCWSTR>(replacement));
                 description += L"\r\n" + line;
             }
@@ -213,23 +213,52 @@ public:
 
     int PresetPanelHeight() const
     {
-        RECT units = { 0, 0, 0, 72 };
+        // Keep a useful tree, preview and two action rows below the compact dialog.
+        RECT units = { 0, 0, 0, 142 };
         const HWND dialog = DialogWindow();
         if (dialog) ::MapDialogRect(dialog, &units);
         return units.bottom;
     }
 
+    void LayoutPresetPanel()
+    {
+        const HWND dialog = DialogWindow();
+        if (!dialog) return;
+        RECT client = {}; ::GetClientRect(dialog, &client);
+        RECT units = { 0, 0, 7, 7 }; ::MapDialogRect(dialog, &units);
+        const int margin = units.right;
+        RECT line = { 0, 0, 0, 12 }; ::MapDialogRect(dialog, &line);
+        const int lineHeight = line.bottom;
+        RECT treeUnits = { 0, 0, 0, 66 }; ::MapDialogRect(dialog, &treeUnits);
+        const int panelTop = client.bottom - PresetPanelHeight() + margin;
+        const int width = client.right - client.left;
+        const int contentWidth = (std::max)(0, width - margin * 2);
+        const int treeTop = panelTop + lineHeight;
+        const int treeHeight = treeUnits.bottom;
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_LABEL), NULL, margin, panelTop, contentWidth - lineHeight * 3, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_PIN), NULL, width - margin - lineHeight * 3, panelTop, lineHeight * 3, lineHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_TREE), NULL, margin, treeTop, contentWidth, treeHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        const int descriptionTop = treeTop + treeHeight + margin;
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), NULL, margin, descriptionTop, contentWidth, lineHeight * 3, SWP_NOZORDER | SWP_NOACTIVATE);
+        const int buttonsTop = descriptionTop + lineHeight * 3 + margin;
+        const int half = (contentWidth - margin) / 2;
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_APPLY), NULL, margin, buttonsTop, half / 2, lineHeight + margin, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_SAVE), NULL, margin + half / 2 + margin, buttonsTop, contentWidth - half / 2 - margin, lineHeight + margin, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_UPDATE), NULL, margin, buttonsTop + lineHeight + margin * 2, half / 2, lineHeight + margin, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_RENAME), NULL, margin + half / 2 + margin, buttonsTop + lineHeight + margin * 2, half / 2, lineHeight + margin, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_DELETE), NULL, margin + half + margin, buttonsTop + lineHeight + margin * 2, half - margin, lineHeight + margin, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
     void UpdatePresetToggleCaption()
     {
         SetRuntimeText(IDC_FIND_TEMPLATES,
             m_templatesExpanded ? L"fbe.search_preset.collapse" : L"fbe.search_preset.expand",
-            m_templatesExpanded ? L"Templates <" : L"Templates >");
+            m_templatesExpanded ? L"Templates \x25B2" : L"Templates \x25BC");
     }
 
     void SetPresetPanelVisible(bool visible)
     {
         const int controls[] = { IDC_FIND_PRESETS_LABEL, IDC_FIND_PRESETS_TREE, IDC_FIND_PRESET_DESCRIPTION,
-            IDC_FIND_PRESET_APPLY, IDC_FIND_PRESET_SAVE, IDC_FIND_PRESET_UPDATE, IDC_FIND_PRESET_RENAME, IDC_FIND_PRESET_DELETE };
+            IDC_FIND_PRESET_APPLY, IDC_FIND_PRESET_SAVE, IDC_FIND_PRESET_UPDATE, IDC_FIND_PRESET_RENAME, IDC_FIND_PRESET_DELETE, IDC_FIND_PRESETS_PIN };
         for (size_t index = 0; index < _countof(controls); ++index)
             ::ShowWindow(GetDlgItem(controls[index]), visible ? SW_SHOW : SW_HIDE);
         const HWND dialog = DialogWindow();
@@ -242,7 +271,7 @@ public:
         }
         RECT rectangle = {};
         ::GetWindowRect(dialog, &rectangle);
-        const int width = visible ? m_compactDialogWidth + PresetPanelWidth() : m_compactDialogWidth;
+        const int width = m_compactDialogWidth;
         const int height = visible ? m_compactDialogHeight + PresetPanelHeight() : m_compactDialogHeight;
         int left = rectangle.left;
         int top = rectangle.top;
@@ -258,8 +287,10 @@ public:
         }
         ::SetWindowPos(dialog, NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
         m_templatesExpanded = visible;
+        if (!visible && _Settings.SearchTemplatesPanelPinned()) _Settings.SetSearchTemplatesPanelPinned(false, true);
+        ::CheckDlgButton(dialog, IDC_FIND_PRESETS_PIN, _Settings.SearchTemplatesPanelPinned() ? BST_CHECKED : BST_UNCHECKED);
         UpdatePresetToggleCaption();
-        if (visible) RefreshPresetPanel();
+        if (visible) { LayoutPresetPanel(); RefreshPresetPanel(); }
     }
 
     FbeSearchPresets::SearchPreset CurrentPreset(const CString& name) const
@@ -336,7 +367,26 @@ public:
         ::SetFocus(GetDlgItem(IDC_TEXT));
     }
 
+    LRESULT OnDrawItem(UINT, WPARAM, LPARAM data, BOOL&)
+    {
+        const DRAWITEMSTRUCT* draw = reinterpret_cast<const DRAWITEMSTRUCT*>(data);
+        if (!draw || draw->CtlID != IDC_FIND_PRESETS_PIN) return 0;
+        const bool checked = (draw->itemState & ODS_SELECTED) != 0 || _Settings.SearchTemplatesPanelPinned();
+        const COLORREF background = ThemeManager::ControlColor();
+        const COLORREF foreground = checked ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor();
+        ::FillRect(draw->hDC, &draw->rcItem, ThemeManager::ControlBrush());
+        RECT pin = draw->rcItem; const int center = (pin.left + pin.right) / 2;
+        HPEN pen = ::CreatePen(PS_SOLID, 1, foreground); HGDIOBJ oldPen = ::SelectObject(draw->hDC, pen);
+        HBRUSH brush = ::CreateSolidBrush(checked ? foreground : background); HGDIOBJ oldBrush = ::SelectObject(draw->hDC, brush);
+        ::Ellipse(draw->hDC, center - 4, pin.top + 2, center + 4, pin.top + 8);
+        ::Rectangle(draw->hDC, center - 2, pin.top + 7, center + 2, pin.top + 12);
+        ::MoveToEx(draw->hDC, center, pin.top + 12, NULL); ::LineTo(draw->hDC, center, pin.bottom - 2);
+        if (draw->itemState & ODS_FOCUS) ::DrawFocusRect(draw->hDC, &pin);
+        ::SelectObject(draw->hDC, oldBrush); ::DeleteObject(brush); ::SelectObject(draw->hDC, oldPen); ::DeleteObject(pen);
+        return TRUE;
+    }
     LRESULT OnTogglePresets(WORD, WORD, HWND, BOOL&) { SetPresetPanelVisible(!m_templatesExpanded); return 0; }
+    LRESULT OnTogglePresetPin(WORD, WORD, HWND, BOOL&) { const bool pinned = !_Settings.SearchTemplatesPanelPinned(); ::CheckDlgButton(DialogWindow(), IDC_FIND_PRESETS_PIN, pinned ? BST_CHECKED : BST_UNCHECKED); _Settings.SetSearchTemplatesPanelPinned(pinned, true); SetPresetPanelVisible(pinned); ::InvalidateRect(GetDlgItem(IDC_FIND_PRESETS_PIN), NULL, TRUE); return 0; }
     LRESULT OnApplyPreset(WORD, WORD, HWND, BOOL&) { ApplySelectedPreset(); return 0; }
     LRESULT OnSavePreset(WORD, WORD, HWND, BOOL&)
     {
@@ -440,7 +490,9 @@ public:
 		ALT_MSG_MAP(1)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
         MESSAGE_HANDLER(WM_DESTROY, OnDestroyPresetPanel)
+        MESSAGE_HANDLER(WM_DRAWITEM, OnDrawItem)
 		COMMAND_HANDLER(IDC_TEXT,CBN_EDITCHANGE, OnTextChanged)        COMMAND_ID_HANDLER(IDC_FIND_TEMPLATES, OnTogglePresets)
+        COMMAND_ID_HANDLER(IDC_FIND_PRESETS_PIN, OnTogglePresetPin)
         COMMAND_HANDLER(IDC_TEXT, CBN_SETFOCUS, OnRegexFieldFocus)
         COMMAND_HANDLER(IDC_REPLACE, CBN_SETFOCUS, OnRegexFieldFocus)
         COMMAND_ID_HANDLER(IDC_FIND_REGEX_HELP, OnShowRegexHelp)
@@ -541,7 +593,7 @@ public:
 		::SendMessage(scope, CB_SETCURSEL, 0, 0);
 	}
 
-  void	LoadHistoryImp(const TCHAR *path,CRegKey& rk,HWND hCB,CString& first) {
+  void	LoadHistoryImp(const TCHAR *path,CRegKey& rk,HWND hCB) {
     if (!hCB)
       return;
 
@@ -566,8 +618,6 @@ public:
       if (!str.IsEmpty()) 
 	  {
 		::SendMessage(hCB,CB_ADDSTRING,0,(LPARAM)(const TCHAR *)str);
-		if (first.IsEmpty())
-			first=str;
       }
     }
   }
@@ -577,8 +627,8 @@ public:
 		bHandled = FALSE;
 		if(std::find(OpenPresetPanels().begin(), OpenPresetPanels().end(), this) == OpenPresetPanels().end()) OpenPresetPanels().push_back(this);
 
-		LoadHistoryImp(_T("SearchHistory"), m_fh, GetDlgItem(IDC_TEXT), m_view->m_fo.pattern);
-		LoadHistoryImp(_T("ReplaceHistory"), m_rh, GetDlgItem(IDC_REPLACE), m_view->m_fo.replacement);
+		LoadHistoryImp(_T("SearchHistory"), m_fh, GetDlgItem(IDC_TEXT));
+		LoadHistoryImp(_T("ReplaceHistory"), m_rh, GetDlgItem(IDC_REPLACE));
 
 		const bool isReplaceDialog = GetDlgItem(IDC_REPLACE) != NULL;
 		SetRuntimeDialogTitle(isReplaceDialog ? L"fbe.dialog.idd_replace.caption" : L"fbe.dialog.idd_find.caption", isReplaceDialog ? L"Replace" : L"Find");
@@ -630,9 +680,12 @@ public:
 
 		// Set fields
 		PutData();
-		UpdateUnicodeControl();        SetPresetPanelVisible(false);
+		UpdateUnicodeControl();        SetPresetPanelVisible(_Settings.SearchTemplatesPanelPinned());
         SetRuntimeText(IDC_FIND_REGEX_HELP, L"fbe.search_preset.regex_help", L"?");
         SetRuntimeText(IDC_FIND_PRESETS_LABEL, L"fbe.search_preset.caption", L"Templates");
+        ::CheckDlgButton(DialogWindow(), IDC_FIND_PRESETS_PIN, _Settings.SearchTemplatesPanelPinned() ? BST_CHECKED : BST_UNCHECKED);
+        SetRuntimeText(IDC_FIND_PRESETS_PIN, L"fbe.search_preset.pin", L"");
+
         SetRuntimeText(IDC_FIND_PRESET_APPLY, L"fbe.search_preset.apply", L"Apply");
         SetRuntimeText(IDC_FIND_PRESET_SAVE, L"fbe.search_preset.save_current", L"Save current...");
         SetRuntimeText(IDC_FIND_PRESET_UPDATE, L"fbe.search_preset.update", L"Update");
@@ -647,6 +700,7 @@ public:
 			if (dialog)
 			{
 				m_tooltips.Initialize(dialog);
+                m_tooltips.Add(GetDlgItem(IDC_FIND_PRESETS_PIN), L"fbe.search_preset.pin", L"Pin templates panel");
 				m_tooltips.Add(GetDlgItem(IDC_TEXT), L"fbe.tooltip.find.text", L"Text to find. Results update after a short pause while typing.");
 				m_tooltips.Add(GetDlgItem(ID_FIND_NEXT), L"fbe.tooltip.find.next", L"Select the next match in the chosen direction.");
 				if (!isReplaceDialog) m_tooltips.Add(GetDlgItem(IDC_FIND_ALL), L"fbe.tooltip.find.all", L"Show every match in the Results pane.");

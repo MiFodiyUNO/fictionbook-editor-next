@@ -1,6 +1,8 @@
 #pragma once
 
 #include "..\\RegexQuickReference.h"
+#include "..\\..\\resource.h"
+#include "..\\..\\ThemeManager.h"
 #include <functional>
 
 class RegexQuickReferencePopup : public CWindowImpl<RegexQuickReferencePopup>, public CMessageFilter
@@ -18,19 +20,26 @@ public:
         MESSAGE_HANDLER(WM_NCDESTROY, OnNcDestroy)
         MESSAGE_HANDLER(WM_KEYDOWN, OnKeyDown)
         MESSAGE_HANDLER(WM_KILLFOCUS, OnKillFocus)
-        COMMAND_HANDLER(1, LBN_DBLCLK, OnActivate)
-        COMMAND_HANDLER(4, LBN_DBLCLK, OnActivate)
-        COMMAND_ID_HANDLER(2, OnFullHelp)
+        MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
+        MESSAGE_HANDLER(WM_DRAWITEM, OnDrawItem)
+        MESSAGE_HANDLER(WM_MEASUREITEM, OnMeasureItem)
+        COMMAND_HANDLER(IDC_REGEX_QUICK_LEFT, LBN_DBLCLK, OnActivate)
+        COMMAND_HANDLER(IDC_REGEX_QUICK_RIGHT, LBN_DBLCLK, OnActivate)
+        COMMAND_ID_HANDLER(IDC_REGEX_QUICK_FULL_HELP, OnFullHelp)
     END_MSG_MAP()
 private:
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnKeyDown(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnKillFocus(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnDrawItem(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnMeasureItem(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnActivate(WORD, WORD, HWND, BOOL&);
     LRESULT OnFullHelp(WORD, WORD, HWND, BOOL&);
     void Activate();
     void AddRows(CListBox& list, std::vector<int>& rows, const std::vector<int>& indexes);
+    void DrawListItem(const DRAWITEMSTRUCT& draw, const std::vector<int>& rows);
     void MoveColumn(bool right);
     CString Caption() const;
     CString CategoryCaption(FbeSearchPresets::RegexQuickReferenceCategory category) const;

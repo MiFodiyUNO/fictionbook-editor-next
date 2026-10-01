@@ -55,6 +55,7 @@ void CSettings::SetDefaults()
 	m_genre_catalog			= GenreCatalog::Standard;
 	m_scripts_folder		= GetDefaultScriptsFolderStored();
 	m_check_scripts_on_startup = true;
+	m_search_templates_panel_pinned = false;
 	m_insimage_ask			= true;
 	m_ins_clear_image		= false;
 	m_create_backup_file		= true;

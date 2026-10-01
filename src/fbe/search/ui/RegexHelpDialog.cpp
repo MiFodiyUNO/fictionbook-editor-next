@@ -50,18 +50,34 @@ void ApplyParagraphHeadingStyle(HWND text, const CString& help)
         start = end + 1;
     }
 
-    CHARFORMAT2 format = {};
-    format.cbSize = sizeof(format);
-    format.dwMask = CFM_BOLD;
-    format.dwEffects = CFE_BOLD;
+    CHARFORMAT2 heading = {}; heading.cbSize = sizeof(heading);
+    heading.dwMask = CFM_BOLD;
+    heading.dwEffects = CFE_BOLD;
+    CHARFORMAT2 title = heading;
+    title.dwMask |= CFM_SIZE;
+    title.yHeight = 220; // 11 pt: slightly above the dialog body without a fixed face name.
+    LOGFONT fixed = {}; ::GetObject(::GetStockObject(SYSTEM_FIXED_FONT), sizeof(fixed), &fixed);
+    CHARFORMAT2 code = {}; code.cbSize = sizeof(code); code.dwMask = CFM_FACE;
+    ::lstrcpyn(code.szFaceName, fixed.lfFaceName, LF_FACESIZE);
+    PARAFORMAT2 paragraph = {}; paragraph.cbSize = sizeof(paragraph);
+    paragraph.dwMask = PFM_SPACEBEFORE | PFM_SPACEAFTER;
+    paragraph.dySpaceBefore = 100;
+    paragraph.dySpaceAfter = 40;
     for (size_t index = 0; index < lines.size(); ++index)
     {
         const bool paragraphStart = index == 0 || lines[index - 1].IsEmpty();
-        const bool title = index == 0 && !lines[index].IsEmpty();
-        const bool heading = paragraphStart && index + 1 < lines.size() && !lines[index].IsEmpty() && !lines[index + 1].IsEmpty();
-        if (!title && !heading) continue;
+        const bool isTitle = index == 0 && !lines[index].IsEmpty();
+        const bool isHeading = paragraphStart && index + 1 < lines.size() && !lines[index].IsEmpty() && !lines[index + 1].IsEmpty();
+        const bool isCode = lines[index].Find(static_cast<wchar_t>(92)) >= 0 || lines[index].Find(L'[') >= 0;
+        if (!isTitle && !isHeading && !isCode) continue;
         ::SendMessage(text, EM_SETSEL, starts[index], starts[index] + lines[index].GetLength());
-        ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&format));
+        if (isTitle || isHeading)
+        {
+            ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(isTitle ? &title : &heading));
+            ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&paragraph));
+        }
+        if (isCode)
+            ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&code));
     }
     ::SendMessage(text, EM_SETSEL, 0, 0);
     ::SendMessage(text, EM_SCROLLCARET, 0, 0);
@@ -78,7 +94,10 @@ public:
         MESSAGE_HANDLER(WM_SIZE, OnSize)
         MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
         MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)
-        COMMAND_ID_HANDLER(IDCANCEL, OnClose)
+        MESSAGE_HANDLER(WM_THEMECHANGED, OnThemeChanged)
+        MESSAGE_HANDLER(WM_SETTINGCHANGE, OnThemeChanged)
+        MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
+        COMMAND_ID_HANDLER(IDC_REGEX_HELP_CLOSE, OnClose)
     END_MSG_MAP()
 
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
@@ -91,16 +110,12 @@ public:
         const CString help = HelpText(m_context);
         SetDlgItemText(IDC_REGEX_HELP_TEXT, help);
         const HWND text = GetDlgItem(IDC_REGEX_HELP_TEXT);
-        if (text)
-        {
-            ::SendMessage(text, EM_SETBKGNDCOLOR, 0, ThemeManager::ControlColor());
-            ApplyParagraphHeadingStyle(text, help);
-        }
+        if (text) ApplyTheme(text, help);
         ThemeManager::ApplyToWindow(m_hWnd);
         CaptureLayoutMetrics();
         RestoreSize();
         LayoutControls();
-        ::SetFocus(GetDlgItem(IDCANCEL));
+        ::SetFocus(GetDlgItem(IDC_REGEX_HELP_CLOSE));
         return FALSE;
     }
 
@@ -111,10 +126,20 @@ public:
         if (info != NULL) { info->ptMinTrackSize.x = m_minimumSize.cx; info->ptMinTrackSize.y = m_minimumSize.cy; }
         return 0;
     }
-    LRESULT OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { SaveSize(); EndDialog(IDCANCEL); return 0; }
-    LRESULT OnClose(WORD, WORD, HWND, BOOL&) { SaveSize(); EndDialog(IDCANCEL); return 0; }
+    LRESULT OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { SaveSize(); EndDialog(IDC_REGEX_HELP_CLOSE); return 0; }
+    LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&) { ThemeManager::ApplyToWindow(m_hWnd); ApplyTheme(GetDlgItem(IDC_REGEX_HELP_TEXT), HelpText(m_context)); return 0; }
+    LRESULT OnClose(WORD, WORD, HWND, BOOL&) { SaveSize(); EndDialog(IDC_REGEX_HELP_CLOSE); return 0; }
 
 private:
+    void ApplyTheme(HWND text, const CString& help)
+    {
+        if (!text) return;
+        ::SendMessage(text, EM_SETBKGNDCOLOR, 0, ThemeManager::ControlColor());
+        CHARFORMAT2 body = {}; body.cbSize = sizeof(body); body.dwMask = CFM_COLOR; body.crTextColor = ThemeManager::TextColor();
+        ::SendMessage(text, EM_SETSEL, 0, -1);
+        ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&body));
+        ApplyParagraphHeadingStyle(text, help);
+    }
     void CaptureLayoutMetrics()
     {
         RECT window = {};
@@ -124,7 +149,7 @@ private:
         RECT client = {}; GetClientRect(&client);
         RECT text = {}; ::GetWindowRect(GetDlgItem(IDC_REGEX_HELP_TEXT), &text);
         ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&text), 2);
-        RECT close = {}; ::GetWindowRect(GetDlgItem(IDCANCEL), &close);
+        RECT close = {}; ::GetWindowRect(GetDlgItem(IDC_REGEX_HELP_CLOSE), &close);
         ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&close), 2);
         m_margin = text.left;
         m_bottomMargin = client.bottom - close.bottom;
@@ -140,14 +165,17 @@ private:
         const int savedWidth = placement.rcNormalPosition.right - placement.rcNormalPosition.left;
         const int savedHeight = placement.rcNormalPosition.bottom - placement.rcNormalPosition.top;
         if (savedWidth < m_minimumSize.cx || savedHeight < m_minimumSize.cy) return;
-        const HMONITOR monitor = ::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
+        HMONITOR monitor = ::MonitorFromRect(&placement.rcNormalPosition, MONITOR_DEFAULTTONEAREST);
         MONITORINFO info = {}; info.cbSize = sizeof(info);
         if (monitor == NULL || !::GetMonitorInfo(monitor, &info)) return;
         const int width = (std::min)(savedWidth, static_cast<int>(info.rcWork.right - info.rcWork.left));
         const int height = (std::min)(savedHeight, static_cast<int>(info.rcWork.bottom - info.rcWork.top));
-        SetWindowPos(NULL, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        int left = placement.rcNormalPosition.left;
+        int top = placement.rcNormalPosition.top;
+        left = (std::max)(static_cast<int>(info.rcWork.left), (std::min)(left, static_cast<int>(info.rcWork.right) - width));
+        top = (std::max)(static_cast<int>(info.rcWork.top), (std::min)(top, static_cast<int>(info.rcWork.bottom) - height));
+        SetWindowPos(NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
     }
-
     void SaveSize()
     {
         WINDOWPLACEMENT placement = {}; placement.length = sizeof(placement);
@@ -164,7 +192,7 @@ private:
         const int textBottom = (std::max)(m_margin, closeTop - m_gap);
         ::SetWindowPos(GetDlgItem(IDC_REGEX_HELP_TEXT), NULL, m_margin, m_margin,
             (std::max)(0, width - 2 * m_margin), (std::max)(0, textBottom - m_margin), SWP_NOZORDER | SWP_NOACTIVATE);
-        ::SetWindowPos(GetDlgItem(IDCANCEL), NULL, closeLeft, closeTop, m_buttonSize.cx, m_buttonSize.cy, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_REGEX_HELP_CLOSE), NULL, closeLeft, closeTop, m_buttonSize.cx, m_buttonSize.cy, SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     FbeSearchPresets::SearchUiContext m_context;

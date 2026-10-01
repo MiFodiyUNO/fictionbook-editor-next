@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "search\\ui\\ComboBoxEdit.h"
 #include "search\\ui\\RegexQuickReferencePopup.h"
+#include "ThemeManager.h"
 
 CAppModule _Module;
 
@@ -11,8 +12,18 @@ CString FbeLoadRuntimeStringByKey(LPCWSTR, LPCWSTR fallback)
 
 namespace ThemeManager
 {
-void ApplyToWindow(HWND)
+void ApplyToWindow(HWND) {}
+COLORREF TextColor() { return RGB(0, 0, 0); }
+COLORREF ControlColor() { return RGB(255, 255, 255); }
+COLORREF SeparatorColor() { return RGB(192, 192, 192); }
+COLORREF SecondaryTextColor() { return RGB(96, 96, 96); }
+COLORREF SelectionBackgroundColor() { return RGB(0, 120, 215); }
+COLORREF SelectionTextColor() { return RGB(255, 255, 255); }
+HBRUSH Brush(ThemeColorRole role)
 {
+    static HBRUSH control = ::CreateSolidBrush(ControlColor());
+    static HBRUSH selection = ::CreateSolidBrush(SelectionBackgroundColor());
+    return role == THEME_COLOR_SELECTION_BACKGROUND ? selection : control;
 }
 }
 
@@ -86,9 +97,17 @@ bool ShowPopup(HWND owner, HWND anchor, int& inserts, int& fullHelp, HWND& popup
     if (!popup->Show(owner, anchor, FbeSearchPresets::SearchUiContext::Design, FbeSearchPresets::RegexQuickReferenceMode::Search,
         [&inserts](const FbeSearchPresets::RegexQuickReferenceEntry&) { ++inserts; }, [&fullHelp]() { ++fullHelp; })) return false;
     popupWindow = popup->m_hWnd;
-    if (!Check(::IsWindow(popupWindow)) || !Check(::GetDlgItem(popupWindow, 3)) || !Check(::GetDlgItem(popupWindow, 1)) ||
-        !Check(::GetDlgItem(popupWindow, 4)) || !Check(::GetDlgItem(popupWindow, 2)) ||
-        !Check(::SendMessage(::GetDlgItem(popupWindow, 1), LB_GETCOUNT, 0, 0) > 0)) return false;
+    HWND caption = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_CAPTION);
+    HWND left = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT);
+    HWND right = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_RIGHT);
+    HWND fullHelpButton = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_FULL_HELP);
+    wchar_t captionText[64] = {};
+    wchar_t fullHelpText[64] = {};
+    if (!Check(::IsWindow(popupWindow)) || !Check(caption) || !Check(left) || !Check(right) || !Check(fullHelpButton) ||
+        !Check(::GetWindowText(caption, captionText, _countof(captionText)) > 0) ||
+        !Check(::GetWindowText(fullHelpButton, fullHelpText, _countof(fullHelpText)) > 0) ||
+        !Check(CString(captionText) == L"Design — Find") || !Check(CString(fullHelpText) == L"Full help...") ||
+        !Check(::SendMessage(left, LB_GETCOUNT, 0, 0) > 0)) return false;
     return true;
 }
 
@@ -99,18 +118,18 @@ bool TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     HWND popupWindow = NULL;
 
     if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
-    ::PostMessage(::GetDlgItem(popupWindow, 1), WM_KEYDOWN, VK_ESCAPE, 0);
+    ::PostMessage(::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT), WM_KEYDOWN, VK_ESCAPE, 0);
     DispatchMessages(messageLoop);
     if (::IsWindow(popupWindow) || inserts != 0 || fullHelp != 0) return false;
 
     if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
-    ::PostMessage(::GetDlgItem(popupWindow, 1), WM_KEYDOWN, VK_RETURN, 0);
+    ::PostMessage(::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT), WM_KEYDOWN, VK_RETURN, 0);
     DispatchMessages(messageLoop);
     if (::IsWindow(popupWindow) || inserts != 1 || fullHelp != 0) return false;
 
     if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
-    const HWND left = ::GetDlgItem(popupWindow, 1);
-    const HWND right = ::GetDlgItem(popupWindow, 4);
+    const HWND left = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT);
+    const HWND right = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_RIGHT);
     ::PostMessage(left, WM_KEYDOWN, VK_RIGHT, 0);
     DispatchMessages(messageLoop);
     if (::GetFocus() != right) return false;
@@ -121,9 +140,15 @@ bool TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     DispatchMessages(messageLoop);
 
     if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
-    ::PostMessage(::GetDlgItem(popupWindow, 1), WM_KEYDOWN, VK_F1, 0);
+    HWND fullHelpButton = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_FULL_HELP);
+    ::PostMessage(popupWindow, WM_COMMAND, MAKEWPARAM(IDC_REGEX_QUICK_FULL_HELP, BN_CLICKED), reinterpret_cast<LPARAM>(fullHelpButton));
     DispatchMessages(messageLoop);
     if (::IsWindow(popupWindow) || inserts != 1 || fullHelp != 1) return false;
+
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
+    ::PostMessage(::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT), WM_KEYDOWN, VK_F1, 0);
+    DispatchMessages(messageLoop);
+    if (::IsWindow(popupWindow) || inserts != 1 || fullHelp != 2) return false;
 
     int outsideClicks = 0;
     WNDCLASS windowClass = {};

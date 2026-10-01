@@ -628,6 +628,7 @@ bool CSettings::CheckScriptsOnStartup() const
 {
 	return m_check_scripts_on_startup;
 }
+bool CSettings::SearchTemplatesPanelPinned() const { return m_search_templates_panel_pinned; }
 
 CString CSettings::GetDefaultScriptsFolderStored() const
 {
@@ -957,6 +958,7 @@ void CSettings::SetCheckScriptsOnStartup(bool value, bool apply)
 	m_check_scripts_on_startup = value;
 	if(apply) Save();
 }
+void CSettings::SetSearchTemplatesPanelPinned(bool value, bool apply) { m_search_templates_panel_pinned = value; if(apply) Save(); }
 
 void CSettings::SetInsImageAsking(bool ask, bool apply)
 {

@@ -16,6 +16,8 @@ public:
 	BEGIN_MSG_MAP(CFindResultsPane)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
+        MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
+        MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		COMMAND_ID_HANDLER(IDCANCEL, OnHide)
 		NOTIFY_HANDLER(IDC_FIND_RESULTS_LIST, LVN_ITEMACTIVATE, OnItemActivate)
 		NOTIFY_HANDLER(IDC_FIND_RESULTS_LIST, LVN_GETDISPINFO, OnGetDispInfo)
@@ -34,6 +36,8 @@ private:
 	int Scale(int logicalPixels) const;
 	LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnHide(WORD, WORD, HWND, BOOL&);
 	LRESULT OnItemActivate(int, LPNMHDR, BOOL&);
 	LRESULT OnGetDispInfo(int, LPNMHDR, BOOL&);
@@ -44,5 +48,8 @@ private:
 	CListViewCtrl m_list;
 	CStatic m_status;
 	CSettingsTooltips m_tooltips;
+	HFONT m_font = NULL;
+	bool m_fontOwned = false;
+	UINT m_dpi = 96;
 	std::uint64_t m_revision = 0;
 };

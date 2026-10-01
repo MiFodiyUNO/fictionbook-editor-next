@@ -297,6 +297,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-search-preset-live-refresh.ps1")
 & (Join-Path $repoRoot "tools\tests\test-search-preset-preview.ps1")
 & (Join-Path $repoRoot "tools\tests\test-search-preset-nbsp.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-find-replace-selection-seed.ps1")
 & (Join-Path $repoRoot "tools\tests\test-pcre2.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-match-loop.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-wrapper.ps1") @pcre2TestArguments

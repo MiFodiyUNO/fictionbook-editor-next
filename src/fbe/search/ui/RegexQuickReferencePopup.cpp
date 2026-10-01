@@ -5,30 +5,114 @@
 #include "..\\..\\ThemeManager.h"
 
 RegexQuickReferencePopup::RegexQuickReferencePopup() : m_messageLoop(NULL) {}
+
 LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     RECT client = {}; GetClientRect(&client);
-    const UINT dpi = UiMetrics::DpiForWindow(m_hWnd); const int gap = UiMetrics::ScaleForDpi(6, dpi); const int captionHeight = UiMetrics::ScaleForDpi(18, dpi); const int buttonHeight = UiMetrics::ScaleForDpi(22, dpi);
-    m_caption.Create(m_hWnd, CRect(gap, gap, client.right - gap, gap + captionHeight), Caption(), WS_CHILD | WS_VISIBLE, 0, 3);
+    const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+    const int gap = UiMetrics::ScaleForDpi(6, dpi);
+    const int captionHeight = UiMetrics::ScaleForDpi(18, dpi);
+    const int buttonHeight = UiMetrics::ScaleForDpi(22, dpi);
+    m_caption.Create(m_hWnd, CRect(gap, gap, client.right - gap, gap + captionHeight), Caption(), WS_CHILD | WS_VISIBLE, 0, IDC_REGEX_QUICK_CAPTION);
     const int middle = client.right / 2;
-    m_left.Create(m_hWnd, CRect(gap, gap + captionHeight, middle - gap / 2, client.bottom - buttonHeight - gap * 2), NULL, WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT, 0, 1);
-    m_right.Create(m_hWnd, CRect(middle + gap / 2, gap + captionHeight, client.right - gap, client.bottom - buttonHeight - gap * 2), NULL, WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT, 0, 4);
-    m_fullHelp.Create(m_hWnd, CRect(gap, client.bottom - buttonHeight - gap, client.right - gap, client.bottom - gap), FbeLoadRuntimeStringByKey(L"fbe.regex_quick.full_help", L"Full help..."), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, 2);
-    const HFONT font = UiMetrics::DialogFont(); m_caption.SetFont(font); m_left.SetFont(font); m_right.SetFont(font); m_fullHelp.SetFont(font);
+    const DWORD listStyle = WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | LBS_OWNERDRAWFIXED | LBS_HASSTRINGS;
+    m_left.Create(m_hWnd, CRect(gap, gap + captionHeight, middle - gap / 2, client.bottom - buttonHeight - gap * 2), NULL, listStyle, 0, IDC_REGEX_QUICK_LEFT);
+    m_right.Create(m_hWnd, CRect(middle + gap / 2, gap + captionHeight, client.right - gap, client.bottom - buttonHeight - gap * 2), NULL, listStyle, 0, IDC_REGEX_QUICK_RIGHT);
+    m_fullHelp.Create(m_hWnd, CRect(gap, client.bottom - buttonHeight - gap, client.right - gap, client.bottom - gap), FbeLoadRuntimeStringByKey(L"fbe.regex_quick.full_help", L"Full help..."), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDC_REGEX_QUICK_FULL_HELP);
+    const HFONT font = UiMetrics::DialogFont();
+    m_caption.SetFont(font); m_left.SetFont(font); m_right.SetFont(font); m_fullHelp.SetFont(font);
+
     std::vector<int> leftIndexes, rightIndexes;
     for(size_t index = 0; index < m_entries.size(); ++index) {
         const bool characters = m_entries[index].category == FbeSearchPresets::RegexQuickReferenceCategory::Characters;
-        if(m_mode == FbeSearchPresets::RegexQuickReferenceMode::Search ? characters : index < (m_entries.size() + 1) / 2) leftIndexes.push_back(static_cast<int>(index)); else rightIndexes.push_back(static_cast<int>(index));
+        if(m_mode == FbeSearchPresets::RegexQuickReferenceMode::Search ? characters : index < (m_entries.size() + 1) / 2)
+            leftIndexes.push_back(static_cast<int>(index));
+        else
+            rightIndexes.push_back(static_cast<int>(index));
     }
     AddRows(m_left, m_leftRows, leftIndexes); AddRows(m_right, m_rightRows, rightIndexes);
-    if(!m_leftRows.empty()) { m_left.SetCurSel(m_leftRows.size() > 1 ? 1 : 0); m_left.SetFocus(); }
-    else if(!m_rightRows.empty()) { m_right.SetCurSel(m_rightRows.size() > 1 ? 1 : 0); m_right.SetFocus(); }
+    if(m_leftRows.size() > 1) { m_left.SetCurSel(1); m_left.SetFocus(); }
+    else if(m_rightRows.size() > 1) { m_right.SetCurSel(1); m_right.SetFocus(); }
     ThemeManager::ApplyToWindow(m_hWnd);
     return 0;
 }
+
 void RegexQuickReferencePopup::AddRows(CListBox& list, std::vector<int>& rows, const std::vector<int>& indexes) {
-    rows.clear(); FbeSearchPresets::RegexQuickReferenceCategory category = static_cast<FbeSearchPresets::RegexQuickReferenceCategory>(-1);
-    for(size_t i = 0; i < indexes.size(); ++i) { const int index = indexes[i]; if(m_entries[index].category != category) { category = m_entries[index].category; list.AddString(L"— " + CategoryCaption(category) + L" —"); rows.push_back(-1); } CString row = m_entries[index].displaySyntax + L"    " + FbeLoadRuntimeStringByKey(m_entries[index].descriptionKey, m_entries[index].descriptionFallback); list.AddString(row); rows.push_back(index); }
+    rows.clear();
+    FbeSearchPresets::RegexQuickReferenceCategory category = static_cast<FbeSearchPresets::RegexQuickReferenceCategory>(-1);
+    for(size_t i = 0; i < indexes.size(); ++i) {
+        const int index = indexes[i];
+        if(m_entries[index].category != category) {
+            category = m_entries[index].category;
+            CString heading;
+            heading.Format(L"— %s —", static_cast<LPCWSTR>(CategoryCaption(category)));
+            list.AddString(heading);
+            rows.push_back(-1);
+        }
+        // The description is drawn in its own column.  Do not concatenate it
+        // with the syntax: its font and clipping rules are intentionally separate.
+        list.AddString(m_entries[index].displaySyntax);
+        rows.push_back(index);
+    }
 }
+
+void RegexQuickReferencePopup::DrawListItem(const DRAWITEMSTRUCT& draw, const std::vector<int>& rows) {
+    if(draw.itemID == static_cast<UINT>(-1) || draw.itemID >= rows.size()) return;
+    const int entryIndex = rows[draw.itemID];
+    HDC dc = draw.hDC;
+    RECT row = draw.rcItem;
+    const bool heading = entryIndex < 0;
+    const bool selected = !heading && (draw.itemState & ODS_SELECTED) != 0;
+    const COLORREF background = selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor();
+    ::FillRect(dc, &row, ThemeManager::Brush(selected ? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_CONTROL));
+    ::SetBkMode(dc, TRANSPARENT);
+    ::SetTextColor(dc, selected ? ThemeManager::SelectionTextColor() : (heading ? ThemeManager::SecondaryTextColor() : ThemeManager::TextColor()));
+    RECT text = row;
+    const int padding = UiMetrics::ScaleForDpi(5, UiMetrics::DpiForWindow(m_hWnd));
+    ::InflateRect(&text, -padding, 0);
+    if(heading) {
+        CString headingText;
+        const HWND list = draw.CtlID == IDC_REGEX_QUICK_LEFT ? m_left : m_right;
+        const int length = ::GetWindowTextLength(list); // retained only for the control's standard text lifetime
+        (void)length;
+        // Headers are kept in the list text; retrieve it without inventing a selectable entry.
+        const int count = static_cast<int>(::SendMessage(draw.hwndItem, LB_GETTEXTLEN, draw.itemID, 0));
+        std::vector<wchar_t> buffer(static_cast<size_t>((std::max)(0, count)) + 1);
+        ::SendMessage(draw.hwndItem, LB_GETTEXT, draw.itemID, reinterpret_cast<LPARAM>(&buffer[0]));
+        headingText = &buffer[0];
+        ::DrawText(dc, headingText, headingText.GetLength(), &text, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+    } else if(static_cast<size_t>(entryIndex) < m_entries.size()) {
+        const FbeSearchPresets::RegexQuickReferenceEntry& entry = m_entries[entryIndex];
+        RECT syntax = text;
+        syntax.right = syntax.left + (text.right - text.left) * 36 / 100;
+        HFONT old = static_cast<HFONT>(::SelectObject(dc, ::GetStockObject(SYSTEM_FIXED_FONT)));
+        ::DrawText(dc, entry.displaySyntax, entry.displaySyntax.GetLength(), &syntax, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+        ::SelectObject(dc, old);
+        RECT description = text;
+        description.left = syntax.right + padding;
+        const CString descriptionText = FbeLoadRuntimeStringByKey(entry.descriptionKey, entry.descriptionFallback);
+        ::DrawText(dc, descriptionText, descriptionText.GetLength(), &description, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+    }
+    HPEN pen = ::CreatePen(PS_SOLID, 1, ThemeManager::SeparatorColor());
+    HGDIOBJ oldPen = ::SelectObject(dc, pen);
+    ::MoveToEx(dc, row.left, row.bottom - 1, NULL); ::LineTo(dc, row.right, row.bottom - 1);
+    ::SelectObject(dc, oldPen); ::DeleteObject(pen);
+    (void)background;
+}
+
+LRESULT RegexQuickReferencePopup::OnDrawItem(UINT, WPARAM, LPARAM data, BOOL&) {
+    const DRAWITEMSTRUCT* draw = reinterpret_cast<const DRAWITEMSTRUCT*>(data);
+    if(!draw || (draw->CtlID != IDC_REGEX_QUICK_LEFT && draw->CtlID != IDC_REGEX_QUICK_RIGHT)) return 0;
+    DrawListItem(*draw, draw->CtlID == IDC_REGEX_QUICK_LEFT ? m_leftRows : m_rightRows);
+    return TRUE;
+}
+
+LRESULT RegexQuickReferencePopup::OnMeasureItem(UINT, WPARAM, LPARAM data, BOOL&) {
+    MEASUREITEMSTRUCT* measure = reinterpret_cast<MEASUREITEMSTRUCT*>(data);
+    if(!measure || (measure->CtlID != IDC_REGEX_QUICK_LEFT && measure->CtlID != IDC_REGEX_QUICK_RIGHT)) return 0;
+    measure->itemHeight = UiMetrics::ScaleForDpi(20, UiMetrics::DpiForWindow(m_hWnd));
+    return TRUE;
+}
+
 bool RegexQuickReferencePopup::Show(HWND owner, HWND anchor, FbeSearchPresets::SearchUiContext context, FbeSearchPresets::RegexQuickReferenceMode mode, const std::function<void(const FbeSearchPresets::RegexQuickReferenceEntry&)>& insert, const std::function<void()>& fullHelp) {
     m_insert = insert; m_openFullHelp = fullHelp; m_context = context; m_mode = mode; FbeSearchPresets::GetRegexQuickReferenceEntries(context, mode, m_entries); if(m_entries.empty()) return false;
     const UINT dpi = UiMetrics::DpiForWindow(anchor); RECT rc = {}; ::GetWindowRect(anchor, &rc); HMONITOR monitor = MonitorFromWindow(anchor, MONITOR_DEFAULTTONEAREST); MONITORINFO info = { sizeof(info) }; GetMonitorInfo(monitor, &info);
@@ -43,16 +127,15 @@ bool RegexQuickReferencePopup::Show(HWND owner, HWND anchor, FbeSearchPresets::S
     if(hwnd == NULL) return false;
     m_messageLoop = _Module.GetMessageLoop();
     if(m_messageLoop) m_messageLoop->AddMessageFilter(this);
-    ShowWindow(SW_SHOW);
-    UpdateWindow();
-    return true;
+    ShowWindow(SW_SHOW); UpdateWindow(); return true;
 }
+
 CString RegexQuickReferencePopup::Caption() const {
     const bool source = m_context == FbeSearchPresets::SearchUiContext::Source;
     const bool replacement = m_mode == FbeSearchPresets::RegexQuickReferenceMode::Replacement;
-    return FbeLoadRuntimeStringByKey(source ? (replacement ? L"fbe.regex_quick.source.replace" : L"fbe.regex_quick.source.search") : (replacement ? L"fbe.regex_quick.design.replace" : L"fbe.regex_quick.design.search"),
-        source ? (replacement ? L"Source — Replace" : L"Source — Find") : (replacement ? L"Design — Replace" : L"Design — Find"));
+    return FbeLoadRuntimeStringByKey(source ? (replacement ? L"fbe.regex_quick.source.replace" : L"fbe.regex_quick.source.search") : (replacement ? L"fbe.regex_quick.design.replace" : L"fbe.regex_quick.design.search"), source ? (replacement ? L"Source — Replace" : L"Source — Find") : (replacement ? L"Design — Replace" : L"Design — Find"));
 }
+
 CString RegexQuickReferencePopup::CategoryCaption(FbeSearchPresets::RegexQuickReferenceCategory category) const {
     switch(category) {
     case FbeSearchPresets::RegexQuickReferenceCategory::Characters: return FbeLoadRuntimeStringByKey(L"fbe.regex_quick.category.characters", L"Characters and anchors");
@@ -62,6 +145,7 @@ CString RegexQuickReferencePopup::CategoryCaption(FbeSearchPresets::RegexQuickRe
     default: return FbeLoadRuntimeStringByKey(L"fbe.regex_quick.category.replacement", L"Replacement");
     }
 }
+
 BOOL RegexQuickReferencePopup::PreTranslateMessage(MSG* message) {
     if(message->message == WM_LBUTTONDOWN || message->message == WM_RBUTTONDOWN || message->message == WM_MBUTTONDOWN || message->message == WM_NCLBUTTONDOWN) {
         if(message->hwnd != m_hWnd && !::IsChild(m_hWnd, message->hwnd)) DestroyWindow();
@@ -75,10 +159,11 @@ BOOL RegexQuickReferencePopup::PreTranslateMessage(MSG* message) {
     if(message->wParam == VK_RIGHT) { MoveColumn(true); return TRUE; }
     return FALSE;
 }
-void RegexQuickReferencePopup::MoveColumn(bool right) { CListBox& destination = right ? m_right : m_left; std::vector<int>& rows = right ? m_rightRows : m_leftRows; if(rows.empty()) return; destination.SetCurSel(rows.size() > 1 ? 1 : 0); destination.SetFocus(); }
+void RegexQuickReferencePopup::MoveColumn(bool right) { CListBox& destination = right ? m_right : m_left; std::vector<int>& rows = right ? m_rightRows : m_leftRows; if(rows.size() < 2) return; destination.SetCurSel(1); destination.SetFocus(); }
 void RegexQuickReferencePopup::Activate() { CListBox& list = ::GetFocus() == m_right.m_hWnd ? m_right : m_left; std::vector<int>& rows = ::GetFocus() == m_right.m_hWnd ? m_rightRows : m_leftRows; const int row = list.GetCurSel(); const int index = row >= 0 && static_cast<size_t>(row) < rows.size() ? rows[row] : -1; if(index >= 0 && static_cast<size_t>(index) < m_entries.size() && m_insert) { const FbeSearchPresets::RegexQuickReferenceEntry entry = m_entries[index]; const std::function<void(const FbeSearchPresets::RegexQuickReferenceEntry&)> callback = m_insert; DestroyWindow(); callback(entry); } }
 LRESULT RegexQuickReferencePopup::OnActivate(WORD, WORD, HWND, BOOL&) { Activate(); return 0; }
 LRESULT RegexQuickReferencePopup::OnFullHelp(WORD, WORD, HWND, BOOL&) { const std::function<void()> callback = m_openFullHelp; DestroyWindow(); if(callback) callback(); return 0; }
 LRESULT RegexQuickReferencePopup::OnKeyDown(UINT, WPARAM key, LPARAM, BOOL&) { if(key == VK_ESCAPE) DestroyWindow(); else if(key == VK_RETURN) Activate(); else if(key == VK_F1) { BOOL ignored = FALSE; OnFullHelp(0, 0, NULL, ignored); } return 0; }
 LRESULT RegexQuickReferencePopup::OnKillFocus(UINT, WPARAM, LPARAM, BOOL&) { HWND focus = ::GetFocus(); if(focus != m_hWnd && !::IsChild(m_hWnd, focus)) PostMessage(WM_CLOSE); return 0; }
+LRESULT RegexQuickReferencePopup::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&) { ThemeManager::ApplyToWindow(m_hWnd); m_left.Invalidate(); m_right.Invalidate(); m_caption.Invalidate(); m_fullHelp.Invalidate(); return 0; }
 LRESULT RegexQuickReferencePopup::OnNcDestroy(UINT, WPARAM, LPARAM, BOOL& handled) { if(m_messageLoop) { m_messageLoop->RemoveMessageFilter(this); m_messageLoop = NULL; } handled = FALSE; return 0; }

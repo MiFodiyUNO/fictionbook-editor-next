@@ -163,6 +163,7 @@ jobs:
           ./tools/tests/test-search-preset-live-refresh.ps1
           ./tools/tests/test-search-preset-preview.ps1
           ./tools/tests/test-search-preset-nbsp.ps1
+          ./tools/tests/test-fbe-find-replace-selection-seed.ps1
           ./tools/tests/test-fbe-find-replace-ui-contract.ps1
           ./tools/tests/test-pcre2-match-loop.ps1 -Configuration Release -UsePreparedPcre2
       - name: Run filesystem backup regression

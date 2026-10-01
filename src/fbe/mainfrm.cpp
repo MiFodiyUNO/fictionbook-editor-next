@@ -4066,31 +4066,26 @@ static bool HasPortableStateToolbarWidth(const CString& settings, UINT bandId, i
 
 #include "ui\MainFrameRuntimeUi.inl"
 // search&replace in scintilla
-CString	  SciSelection(CWindow source) {
-  int	  start=source.SendMessage(SCI_GETSELECTIONSTART);
-  int	  end=source.SendMessage(SCI_GETSELECTIONEND);
+CString SciSelection(CWindow source) {
+  const int start = source.SendMessage(SCI_GETSELECTIONSTART);
+  const int end = source.SendMessage(SCI_GETSELECTIONEND);
+  if (start >= end) return CString();
+  std::vector<char> buffer(end - start + 1);
+  if (buffer.empty()) return CString();
+  source.SendMessage(SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(buffer.data()));
+  const int bytes = static_cast<int>(strlen(buffer.data()));
+  const int length = ::MultiByteToWideChar(CP_UTF8, 0, buffer.data(), bytes, NULL, 0);
+  if (length <= 0) return CString();
+  CString result;
+  wchar_t* output = result.GetBuffer(length);
+  ::MultiByteToWideChar(CP_UTF8, 0, buffer.data(), bytes, output, length);
+  result.ReleaseBuffer(length);
+  return result;
+}
 
-  if (start>=end)
-    return CString();
-
-  std::vector<char> buffer(end-start+1);
-  if (buffer.empty())
-    return CString();
-  source.SendMessage(SCI_GETSELTEXT,0,(LPARAM)buffer.data());
-
-  char	  *p=buffer.data();
-  while (*p && *p!='\r' && *p!='\n')
-    ++p;
-
-  int	  wlen=::MultiByteToWideChar(CP_UTF8,0,buffer.data(),p-buffer.data(),NULL,0);
-  if (wlen <= 0)
-    return CString();
-
-  CString ret;
-  wchar_t *wp=ret.GetBuffer(wlen);
-  ::MultiByteToWideChar(CP_UTF8, 0, buffer.data() ,p-buffer.data(), wp, wlen);
-  ret.ReleaseBuffer(wlen);
-  return ret;
+static bool IsUsefulFindSelection(const CString& text)
+{
+  return !text.IsEmpty() && text.GetLength() <= 120 && text.Find(L'\r') < 0 && text.Find(L'\n') < 0;
 }
 
 static int BuildScintillaSearchFlags(int findFlags, bool useRegexp) {
@@ -4150,7 +4145,8 @@ public:
   virtual FbeSearchPresets::SearchUiContext SearchContext() const { return FbeSearchPresets::SearchUiContext::Source; }
   void UpdatePattern()
   {
-	  m_view->m_fo.pattern=SciSelection(m_source);
+	  const CString selection = SciSelection(m_source);
+      m_view->m_fo.pattern = IsUsefulFindSelection(selection) ? selection : CString();
   }
 
   virtual void	DoFind() {
@@ -4174,7 +4170,8 @@ public:
   virtual FbeSearchPresets::SearchUiContext SearchContext() const { return FbeSearchPresets::SearchUiContext::Source; }
 	void UpdatePattern()
 	{
-		m_view->m_fo.pattern=SciSelection(m_source);
+		const CString selection = SciSelection(m_source);
+      m_view->m_fo.pattern = IsUsefulFindSelection(selection) ? selection : CString();
 	}
 
   virtual void DoFind() {
