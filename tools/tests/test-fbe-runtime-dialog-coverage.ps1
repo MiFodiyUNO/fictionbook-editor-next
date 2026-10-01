@@ -71,7 +71,10 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
     # contract; the page deliberately must not duplicate the preset list.
     $manifestDrivenBackgroundPreset = $key -like 'fbe.settings.editor_background.preset.*' -and
         $consumerText.Contains('m_builtInBackgrounds[i].localizationKey')
-    if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $consumerText.Contains($key)) {
+    # Search preset labels are generated from their stable IDs by SearchPresetCatalog.
+    $dynamicSearchPresetKey = $value.resource -eq 'IDD_FIND' -and $key -like 'fbe.search_preset.*' -and
+        $consumerText.Contains('StableBuiltInLocalizationKey') -and $consumerText.Contains('FbeLoadRuntimeStringByKey')
+    if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }

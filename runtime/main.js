@@ -201,15 +201,9 @@ function IsBinaryReferenceValue(value, id)
 
 function SetBinaryReference(element, name, value)
 {
- try
- {
-  if(typeof(element.setAttribute)=="function" || typeof(element.setAttribute)=="unknown")
-  {
-   element.setAttribute(name, value);
-   return;
-  }
- }
- catch(e) {}
+ // MSHTML accepts direct href/src assignment. Avoid setAttribute here: in
+ // some document modes it reports an unsupported host operation even when
+ // the subsequent property assignment would be valid.
  try { element[name]=value; } catch(e) {}
 }
 function UpdateBinaryReferences(oldId, newId)
