@@ -6,7 +6,15 @@ void CCustomStatic::DoPaint(CDCHandle dc)
 {
 	RECT rc; GetClientRect(&rc);
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
-	::FillRect(dc, &rc, ThemeManager::ControlBrush());
+	if(dark)
+		::FillRect(dc, &rc, ThemeManager::ControlBrush());
+	else
+	{
+		// Light context rows use COLOR_WINDOW (set by ApplyContextBarTheme), so
+		// captions share their parent surface instead of drawing a control-face patch.
+		HBRUSH brush = ::GetSysColorBrush(COLOR_WINDOW);
+		::FillRect(dc, &rc, brush);
+	}
 	HFONT oldFont = (HFONT)SelectObject(dc, m_font);
 	const int length = GetWindowTextLength();
 	std::vector<wchar_t> text(length + 1);

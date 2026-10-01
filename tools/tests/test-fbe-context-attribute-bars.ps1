@@ -44,9 +44,11 @@ foreach($required in @('m_colspanCaption.*ContextAttributeFieldWidth::Short', 'm
     if($barsSource -notmatch $required) { throw "Context attribute field class is missing: $required" }
 }
 if($barsSource -notmatch 'index \* 3 \+ 1') { throw 'Context attribute toolbar pairs must retain a separate fixed DPI gap slot.' }
-foreach($token in @('CaptionHeight(', 'SetContextRowHeight(', 'TB_SETBUTTONSIZE', 'TB_GETBUTTONSIZE', 'UiMetrics::ScaleForDpi(4', 'NormalizeRebarBands', 'RBBIM_CHILDSIZE')) {
+foreach($token in @('CaptionHeight(', 'SetContextRowHeight(', 'TB_SETBUTTONSIZE', 'TB_GETBUTTONSIZE', 'HIWORD(buttonSize)', 'UiMetrics::ScaleForDpi(4', 'NormalizeRebarBands', 'RBBIM_CHILDSIZE', 'info.cyChild = height', 'info.cyMinChild = height', 'info.cyMaxChild = height', 'info.cyIntegral = height')) {
     if($barsSource -notmatch [regex]::Escape($token) -and $barsHeader -notmatch [regex]::Escape($token)) { throw "Context row height contract is missing $token." }
-}if($barsHeader -match 'ContextBarMode|\bSetMode\s*\(|\bMode\s*\(' -or $barsSource -match 'ContextBarMode|\bSetMode\s*\(') { throw 'ContextAttributeBars must not retain test-only visibility modes.' }
+}
+Require $mainSource 'UpdateMetrics\(\);[\s\S]{0,220}NormalizeRebarBands\(m_rebar\);[\s\S]{0,120}m_rebar\.SendMessage\(WM_SIZE\);[\s\S]{0,120}UpdateLayout\(\)' 'context metric updates trigger a full main-frame relayout'
+if($barsHeader -match 'ContextBarMode|\bSetMode\s*\(|\bMode\s*\(' -or $barsSource -match 'ContextBarMode|\bSetMode\s*\(') { throw 'ContextAttributeBars must not retain test-only visibility modes.' }
 Require $controlsHeader 'class\s+CCustomEdit' 'custom edit moved from main frame'
 Require $controlsHeader 'class\s+CCustomStatic' 'custom static moved from main frame'
 Require $controlsHeader 'class\s+CTableToolbarsWindow' 'toolbar window moved from main frame'

@@ -89,7 +89,7 @@ LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM 
 		}
 		return result;
 	}
-	if(message == WM_CTLCOLORSTATIC || message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX || message == WM_CTLCOLORBTN)
+	if(message == WM_CTLCOLORSTATIC || message == WM_CTLCOLORBTN)
 	{
 		HDC dc = reinterpret_cast<HDC>(wParam);
 		HWND control = reinterpret_cast<HWND>(lParam);
@@ -100,15 +100,9 @@ LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM 
 			::SetBkColor(dc, ThemeManager::ControlColor());
 			return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
 		}
-		if(message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX)
-		{
-			::SetTextColor(dc, ::GetSysColor(enabled ? COLOR_WINDOWTEXT : COLOR_GRAYTEXT));
-			::SetBkColor(dc, ::GetSysColor(enabled ? COLOR_WINDOW : COLOR_BTNFACE));
-			return reinterpret_cast<LRESULT>(::GetSysColorBrush(enabled ? COLOR_WINDOW : COLOR_BTNFACE));
-		}
 		::SetTextColor(dc, ::GetSysColor(enabled ? COLOR_BTNTEXT : COLOR_GRAYTEXT));
-		::SetBkColor(dc, ThemeManager::ControlColor());
-		return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
+		::SetBkColor(dc, ::GetSysColor(COLOR_WINDOW));
+		return reinterpret_cast<LRESULT>(::GetSysColorBrush(COLOR_WINDOW));
 	}
 	return ::DefSubclassProc(window, message, wParam, lParam);
 }
@@ -121,8 +115,23 @@ LRESULT CALLBACK ContextAttributeBoxThemeProc(HWND window, UINT message, WPARAM 
 		::RemoveWindowSubclass(window, ContextAttributeBoxThemeProc, kContextAttributeBoxThemeSubclassId);
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	}
+	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX)
+	{
+		HDC dc = reinterpret_cast<HDC>(wParam);
+		const bool enabled = ::IsWindowEnabled(window) != FALSE;
+		if(ThemeManager::IsDark())
+		{
+			::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+			::SetBkColor(dc, ThemeManager::ControlColor());
+			return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
+		}
+		::SetTextColor(dc, ::GetSysColor(enabled ? COLOR_WINDOWTEXT : COLOR_GRAYTEXT));
+		::SetBkColor(dc, ::GetSysColor(enabled ? COLOR_WINDOW : COLOR_BTNFACE));
+		return reinterpret_cast<LRESULT>(::GetSysColorBrush(enabled ? COLOR_WINDOW : COLOR_BTNFACE));
+	}
 	const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
-	if(message == WM_PAINT && ThemeManager::IsDark() && !IsHighContrastEnabled())
+	if(message == WM_PAINT && ThemeManager::IsDark())
 	{
 		// CLIENTEDGE is deliberately removed in Dark mode; paint an in-client
 		// one-pixel border so the band's outer geometry and DPI layout remain intact.
@@ -194,7 +203,7 @@ void ApplyContextBarTheme(HWND bar)
 	::SendMessage(bar, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
 	// The toolbar itself owns the background behind captions and controls.  The
 	// containing rebar band is themed separately by the main frame.
-	::SendMessage(bar, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
+	::SendMessage(bar, CCM_SETBKCOLOR, 0, ThemeManager::IsDark() ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_WINDOW));
 	::RedrawWindow(bar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 }
 }
@@ -254,6 +263,9 @@ void ContextAttributeBars::UpdateMetrics()
 	CComboBox* const table2[] = { &m_colspanBox, &m_rowspanBox, &m_rowAlignBox, &m_alignBox, &m_valignBox };
 	SetContextRowHeight(m_linksBar, links, _countof(links)); SetContextRowHeight(m_tableBar, table, _countof(table)); SetContextRowHeight(m_tableBar2, table2, _countof(table2));
 	UpdateLocalization();
+	// Rebuilding localized toolbar slots changes the child geometry.  Repeat the
+	// measurement so the rebar receives the actual height needed by the controls.
+	SetContextRowHeight(m_linksBar, links, _countof(links)); SetContextRowHeight(m_tableBar, table, _countof(table)); SetContextRowHeight(m_tableBar2, table2, _countof(table2));
 }
 
 void ContextAttributeBars::NormalizeRebarBands(CReBarCtrl& rebar)
@@ -266,9 +278,9 @@ void ContextAttributeBars::NormalizeRebarBands(CReBarCtrl& rebar)
 		if(!rebar.GetBandInfo(band, &info)) continue;
 		bool contextBar = false; for(HWND bar : bars) if(info.hwndChild == bar) { contextBar = true; break; }
 		if(!contextBar) continue;
-		RECT rect = {}; ::GetWindowRect(info.hwndChild, &rect);
-		const UINT height = static_cast<UINT>((std::max)(1, static_cast<int>(rect.bottom - rect.top)));
-		info.cyChild = height; info.cyMinChild = height; info.cyMaxChild = height;
+		const DWORD buttonSize = static_cast<DWORD>(::SendMessage(info.hwndChild, TB_GETBUTTONSIZE, 0, 0));
+		const UINT height = static_cast<UINT>((std::max)(1, static_cast<int>(HIWORD(buttonSize))));
+		info.cyChild = height; info.cyMinChild = height; info.cyMaxChild = height; info.cyIntegral = height;
 		rebar.SetBandInfo(band, &info);
 	}
 }

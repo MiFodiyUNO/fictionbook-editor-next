@@ -104,10 +104,10 @@ foreach($required in @('pagesToTheme', 'ThemeManager::ApplyToWindow(page)', 'bef
 foreach($dialogSource in @($modelessDialog, $aboutBox)) {
     if($dialogSource -notlike '*ThemeManager::ApplyToWindow(m_hWnd)*') { throw 'A top-level dialog does not apply the theme after creating its HWND.' }
 }
-foreach($required in @('ApplyTheme()', 'ContextAttributeBarThemeProc', 'WM_CTLCOLORSTATIC', 'WM_CTLCOLOREDIT', 'WM_CTLCOLORLISTBOX', 'TB_SETCOLORSCHEME', 'CCM_SETBKCOLOR', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()')) {
+foreach($required in @('ApplyTheme()', 'ContextAttributeBarThemeProc', 'WM_CTLCOLORSTATIC', 'TB_SETCOLORSCHEME', 'CCM_SETBKCOLOR', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()')) {
 	if($contextAttributeBars -notlike "*$required*") { throw "Context attribute bars do not apply the theme palette: $required." }
 }
-foreach($required in @('ContextAttributeBoxThemeProc', 'WS_EX_CLIENTEDGE', 'GWL_EXSTYLE', 'SWP_FRAMECHANGED', 'THEME_COLOR_BORDER', 'ApplyBoxTheme')) {
+foreach($required in @('ContextAttributeBoxThemeProc', 'WM_CTLCOLOREDIT', 'WM_CTLCOLORLISTBOX', 'COLOR_WINDOWTEXT', 'COLOR_WINDOW', 'COLOR_BTNFACE', 'COLOR_GRAYTEXT', '::IsWindowEnabled(window)', 'WS_EX_CLIENTEDGE', 'GWL_EXSTYLE', 'SWP_FRAMECHANGED', 'THEME_COLOR_BORDER', 'ApplyBoxTheme')) {
 	if($contextAttributeBars -notlike "*$required*") { throw "Context attribute boxes do not replace the Dark client edge with a themed border: $required." }
 }
 foreach($required in @('ApplyRuntimeTableTheme', 'fbe-runtime-dark-table-theme', 'table.table th', 'table.table td', 'ResolveBodyEditorColors()', 'BlendBodyColors', 'sheet->cssText')) {
@@ -131,7 +131,10 @@ foreach($required in @('COLOR_WINDOWTEXT', 'COLOR_WINDOW', 'COLOR_BTNFACE', 'COL
     if($contextAttributeBars -notlike "*$required*") { throw "Context attribute light/dark control palette is missing $required." }
 }
 if($contextAttributeControls -like '*GetSysColorBrush(COLOR_BTNFACE)*') { throw 'Context captions must not paint a separate COLOR_BTNFACE rectangle.' }
-if($contextAttributeControls -notlike '*ThemeManager::ControlBrush()*' -or $contextAttributeControls -notlike '*ThemeManager::IsHighContrast()*') { throw 'Context captions must inherit toolbar background and leave High Contrast native.' }
+if($contextAttributeControls -notlike '*GetSysColorBrush(COLOR_WINDOW)*' -or $contextAttributeControls -notlike '*ThemeManager::IsHighContrast()*') { throw 'Context captions must inherit toolbar background and leave High Contrast native.' }
+if($contextAttributeControls -notlike '*if(dark)*ThemeManager::ControlBrush()*') { throw 'Dark captions must retain their palette brush.' }
+if($contextAttributeBars -notlike '*if(message == WM_CTLCOLORSTATIC || message == WM_CTLCOLORBTN)*') { throw 'Toolbar theme proc must leave editable ComboBox palette messages to the ComboBox.' }
+if($contextAttributeBars -notlike '*if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);*') { throw 'Context ComboBox theme must leave High Contrast native.' }
 foreach($required in @('ThemeManager::ControlBrush()', 'ThemeManager::TextColor()', 'ThemeManager::DisabledTextColor()', 'IsWindowEnabled(m_hWnd)')) {
 	if($contextAttributeControls -notlike "*$required*") { throw "Context attribute captions do not apply the theme palette: $required." }
 }

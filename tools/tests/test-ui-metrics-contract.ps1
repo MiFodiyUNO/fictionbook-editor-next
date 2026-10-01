@@ -42,8 +42,10 @@ Require $contextControlsSource 'm_font\s*=\s*reinterpret_cast<HFONT>\(wParam\)' 
 Require $contextControls 'MESSAGE_HANDLER\(WM_SETFONT, OnSetFont\)' 'CCustomStatic WM_SETFONT message map'
 Require $contextControlsSource 'bHandled\s*=\s*FALSE' 'CCustomStatic chains WM_SETFONT to the Static superclass'
 Require $contextControlsSource 'SendMessage\(m_hWnd, WM_SETFONT' 'CCustomStatic SetFont uses the WM_SETFONT path'
-Require $contextControlsSource 'ThemeManager::ControlBrush\(\)' 'attribute captions inherit the context toolbar background'
-Require $mainFrame 'm_contextAttributeBars\.UpdateMetrics\(\)' 'context bars receive centralized DPI/font update'
+Require $contextControlsSource 'GetSysColorBrush\(COLOR_WINDOW\)' 'light captions use the context toolbar surface'
+if($contextControlsSource -like '*ControlBrush()*' -and $contextControlsSource -notlike '*if(dark)*ThemeManager::ControlBrush()*') { throw 'Light captions must not use the generic control brush.' }
+Require $contextControlsSource 'if\(dark\)[\s\S]{0,100}ThemeManager::ControlBrush\(\)' 'dark captions retain the theme palette'
+Require $mainFrame 'm_contextAttributeBars\.UpdateMetrics\(\);[\s\S]{0,220}NormalizeRebarBands\(m_rebar\);[\s\S]{0,120}m_rebar\.SendMessage\(WM_SIZE\);[\s\S]{0,120}UpdateLayout\(\)' 'context band height changes relayout the main frame'
 Require $mainFrame 'm_status\.SetFont\(UiMetrics::DialogFont\(\)\)' 'status bar receives the dialog font during initialization and DPI changes'
 Require $mainFrame 'StatusBarThemeProc[\s\S]{0,1800}WM_GETFONT' 'custom status painting selects the control font before drawing text'
 

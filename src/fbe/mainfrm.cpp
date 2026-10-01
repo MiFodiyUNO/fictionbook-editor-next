@@ -3264,6 +3264,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	// Context bars own child ComboBox heights; synchronize their rebar bands after metrics.
 	m_contextAttributeBars.NormalizeRebarBands(m_rebar);
 	m_rebar.SendMessage(WM_SIZE);
+	UpdateLayout();
 	StartupTrace::Event(L"mainframe", L"M110", L"menus and toolbars created");
 
   // create status bar
@@ -3829,6 +3830,7 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 	m_contextAttributeBars.UpdateMetrics();
 	if (::IsWindow(m_rebar)) m_contextAttributeBars.NormalizeRebarBands(m_rebar);
 	if (::IsWindow(m_rebar)) m_rebar.SendMessage(WM_SIZE);
+	UpdateLayout();
 	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());
 	if (m_doc)
 		m_doc->ApplyThemeAppearance();
