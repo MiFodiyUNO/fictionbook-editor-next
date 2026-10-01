@@ -250,7 +250,7 @@
 - Стандартные Windows properties используются для `Author`, `Title`, `Language`.
 - Создана FBE-specific schema для `Genre`, `Sequence`, `Keywords`, `DocumentId`, `DocumentVersion`, `DocumentDate`.
 - Отображаемые имена собственных колонок имеют префикс `FBE:`.
-- Ранее на реальной Windows 11 подтверждалась работа колонок, tooltip и правой панели после регистрации experimental-контура и `PreviewDetails`.
+- Ранее на реальной Windows 11 подтверждалась работа колонок, tooltip и правой панели после регистрации modern shell-контура и `PreviewDetails`.
 - Команда `Validate` вынесена из legacy context-menu DLL в обычный shell verb.
 - Обычная иконка `.fb2` задаётся через `DefaultIcon` из `FBE.exe`.
 - Для shell-команды `Validate` используется отдельный language-neutral модуль `FBVVerbResources.dll` и спутники `*.mui`, чтобы подпись пункта меню переключалась вместе с языком интерфейса Windows.

@@ -30,7 +30,7 @@ Smoke-проверки для подготовительного слоя:
 .\tools\build\register-shell-integration.ps1 -Configuration Release -Platform x64
 ```
 
-Этот сценарий сейчас регистрирует сразу оба экспериментальных компонента:
+Этот сценарий сейчас регистрирует сразу оба modern shell-компонента:
 
 - modern property handler для свойств `.fb2`;
 - thumbnail provider для миниатюр `.fb2`.
