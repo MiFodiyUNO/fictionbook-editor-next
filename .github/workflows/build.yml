@@ -155,6 +155,7 @@ jobs:
           ./tools/tests/test-search-document-adapter-mshtml.ps1
           ./tools/tests/test-search-preset-store.ps1 -PlatformToolset v143
           ./tools/tests/test-search-preset-catalog.ps1 -Configuration Release -UsePreparedPcre2 -PlatformToolset v143
+          ./tools/tests/test-search-preset-localization.ps1
           ./tools/tests/test-regex-quick-reference-runtime.ps1 -PlatformToolset v143
           ./tools/tests/test-regex-quick-reference-popup.ps1
           ./tools/tests/test-regex-quick-reference-catalog.ps1

@@ -11,6 +11,42 @@
         "expectedEnd": 6,
         "note": "Встроенный Source-шаблон повторной пунктуации должен выполняться Scintilla в режиме C++11 regex."
       },
+{
+        "id": "scintilla_search_preset_empty_paragraph",
+        "subject": "<p> </p><p>text</p>",
+        "pattern": "<p>[ \\t]*</p>",
+        "expectedFound": true,
+        "expectedStart": 0,
+        "expectedEnd": 8,
+        "note": "Встроенный Source-шаблон пустого абзаца выполняется реальным Scintilla C++11 regex."
+      },
+      {
+        "id": "scintilla_search_preset_import_artifact",
+        "subject": "<div>legacy</div>",
+        "pattern": "<(b|i|br|div|span|font)([ >])|</?[A-Z][A-Z0-9-]*([ >])|&nbsp;|&#[0-9]+;|&#x[0-9A-Fa-f]+;",
+        "expectedFound": true,
+        "expectedStart": 0,
+        "expectedEnd": 5,
+        "note": "Source-шаблон артефактов импорта не использует PCRE2-специфику."
+      },
+      {
+        "id": "scintilla_search_preset_external_link",
+        "subject": "<a l:href=\"https://example.test/x\">x</a>",
+        "pattern": "(l|xlink):href=\"(https?://|file://)[^\"]+\"",
+        "expectedFound": true,
+        "expectedStart": 3,
+        "expectedEnd": 34,
+        "note": "Source-шаблон внешней ссылки выполняется движком Scintilla."
+      },
+      {
+        "id": "scintilla_search_preset_replace_trim_before_close",
+        "subject": "<empty-line />",
+        "pattern": "[ \\t]+/>",
+        "expectedFound": true,
+        "expectedStart": 11,
+        "expectedEnd": 14,
+        "note": "Безопасная Source-замена пробела перед /> находит исходный фрагмент."
+      },
       {
         "id": "scintilla_digits_without_parentheses",
         "subject": "(1)",

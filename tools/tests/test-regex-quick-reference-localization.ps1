@@ -11,7 +11,8 @@ $keys = [System.Collections.Generic.HashSet[string]]::new()
 foreach($path in @('src\fbe\SearchReplace.h', 'src\fbe\search\SearchPresetCatalog.cpp', 'src\fbe\search\RegexQuickReference.h', 'src\fbe\search\ui\RegexHelpDialog.cpp', 'src\fbe\search\ui\RegexQuickReferencePopup.cpp')) {
     $text = Get-Content -Raw -LiteralPath (Join-Path $root $path)
     foreach($match in [regex]::Matches($text, 'L"(fbe\.(?:search_preset|regex_quick|regex_help|tooltip\.find\.regex_help)[^"]*)"')) {
-        [void] $keys.Add($match.Groups[1].Value)
+        $key = $match.Groups[1].Value
+        if(-not $key.EndsWith('.')) { [void] $keys.Add($key) }
     }
 }
 

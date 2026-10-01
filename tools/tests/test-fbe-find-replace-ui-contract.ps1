@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 Guards the common Find/Replace controls, their localized labels, and Results
 Pane painting contracts without materializing virtual ListView rows.
@@ -165,7 +165,8 @@ Require $dialog 'DT_CALCRECT \| DT_WORDBREAK' 'templates preview measures wrappe
 Require $dialog 'lineHeight \* 4' 'templates preview is bounded to four lines'
 Require $dialog 'PresetPinMaskResource' 'templates pin selects an authored bitmap mask'
 Require $dialog 'GetDIBits' 'templates pin derives coverage from its bitmap mask'
-Require $dialog 'maskInfo.bmiHeader.biBitCount = 1' 'templates pin uses a monochrome authored mask'
+Require $dialog 'struct BitmapInfo1Bit' 'templates pin reserves a two-entry monochrome bitmap info'
+Require $dialog 'maskInfo.header.biBitCount = 1' 'templates pin uses a monochrome authored mask'
 Require $dialog 'maskBits\[' 'templates pin uses mask bits instead of RGB coverage'
 if($dialog -match 'DrawIconEx\(|GetIconInfo\(|maskPixels\[index\]') { throw 'Templates pin must not recover alpha from an ICO.' }
 Require $dialog 'MakePresetPreviewValue\(preset->findText, 168\)' 'templates preview retains a useful clipped length'
@@ -192,7 +193,7 @@ Require $dialog 'NotifyOpenPresetPanels\(\)' 'all Design and Source template pan
 Require $dialog 'OpenPresetPanels\(\)' 'template panel notification has a shared registry'
 Require $dialog 'SearchContext\(\) == FbeSearchPresets::SearchUiContext::Design' 'explicit Design/Source UCP behavior'
 Require $dialog 'GetBuiltInPresets\(SearchContext\(\), IsReplaceDialog\(\)' 'context-filtered built-in presets'
-Require $presetCatalog 'if \(definition\.context != context \|\| \(forReplace && !definition\.hasReplacement\)\)' 'Replace excludes find-only presets'
+Require $presetCatalog 'if\s*\(definition\.context\s*!=\s*context\s*\|\|\s*\(forReplace\s*&&\s*!definition\.hasReplacement\)\)' 'Replace excludes find-only presets'
 Require $sourceView 'class CSciFindDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Source;' 'CSciFindDlg Source context'
 Require $sourceView 'class CSciReplaceDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Source;' 'CSciReplaceDlg Source context'
 Require $dialog 'class CViewFindDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Design;' 'CViewFindDlg Design context'
@@ -249,6 +250,6 @@ $builtInLocalizationKeys = @(
     'fbe.search_preset.source_repeated_punctuation.name', 'fbe.search_preset.source_repeated_punctuation.description')
 foreach ($key in $builtInLocalizationKeys) {
     RequireLocalized $key
-    Require $presetCatalog ([regex]::Escape($key)) "built-in preset localization lookup $key"
+    Require $presetCatalog 'StableBuiltInLocalizationKey' "built-in preset localization lookup $key"
 }
 Write-Host 'Find/Replace common UI and Results Pane contract passed.'

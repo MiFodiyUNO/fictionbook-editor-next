@@ -111,7 +111,7 @@ CString JoinHelpBlocks(const std::vector<HelpBlock>& blocks, std::vector<int>& s
     starts.clear();
     for(size_t index = 0; index < blocks.size(); ++index)
     {
-        if(!text.IsEmpty()) text += L"\r\n\r\n";
+        if(!text.IsEmpty()) text += L"\r\n";
         starts.push_back(text.GetLength());
         text += blocks[index].text;
     }
@@ -124,15 +124,23 @@ void ApplyHelpBlockStyles(HWND text, const std::vector<HelpBlock>& blocks)
     CHARFORMAT2 heading = {}; heading.cbSize = sizeof(heading); heading.dwMask = CFM_BOLD; heading.dwEffects = CFE_BOLD;
     CHARFORMAT2 title = heading; title.dwMask |= CFM_SIZE; title.yHeight = 220;
     CHARFORMAT2 syntax = {}; syntax.cbSize = sizeof(syntax); syntax.dwMask = CFM_FACE; ::lstrcpynW(syntax.szFaceName, L"Consolas", LF_FACESIZE);
-    PARAFORMAT2 headingParagraph = {}; headingParagraph.cbSize = sizeof(headingParagraph); headingParagraph.dwMask = PFM_SPACEBEFORE | PFM_SPACEAFTER; headingParagraph.dySpaceBefore = 100; headingParagraph.dySpaceAfter = 40;
-    PARAFORMAT2 exampleParagraph = {}; exampleParagraph.cbSize = sizeof(exampleParagraph); exampleParagraph.dwMask = PFM_STARTINDENT | PFM_SPACEAFTER; exampleParagraph.dxStartIndent = 180; exampleParagraph.dySpaceAfter = 40;
+    PARAFORMAT2 titleParagraph = {}; titleParagraph.cbSize = sizeof(titleParagraph); titleParagraph.dwMask = PFM_SPACEAFTER; titleParagraph.dySpaceAfter = 120;
+    PARAFORMAT2 headingParagraph = {}; headingParagraph.cbSize = sizeof(headingParagraph); headingParagraph.dwMask = PFM_SPACEBEFORE | PFM_SPACEAFTER; headingParagraph.dySpaceBefore = 140; headingParagraph.dySpaceAfter = 40;
+    PARAFORMAT2 bodyParagraph = {}; bodyParagraph.cbSize = sizeof(bodyParagraph); bodyParagraph.dwMask = PFM_SPACEAFTER; bodyParagraph.dySpaceAfter = 10;
+    PARAFORMAT2 exampleParagraph = {}; exampleParagraph.cbSize = sizeof(exampleParagraph); exampleParagraph.dwMask = PFM_STARTINDENT | PFM_SPACEAFTER; exampleParagraph.dxStartIndent = 180; exampleParagraph.dySpaceAfter = 30;
+    PARAFORMAT2 noteParagraph = {}; noteParagraph.cbSize = sizeof(noteParagraph); noteParagraph.dwMask = PFM_SPACEBEFORE; noteParagraph.dySpaceBefore = 80;
     for(size_t index = 0; index < blocks.size(); ++index)
     {
         ::SendMessage(text, EM_SETSEL, starts[index], starts[index] + blocks[index].text.GetLength());
         const HelpLineKind kind = blocks[index].kind;
-        if(kind == HelpLineKind::Title || kind == HelpLineKind::Heading)
+        if(kind == HelpLineKind::Title)
         {
-            ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(kind == HelpLineKind::Title ? &title : &heading));
+            ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&title));
+            ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&titleParagraph));
+        }
+        else if(kind == HelpLineKind::Heading)
+        {
+            ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&heading));
             ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&headingParagraph));
         }
         else if(kind == HelpLineKind::Syntax || kind == HelpLineKind::Example)
@@ -140,7 +148,8 @@ void ApplyHelpBlockStyles(HWND text, const std::vector<HelpBlock>& blocks)
             ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&syntax));
             if(kind == HelpLineKind::Example) ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&exampleParagraph));
         }
-        else if(kind == HelpLineKind::Note) ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&headingParagraph));
+        else if(kind == HelpLineKind::Body) ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&bodyParagraph));
+        else if(kind == HelpLineKind::Note) ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&noteParagraph));
     }
     ::SendMessage(text, EM_SETSEL, 0, 0); ::SendMessage(text, EM_SCROLLCARET, 0, 0);
 }

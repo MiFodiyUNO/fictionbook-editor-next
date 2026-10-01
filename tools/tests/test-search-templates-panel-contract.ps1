@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -7,6 +7,10 @@ $resources = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBE.rc')
 $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
 function Require([string]$pattern, [string]$description) { if ($source -notmatch $pattern) { throw "Missing $description." } }
 Require 'OnTogglePresets[\s\S]*?SetPresetPanelVisible\(!collapse\)[\s\S]*?collapse && _Settings\.SearchTemplatesPanelPinned\(\)[\s\S]*?SetSearchTemplatesPanelPinned\(false, true\)' 'manual collapse pin reset'
+Require 'RefreshPresetPanel\(\);[\s\S]*?SetWindowPos[\s\S]*?ResizePresetPanelForCurrentSelection\(\);[\s\S]*?ShowWindow' 'template panel populates and lays out before becoming visible'
+Require 'TVM_SETREDRAW|WM_SETREDRAW' 'template tree redraw is suspended during population'
+Require 'GetPresetCategoryName' 'built-in templates are grouped by localized category'
+Require 'SearchPresetSafety::ReviewOnly' 'review-only templates have an explicit safety state'
 $pinStart = $source.IndexOf('LRESULT OnTogglePresetPin')
 $pinEnd = $source.IndexOf('LRESULT OnApplyPreset', $pinStart)
 $pinHandler = $source.Substring($pinStart, $pinEnd - $pinStart)
@@ -36,7 +40,9 @@ if ($source -match 'DrawIconEx\(|GetIconInfo\(|IDI_FIND_PRESETS_PIN|IMAGE_ICON|m
 Require 'PresetPinMaskResource' 'pin bitmap-mask resource selection'
 Require 'IMAGE_BITMAP' 'pin bitmap-mask loader'
 Require 'GetDIBits' 'pin reads the authored bitmap mask'
-Require 'maskInfo.bmiHeader.biBitCount = 1' 'pin reads monochrome mask coverage'
+Require 'struct BitmapInfo1Bit' 'pin allocates both monochrome palette entries'
+Require 'RGBQUAD colors\[2\]' 'pin cannot let GetDIBits overrun a one-entry BITMAPINFO'
+Require 'maskInfo.header.biBitCount = 1' 'pin reads monochrome mask coverage'
 Require 'maskBits\[' 'pin tints authored mask coverage'
 Require 'ThemeManager::AccentColor\(\)' 'pinned accent glyph'
 Require 'ThemeManager::SecondaryTextColor\(\)' 'unpinned secondary glyph'

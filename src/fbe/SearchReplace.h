@@ -15,6 +15,7 @@
 #include "search\\ui\\ComboBoxEdit.h"
 #include "search\\ui\\RegexQuickReferencePopup.h"
 #include <vector>
+#include <map>
 
 inline CString MakePresetPreviewValue(const CString& source, int limit = 112)
 {
@@ -140,6 +141,11 @@ public:
     {
         if (!preset) return CString();
         CString preview = preset->description;
+        if(preset->safety == FbeSearchPresets::SearchPresetSafety::ReviewOnly)
+        {
+            if(!preview.IsEmpty()) preview += L"\r\n\r\n";
+            preview += FbeLoadRuntimeStringByKey(L"fbe.search_preset.review_only", L"Search only — review required");
+        }
         CString find; find.Format(FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.find", L"Find: %s"), static_cast<LPCWSTR>(MakePresetPreviewValue(preset->findText, 168)));
         if(!preview.IsEmpty()) preview += L"\r\n\r\n";
         preview += find;
@@ -173,39 +179,52 @@ public:
     {
         const HWND tree = GetDlgItem(IDC_FIND_PRESETS_TREE);
         if (!tree) return;
-        m_panelPresets.clear();
         std::vector<FbeSearchPresets::SearchPreset> builtIns;
         FbeSearchPresets::GetBuiltInPresets(SearchContext(), IsReplaceDialog(), builtIns);
         std::vector<FbeSearchPresets::SearchPreset> users;
         FbeSearchPresets::SearchPresetStore store;
         store.Load(users); // a damaged file never hides the built-in catalog
+        m_panelPresets = builtIns;
         for (size_t index = 0; index < users.size(); ++index)
             if (users[index].context == SearchContext() && (!IsReplaceDialog() || users[index].hasReplacement))
                 m_panelPresets.push_back(users[index]);
 
+        ::SendMessage(tree, WM_SETREDRAW, FALSE, 0);
         ::SendMessage(tree, TVM_DELETEITEM, 0, reinterpret_cast<LPARAM>(TVI_ROOT));
         const HTREEITEM builtInRoot = InsertPresetTreeItem(tree, TVI_ROOT,
             FbeLoadRuntimeStringByKey(L"fbe.search_preset.built_in", L"Built-in"), -1);
+        std::map<int, HTREEITEM> categories;
+        HTREEITEM desired = NULL;
         for (size_t index = 0; index < builtIns.size(); ++index)
         {
-            m_panelPresets.insert(m_panelPresets.begin() + index, builtIns[index]);
-            InsertPresetTreeItem(tree, builtInRoot, builtIns[index].name, static_cast<LPARAM>(index));
+            const int category = static_cast<int>(builtIns[index].category);
+            HTREEITEM& categoryItem = categories[category];
+            if (!categoryItem)
+            {
+                categoryItem = InsertPresetTreeItem(tree, builtInRoot,
+                    FbeSearchPresets::GetPresetCategoryName(builtIns[index].category), -2);
+            }
+            HTREEITEM item = InsertPresetTreeItem(tree, categoryItem, builtIns[index].name, static_cast<LPARAM>(index));
+            if(!wantedId.IsEmpty() && builtIns[index].id == wantedId) desired = item;
         }
         const size_t builtInCount = builtIns.size();
         const HTREEITEM userRoot = InsertPresetTreeItem(tree, TVI_ROOT,
-            FbeLoadRuntimeStringByKey(L"fbe.search_preset.user", L"User"), -2);
-        HTREEITEM desired = NULL;
-        for (size_t index = builtInCount; index < m_panelPresets.size(); ++index) {
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.user", L"User"), -1);
+        for (size_t index = builtInCount; index < m_panelPresets.size(); ++index)
+        {
             HTREEITEM item = InsertPresetTreeItem(tree, userRoot, m_panelPresets[index].name, static_cast<LPARAM>(index));
             if(!wantedId.IsEmpty() && m_panelPresets[index].id == wantedId) desired = item;
         }
         TreeView_Expand(tree, builtInRoot, TVE_EXPAND);
+        for(std::map<int, HTREEITEM>::const_iterator category = categories.begin(); category != categories.end(); ++category)
+            TreeView_Expand(tree, category->second, TVE_EXPAND);
         TreeView_Expand(tree, userRoot, TVE_EXPAND);
         if(!desired && selectUserRoot) desired = userRoot;
         if(desired) { TreeView_SelectItem(tree, desired); TreeView_EnsureVisible(tree, desired); }
+        ::SendMessage(tree, WM_SETREDRAW, TRUE, 0);
+        ::InvalidateRect(tree, NULL, TRUE);
         UpdatePresetActions();
     }
-
     struct PresetPanelMetrics
     {
         int margin;
@@ -357,10 +376,10 @@ public:
     {
         const int controls[] = { IDC_FIND_PRESETS_LABEL, IDC_FIND_PRESETS_TREE, IDC_FIND_PRESET_DESCRIPTION,
             IDC_FIND_PRESET_APPLY, IDC_FIND_PRESET_SAVE, IDC_FIND_PRESET_UPDATE, IDC_FIND_PRESET_RENAME, IDC_FIND_PRESET_DELETE, IDC_FIND_PRESETS_PIN };
-        for (size_t index = 0; index < _countof(controls); ++index)
-            ::ShowWindow(GetDlgItem(controls[index]), visible ? SW_SHOW : SW_HIDE);
         const HWND dialog = DialogWindow();
         if (!dialog) return;
+        // Populate while hidden: opening must never expose an empty tree for a frame.
+        if (visible) RefreshPresetPanel();
         if (m_compactDialogWidth == 0)
         {
             RECT rectangle = {}; ::GetWindowRect(dialog, &rectangle);
@@ -387,13 +406,16 @@ public:
                 top = max(monitorInfo.rcWork.top, min(top, monitorInfo.rcWork.bottom - height));
             }
             else { m_presetPanelHeight = PresetPanelHeight(); height += m_presetPanelHeight; }
-        }        ::SetWindowPos(dialog, NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        ::SetWindowPos(dialog, NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
         m_templatesExpanded = visible;
         ::CheckDlgButton(dialog, IDC_FIND_PRESETS_PIN, _Settings.SearchTemplatesPanelPinned() ? BST_CHECKED : BST_UNCHECKED);
         UpdatePresetToggleCaption();
-        if (visible) { RefreshPresetPanel(); ResizePresetPanelForCurrentSelection(); }
+        if (visible) ResizePresetPanelForCurrentSelection();
+        for (size_t index = 0; index < _countof(controls); ++index)
+            ::ShowWindow(GetDlgItem(controls[index]), visible ? SW_SHOW : SW_HIDE);
+        if (visible) ::InvalidateRect(GetDlgItem(IDC_FIND_PRESETS_PIN), NULL, TRUE);
     }
-
     FbeSearchPresets::SearchPreset CurrentPreset(const CString& name) const
     {
         FbeSearchPresets::SearchPreset preset;
@@ -484,10 +506,13 @@ UINT PresetPinMaskResource(int size) const
         const HBITMAP mask = reinterpret_cast<HBITMAP>(::LoadImage(::GetModuleHandle(NULL), MAKEINTRESOURCE(PresetPinMaskResource(size)), IMAGE_BITMAP, size, size, LR_CREATEDIBSECTION));
         if(mask == NULL) return;
         const int maskStride = ((size + 31) / 32) * 4;
-        BITMAPINFO maskInfo = {}; maskInfo.bmiHeader.biSize = sizeof(maskInfo.bmiHeader); maskInfo.bmiHeader.biWidth = size;
-        maskInfo.bmiHeader.biHeight = -size; maskInfo.bmiHeader.biPlanes = 1; maskInfo.bmiHeader.biBitCount = 1; maskInfo.bmiHeader.biCompression = BI_RGB;
+        // A 1-bit DIB has two palette entries. BITMAPINFO only reserves one,
+        // so using it here lets GetDIBits overwrite stack storage.
+        struct BitmapInfo1Bit { BITMAPINFOHEADER header; RGBQUAD colors[2]; } maskInfo = {};
+        maskInfo.header.biSize = sizeof(maskInfo.header); maskInfo.header.biWidth = size;
+        maskInfo.header.biHeight = -size; maskInfo.header.biPlanes = 1; maskInfo.header.biBitCount = 1; maskInfo.header.biCompression = BI_RGB;
         std::vector<BYTE> maskBits(static_cast<size_t>(maskStride) * size);
-        if(::GetDIBits(dc, mask, 0, size, &maskBits[0], &maskInfo, DIB_RGB_COLORS) == 0) { ::DeleteObject(mask); return; }
+        if(::GetDIBits(dc, mask, 0, size, &maskBits[0], reinterpret_cast<BITMAPINFO*>(&maskInfo), DIB_RGB_COLORS) == 0) { ::DeleteObject(mask); return; }
         BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = size;
         info.bmiHeader.biHeight = -size; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
         void* bits = NULL; const HBITMAP bitmap = ::CreateDIBSection(dc, &info, DIB_RGB_COLORS, &bits, NULL, 0);

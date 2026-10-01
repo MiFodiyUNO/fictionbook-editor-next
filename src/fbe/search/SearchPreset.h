@@ -11,6 +11,17 @@ enum class SearchUiContext
     Design,
     Source
 };
+enum class SearchPresetCategory
+{
+    Whitespace, Punctuation, Typography, DashesNumbers, Ocr, Proofreading, Names,
+    XmlFormatting, Fb2Structure, LinksNotes, ImportArtifacts, Diagnostics
+};
+
+enum class SearchPresetSafety
+{
+    SafeReplace,
+    ReviewOnly
+};
 
 struct SearchPreset
 {
@@ -25,10 +36,12 @@ struct SearchPreset
     bool wholeWord;
     bool unicodeProperties;
     SearchUiContext context;
+    SearchPresetCategory category;
+    SearchPresetSafety safety;
     bool builtIn;
 
     SearchPreset()
         : hasReplacement(false), regexp(false), matchCase(false), wholeWord(false),
-          unicodeProperties(false), context(SearchUiContext::Design), builtIn(false) {}
+          unicodeProperties(false), context(SearchUiContext::Design), category(SearchPresetCategory::Whitespace), safety(SearchPresetSafety::ReviewOnly), builtIn(false) {}
 };
 }
