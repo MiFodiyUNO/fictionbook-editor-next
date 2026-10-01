@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -13,9 +13,11 @@ foreach ($key in @('fbe.regex_help.design.caption', 'fbe.regex_help.source.capti
     'fbe.regex_help.heading.groups', 'fbe.regex_help.heading.lookaround', 'fbe.regex_help.heading.advanced',
     'fbe.regex_help.heading.syntax', 'fbe.regex_help.heading.replacement', 'fbe.regex_help.heading.examples',
     'fbe.regex_help.heading.limitations', 'fbe.regex_help.example.source_digits', 'fbe.regex_help.example.source_spaces',
-    'fbe.regex_help.example.source_capture', 'fbe.regex_help.example.design_spaces', 'fbe.regex_help.example.design_punctuation',
-    'fbe.regex_help.example.design_word')) {
-    foreach ($language in $catalog.targetLanguages) {
+    'fbe.regex_help.example.source_capture', 'fbe.regex_help.example.source_empty_paragraph', 'fbe.regex_help.example.source_external_link',
+    'fbe.regex_help.example.source_undefined_reference', 'fbe.regex_help.example.source_note_link', 'fbe.regex_help.example.source_html_artifact',
+    'fbe.regex_help.example.design_spaces', 'fbe.regex_help.example.design_punctuation', 'fbe.regex_help.example.design_word',
+    'fbe.regex_help.example.design_mixed_alphabet', 'fbe.regex_help.example.design_repeated_word',
+    'fbe.regex_help.example.design_numeric_range', 'fbe.regex_help.example.design_initials')) {    foreach ($language in $catalog.targetLanguages) {
         if ([string]::IsNullOrWhiteSpace([string]$catalog.strings.$key.translations.$language)) { throw "Missing $key translation for $language." }
     }
     if ($key -like 'fbe.regex_help.heading.*' -and $dialog.IndexOf($key, [System.StringComparison]::Ordinal) -lt 0) { throw "Localized heading $key is not used by Regex Help." }
@@ -31,7 +33,9 @@ foreach ($key in $activeHelpKeys) {
 }foreach ($token in @('struct HelpBlock', 'BuildHelpBlocks', 'AddQuickReferenceSyntax', 'Scintilla regular expressions in its documented C++11 mode. This is not PCRE2.', 'No UCP, Unicode property classes, lookbehind, \\K, \\G, branch reset, PCRE2 verbs', 'Unicode and UCP', 'Lookaround and inline options', 'Advanced PCRE2', 'Replacement in FBE')) {
     if ($dialog.IndexOf($token, [System.StringComparison]::Ordinal) -lt 0) { throw "Regex Help structure misses $token." }
 }
-if ($dialog -match 'ClassifyHelpLine|section ==') { throw 'Regex Help still derives formatting from paragraph position.' }
+foreach ($key in @('fbe.regex_help.example.source_empty_paragraph', 'fbe.regex_help.example.source_external_link', 'fbe.regex_help.example.source_undefined_reference', 'fbe.regex_help.example.source_note_link', 'fbe.regex_help.example.source_html_artifact', 'fbe.regex_help.example.design_mixed_alphabet', 'fbe.regex_help.example.design_repeated_word', 'fbe.regex_help.example.design_numeric_range', 'fbe.regex_help.example.design_initials')) {
+    if ($dialog.IndexOf($key, [System.StringComparison]::Ordinal) -lt 0) { throw "Regex Help does not render practical example $key." }
+}if ($dialog -match 'ClassifyHelpLine|section ==') { throw 'Regex Help still derives formatting from paragraph position.' }
 $expected = @{ 'en-US' = 'Close'; 'ru-RU' = 'Закрыть' }
 foreach ($language in $expected.Keys) {
     if ($catalog.strings.'fbe.dialog.idd_regex_help.close'.translations.$language -ne $expected[$language]) { throw "Incorrect catalog close caption for $language." }

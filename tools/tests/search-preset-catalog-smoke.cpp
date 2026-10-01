@@ -43,6 +43,15 @@ bool Matches(const SearchPreset& preset, LPCWSTR subject)
     return match >= 0;
 }
 
+bool IsValidCategory(FbeSearchPresets::SearchPresetCategory category)
+{
+    return category >= FbeSearchPresets::SearchPresetCategory::Whitespace && category <= FbeSearchPresets::SearchPresetCategory::Diagnostics;
+}
+
+bool IsValidSafety(SearchPresetSafety safety)
+{
+    return safety == SearchPresetSafety::SafeReplace || safety == SearchPresetSafety::ReviewOnly;
+}
 bool Compiles(const SearchPreset& preset)
 {
     int error = 0;
@@ -64,7 +73,7 @@ int wmain()
     FbeSearchPresets::GetBuiltInPresets(SearchUiContext::Source, false, source);
     FbeSearchPresets::GetBuiltInPresets(SearchUiContext::Source, true, sourceReplace);
 
-    if (design.size() < 25 || design.size() > 30 || source.size() < 15 || source.size() > 20) return 1;
+    if (design.size() < 34 || design.size() > 38 || source.size() < 22 || source.size() > 26) return 1;
     if (designReplace.empty() || sourceReplace.empty()) return 2;
 
     std::set<std::wstring> ids;
@@ -72,24 +81,30 @@ int wmain()
     for (size_t index = 0; index < design.size(); ++index)
     {
         const SearchPreset& preset = design[index];
-        if (!preset.regexp || preset.id.IsEmpty() || preset.name.IsEmpty() || preset.description.IsEmpty() || !ids.insert(static_cast<LPCWSTR>(preset.id)).second) return 3;
-        if (!Compiles(preset)) return 4;
+        if (!preset.builtIn || preset.context != SearchUiContext::Design || !preset.regexp || !IsValidCategory(preset.category) || !IsValidSafety(preset.safety) || preset.id.IsEmpty() || preset.name.IsEmpty() || preset.description.IsEmpty() || !ids.insert(static_cast<LPCWSTR>(preset.id)).second) return 3;
+        if (preset.safety == SearchPresetSafety::SafeReplace && !preset.hasReplacement) return 4;
+        if (preset.safety == SearchPresetSafety::ReviewOnly && preset.hasReplacement) return 5;
+        if (!Compiles(preset)) return 6; // Design is executed by PCRE2.
+        if (preset.findText.Find(L"\\p{") >= 0 && !preset.unicodeProperties) return 7;
         if (preset.safety == SearchPresetSafety::SafeReplace) ++safeReplace; else ++reviewOnly;
     }
     for (size_t index = 0; index < source.size(); ++index)
     {
         const SearchPreset& preset = source[index];
-        if (!preset.regexp || preset.id.IsEmpty() || preset.name.IsEmpty() || preset.description.IsEmpty() || !ids.insert(static_cast<LPCWSTR>(preset.id)).second) return 5;
+        if (!preset.builtIn || preset.context != SearchUiContext::Source || !preset.regexp || !IsValidCategory(preset.category) || !IsValidSafety(preset.safety) || preset.id.IsEmpty() || preset.name.IsEmpty() || preset.description.IsEmpty() || !ids.insert(static_cast<LPCWSTR>(preset.id)).second) return 8;
+        if (preset.safety == SearchPresetSafety::SafeReplace && !preset.hasReplacement) return 9;
+        if (preset.safety == SearchPresetSafety::ReviewOnly && preset.hasReplacement) return 10;
+        if (preset.unicodeProperties) return 11; // Source fixtures use real Scintilla C++11 regex.
         if (preset.safety == SearchPresetSafety::SafeReplace) ++safeReplace; else ++reviewOnly;
     }
-    if (safeReplace == 0 || reviewOnly == 0) return 6;
+    if (safeReplace == 0 || reviewOnly == 0) return 12;
 
     const SearchPreset* normalize = Find(design, L"design.normalize-spaces");
     const SearchPreset* duplicate = Find(design, L"design.duplicate-word");
     const SearchPreset* sourcePunctuation = Find(source, L"source.repeated-punctuation");
-    if (!normalize || !normalize->hasReplacement || !Matches(*normalize, L"one   two")) return 7;
-    if (!duplicate || !duplicate->unicodeProperties || !Matches(*duplicate, L"тест тест")) return 8;
-    if (!sourcePunctuation || sourcePunctuation->hasReplacement || sourcePunctuation->findText != L"[!?]{2,}") return 9;
-    if (Find(source, L"design.normalize-spaces") != NULL) return 10;
+    if (!normalize || !normalize->hasReplacement || !Matches(*normalize, L"one   two")) return 13;
+    if (!duplicate || !duplicate->unicodeProperties || !Matches(*duplicate, L"тест тест")) return 14;
+    if (!sourcePunctuation || sourcePunctuation->hasReplacement || sourcePunctuation->findText != L"[!?][!?]+") return 15;
+    if (Find(source, L"design.normalize-spaces") != NULL) return 16;
     return 0;
 }

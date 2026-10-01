@@ -141,7 +141,9 @@ public:
     {
         if (!preset) return CString();
         CString preview = preset->description;
-        if(preset->safety == FbeSearchPresets::SearchPresetSafety::ReviewOnly)
+        // Review-only describes a built-in editorial rule. User templates do not
+        // persist that policy, so they must not acquire its warning by default.
+        if(preset->builtIn && preset->safety == FbeSearchPresets::SearchPresetSafety::ReviewOnly)
         {
             if(!preview.IsEmpty()) preview += L"\r\n\r\n";
             preview += FbeLoadRuntimeStringByKey(L"fbe.search_preset.review_only", L"Search only — review required");
@@ -189,6 +191,14 @@ public:
             if (users[index].context == SearchContext() && (!IsReplaceDialog() || users[index].hasReplacement))
                 m_panelPresets.push_back(users[index]);
 
+        // Refreshing after a user action must not reopen every category. The
+        // order of category children follows the same sorted map as insertion.
+        std::map<int, bool> expandedCategories;
+        for (size_t index = 0; index < builtIns.size(); ++index)
+            expandedCategories[static_cast<int>(builtIns[index].category)] = false;
+        HTREEITEM oldCategory = TreeView_GetChild(tree, TreeView_GetRoot(tree));
+        for (std::map<int, bool>::iterator category = expandedCategories.begin(); category != expandedCategories.end() && oldCategory; ++category, oldCategory = TreeView_GetNextSibling(tree, oldCategory))
+            category->second = (TreeView_GetItemState(tree, oldCategory, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
         ::SendMessage(tree, WM_SETREDRAW, FALSE, 0);
         ::SendMessage(tree, TVM_DELETEITEM, 0, reinterpret_cast<LPARAM>(TVI_ROOT));
         const HTREEITEM builtInRoot = InsertPresetTreeItem(tree, TVI_ROOT,
@@ -216,11 +226,16 @@ public:
             if(!wantedId.IsEmpty() && m_panelPresets[index].id == wantedId) desired = item;
         }
         TreeView_Expand(tree, builtInRoot, TVE_EXPAND);
-        for(std::map<int, HTREEITEM>::const_iterator category = categories.begin(); category != categories.end(); ++category)
-            TreeView_Expand(tree, category->second, TVE_EXPAND);
         TreeView_Expand(tree, userRoot, TVE_EXPAND);
-        if(!desired && selectUserRoot) desired = userRoot;
-        if(desired) { TreeView_SelectItem(tree, desired); TreeView_EnsureVisible(tree, desired); }
+        for (std::map<int, HTREEITEM>::const_iterator category = categories.begin(); category != categories.end(); ++category)
+            if (expandedCategories[category->first]) TreeView_Expand(tree, category->second, TVE_EXPAND);        if(!desired && selectUserRoot) desired = userRoot;
+        // Built-in categories start collapsed. Restore only the category needed
+        // for a selected preset, keeping a large catalog immediately readable.
+        if(desired) {
+            HTREEITEM parent = reinterpret_cast<HTREEITEM>(::SendMessage(tree, TVM_GETNEXTITEM, TVGN_PARENT, reinterpret_cast<LPARAM>(desired)));
+            if(parent && parent != userRoot) TreeView_Expand(tree, parent, TVE_EXPAND);
+            TreeView_SelectItem(tree, desired); TreeView_EnsureVisible(tree, desired);
+        }
         ::SendMessage(tree, WM_SETREDRAW, TRUE, 0);
         ::InvalidateRect(tree, NULL, TRUE);
         UpdatePresetActions();

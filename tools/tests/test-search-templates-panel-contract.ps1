@@ -11,6 +11,15 @@ Require 'RefreshPresetPanel\(\);[\s\S]*?SetWindowPos[\s\S]*?ResizePresetPanelFor
 Require 'TVM_SETREDRAW|WM_SETREDRAW' 'template tree redraw is suspended during population'
 Require 'GetPresetCategoryName' 'built-in templates are grouped by localized category'
 Require 'SearchPresetSafety::ReviewOnly' 'review-only templates have an explicit safety state'
+if ($source -match 'for\(std::map<int, HTREEITEM>::const_iterator category.*?TVE_EXPAND') { throw 'Built-in categories must start collapsed.' }
+Require 'if\(parent && parent != userRoot\) TreeView_Expand\(tree, parent, TVE_EXPAND\)' 'selected preset category is expanded on restore'
+Require 'std::map<int, bool> expandedCategories' 'category expansion state is retained during panel refresh'
+Require 'TreeView_GetItemState\(tree, oldCategory, TVIS_EXPANDED\)' 'category expansion state is read before rebuilding the tree'
+Require 'if \(expandedCategories\[category->first\]\) TreeView_Expand\(tree, category->second, TVE_EXPAND\)' 'previously expanded categories are restored without opening every category'
+Require 'preset->builtIn && preset->safety == FbeSearchPresets::SearchPresetSafety::ReviewOnly' 'ReviewOnly warning limited to built-ins'
+Require 'item\.lParam < 0' 'Tree root and category nodes cannot resolve to a preset'
+Require 'EnableWindow\(GetDlgItem\(IDC_FIND_PRESET_APPLY\), preset != NULL\)' 'Apply is disabled for Tree root and category nodes'
+Require 'void ApplySelectedPreset\(\)[\s\S]*?if \(!preset\) return;' 'Enter or double-click on a category cannot apply an arbitrary preset'
 $pinStart = $source.IndexOf('LRESULT OnTogglePresetPin')
 $pinEnd = $source.IndexOf('LRESULT OnApplyPreset', $pinStart)
 $pinHandler = $source.Substring($pinStart, $pinEnd - $pinStart)

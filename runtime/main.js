@@ -208,10 +208,15 @@ function SetBinaryReference(element, name, value)
 }
 function UpdateBinaryReferences(oldId, newId)
 {
- var elements=document.getElementsByTagName("*");
- for(var i=0; i<elements.length; ++i)
+ // document.all is the compatible MSHTML collection in the document mode used
+ // by the editor. getElementsByTagName("*") reports "Operation is not
+ // supported" there, which previously stopped a binary-ID rename at line 212.
+ var elements=document.all;
+ var selectedReferences=[];
+ for(var i=0; elements && i<elements.length; ++i)
  {
   var element=elements[i];
+  if(!element) continue;
   var href=element.getAttribute ? element.getAttribute("href") : null;
   if(href == null && element.href) href=element.href;
   if(IsBinaryReferenceValue(href, oldId))
@@ -225,15 +230,12 @@ function UpdateBinaryReferences(oldId, newId)
   {
    SetBinaryReference(element, "src", "fbw-internal:#"+newId);
   }
- }
 
- var selectedReferences=[];
- var lists=document.getElementsByTagName("SELECT");
- for(var j=0; j<lists.length; ++j)
-  if(lists[j].value == "#"+oldId) selectedReferences.push({list:lists[j], value:"#"+newId});
+  if(String(element.tagName).toUpperCase()=="SELECT" && element.value == "#"+oldId)
+   selectedReferences.push({list:element, value:"#"+newId});
+ }
  return selectedReferences;
 }
-
 function RestoreBinaryReferenceSelects(selectedReferences)
 {
  if(!selectedReferences) return;

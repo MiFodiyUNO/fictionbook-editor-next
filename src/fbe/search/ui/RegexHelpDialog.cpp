@@ -68,6 +68,11 @@ std::vector<HelpBlock> BuildHelpBlocks(FbeSearchPresets::SearchUiContext context
         AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_digits", L"Digits: Find \\d+"));
         AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_spaces", L"Repeated spaces: Find [ \\t]{2,}"));
         AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_capture", L"Capture: Find (\\w+), replace with \\1"));
+        AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_empty_paragraph", L"Empty paragraph: Find <p>\\s*</p>"));
+        AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_external_link", L"External link: Find (https?|file):[^\\\" ]+"));
+        AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_undefined_reference", L"Undefined reference: Find (?:href|src)=\\\"#undefined\\\""));
+        AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_note_link", L"Note link: Find <a(?=[^>]*type=\\\"note\\\")[^>]*>"));
+        AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_html_artifact", L"HTML import artifact: Find </?(?:font|span|div)\\b[^>]*>"));
         AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.limitations", L"Limitations"));
         AddHelpBlock(blocks, HelpLineKind::Note, LocalizedHelpText(L"fbe.regex_help.body.source.limitations", L"No UCP, Unicode property classes, lookbehind, \\K, \\G, branch reset, PCRE2 verbs, or FBE Design replacement formatting."));
         return blocks;
@@ -100,6 +105,10 @@ std::vector<HelpBlock> BuildHelpBlocks(FbeSearchPresets::SearchUiContext context
     AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_spaces", L"Multiple spaces: Find [ \\t]{2,}, replace with one space."));
     AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_punctuation", L"Before punctuation: Find [ \\t]+([,;:!?]), replace with $1."));
     AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_word", L"Repeated word: Find \\b(\\p{L}+)\\s+\\1\\b with UCP enabled."));
+    AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_mixed_alphabet", L"Mixed Cyrillic/Latin: Find (?=[^\\r\\n]*[А-Яа-яЁё])(?=[^\\r\\n]*[A-Za-z])[^\\r\\n]+"));
+    AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_repeated_word", L"Possible repeated word: Find \\b(\\p{L}+)\\s+\\1\\b with UCP enabled."));
+    AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_numeric_range", L"Numeric range: Find (\\d+)\\s*[-–—]\\s*(\\d+), replace with $1–$2."));
+    AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_initials", L"Initials: Find \\b([A-ZА-ЯЁ])\\.\\s*([A-ZА-ЯЁ])\\., replace with $1. $2."));
     AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.limitations", L"Limitations"));
     AddHelpBlock(blocks, HelpLineKind::Note, LocalizedHelpText(L"fbe.regex_help.body.design.limitations", L"Only groups 1..9 are replaceable in FBE, and replacement across paragraphs is rejected."));
     return blocks;

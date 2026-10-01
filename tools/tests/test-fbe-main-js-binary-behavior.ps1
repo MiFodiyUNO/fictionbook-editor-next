@@ -6,6 +6,13 @@ if ($source -notmatch '(?s)function GetBinaries\(doc\).*?LocalizedBinaryMessage\
 }
 
 if(-not (Get-Command cscript.exe -ErrorAction SilentlyContinue)) { throw 'Windows Script Host cscript.exe is required for the main.js binary behavioral test.' }
+$renameHandler = [regex]::Match($source, '(?s)function UpdateBinaryReferences\(oldId, newId\).*?(?=function RestoreBinaryReferenceSelects)').Value
+if ($renameHandler -notmatch 'var elements=document\.all;') {
+    throw 'Переименование binary должно обходить document.all, совместимый с MSHTML document mode.'
+}
+if ($renameHandler -match 'var\s+elements\s*=\s*document\.getElementsByTagName\("\*"\)') {
+    throw 'Переименование binary не должно использовать неподдерживаемый MSHTML getElementsByTagName("*").'
+}
 $helpers = [regex]::Match($source, '(?s)function IsImageBinaryType\(type\).*?\r?\n}\r?\n\r?\n//--------------------------------------\r?\n// Adds a binary object').Value
 $controls = [regex]::Match($source, '(?s)function BuildBinaryControls\(div, fullpath, id, type, data\).*?\r?\n}\r?\n\r?\nfunction SaveBinary\(binary\).*?\r?\n}').Value
 $addBinary = [regex]::Match($source, '(?s)function apiAddBinary\(fullpath, id, type, data\).*?\r?\n}\r?\n\r?\nfunction GetImageData').Value
@@ -24,14 +31,15 @@ function SaveImage(source){saved=source;}
 function PutSpacers(){}
 function assert(condition, text){if(!condition){WScript.Echo('FAIL: '+text); WScript.Quit(1);}}
 function Input(value){this.value=value; this.attrs={}; this.setAttribute=function(name,val){this.attrs[name]=val;}; this.getAttribute=function(name){return this.attrs[name];};}
-var binaries=[]; var references=[]; var covers=[];
+var binaries=[]; var references=[]; var covers=[]; var allElements=[];
 var binobj={getElementsByTagName:function(){return binaries;},appendChild:function(binary){binaries.push(binary);}};
-var document={all:{binobj:binobj},createElement:function(){return Binary('','');},getElementsByTagName:function(name){if(name=='*') return references; if(name=='SELECT') return covers; return [];}};
+allElements.binobj=binobj;
+var document={all:allElements,createElement:function(){return Binary('','');},getElementsByTagName:function(name){if(name=='*') return allElements; if(name=='SELECT') return covers; return [];}};
 var localized={"fbe.binary.id.empty":'empty',"fbe.binary.id.duplicate":'duplicate',"fbe.binary.delete.referenced":'referenced',"fbe.binary.processing_images":'Processing images: {0} / {1}'};
 var window={event:null,external:{GetImageDimsByData:function(){return '2x3';},GetBinarySize:function(){return 4;},GetImageDimsByPath:function(){return '';},GetLocalizedString:function(key){return localized[key];}}};
 function Binary(id,type){var b={base64data:'AQID',all:{},parentNode:binobj,innerHTML:''}; b.all.id=new Input(id); b.all.type=new Input(type); b.all.id.setAttribute('oldId',id); b.all.id.parentNode=b; b.all.type.parentNode=b; b.getElementsByTagName=function(){return [b.all.id,b.all.type];}; b.removeNode=function(){for(var i=0;i<binaries.length;i++)if(binaries[i]===b)binaries.splice(i,1);}; return b;}
-function Ref(href,src){this.attrs={href:href,src:src}; this.href=href; this.src=src; this.getAttribute=function(name){return this.attrs[name];}; this.setAttribute=function(name,value){this.attrs[name]=value; if(name=='href')this.href=value; if(name=='src')this.src=value;};}
-function Cover(value){this.value=value; this.options=[]; this.getElementsByTagName=function(name){return name=='OPTION' ? this.options : [];};}
+function Ref(href,src){this.attrs={href:href,src:src}; this.href=href; this.src=src; this.tagName='IMG'; this.getAttribute=function(name){return this.attrs[name];}; this.setAttribute=function(name,value){this.attrs[name]=value; if(name=='href')this.href=value; if(name=='src')this.src=value;}; allElements.push(this);}
+function Cover(value){this.value=value; this.options=[]; this.tagName='SELECT'; this.getElementsByTagName=function(name){return name=='OPTION' ? this.options : [];}; allElements.push(this);}
 $helpers
 $controls
 $addBinary

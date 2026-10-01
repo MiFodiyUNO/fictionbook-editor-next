@@ -24,6 +24,7 @@
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
 #include "FictionBookFileType.h"
+#include "SearchReplace.h"
 #include "document\\ArchiveRecentDocuments.h"
 #include "document\\recent\\RecentDocumentsStore.h"
 #include "document\\recent\\RecentDocumentsManager.h"

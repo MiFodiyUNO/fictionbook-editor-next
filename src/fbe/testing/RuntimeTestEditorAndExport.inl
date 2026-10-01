@@ -679,7 +679,97 @@
 		}
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
-	if (IsFbeTestScenario(L"binary-rename-runtime"))
+	if (IsFbeTestScenario(L"search-templates-open-runtime"))
+	{
+		auto hasRoots = [](HWND tree) -> bool
+		{
+			HTREEITEM first = TreeView_GetRoot(tree), second = first ? TreeView_GetNextSibling(tree, first) : NULL;
+			wchar_t firstText[128] = {}, secondText[128] = {};
+			TVITEMW firstData = {}, secondData = {}; firstData.mask = secondData.mask = TVIF_TEXT;
+			firstData.hItem = first; firstData.pszText = firstText; firstData.cchTextMax = _countof(firstText);
+			secondData.hItem = second; secondData.pszText = secondText; secondData.cchTextMax = _countof(secondText);
+			const CString builtIn = FbeLoadRuntimeStringByKey(L"fbe.search_preset.built_in", L"Built-in");
+			const CString user = FbeLoadRuntimeStringByKey(L"fbe.search_preset.user", L"User");
+			return first && second && TreeView_GetItem(tree, &firstData) && TreeView_GetItem(tree, &secondData) && CString(firstText) == builtIn && CString(secondText) == user;
+		};
+		auto hasPreset = [](HWND tree) -> bool
+		{
+			HTREEITEM builtIn = TreeView_GetRoot(tree); if (!builtIn) return false;
+			for (HTREEITEM category = TreeView_GetChild(tree, builtIn); category; category = TreeView_GetNextSibling(tree, category))
+				if (TreeView_GetChild(tree, category)) return true;
+			return false;
+		};
+				auto preservesCategoryState = [](FRBase* panel, HWND tree) -> bool
+		{
+			HTREEITEM builtIn = tree ? TreeView_GetRoot(tree) : NULL;
+			HTREEITEM firstCategory = builtIn ? TreeView_GetChild(tree, builtIn) : NULL;
+			HTREEITEM secondCategory = firstCategory ? TreeView_GetNextSibling(tree, firstCategory) : NULL;
+			if (!panel || !firstCategory || !secondCategory) return false;
+			TreeView_Expand(tree, firstCategory, TVE_EXPAND);
+			panel->RefreshPresetPanel();
+			builtIn = TreeView_GetRoot(tree); firstCategory = builtIn ? TreeView_GetChild(tree, builtIn) : NULL;
+			secondCategory = firstCategory ? TreeView_GetNextSibling(tree, firstCategory) : NULL;
+			return firstCategory && secondCategory &&
+				(TreeView_GetItemState(tree, firstCategory, TVIS_EXPANDED) & TVIS_EXPANDED) != 0 &&
+				(TreeView_GetItemState(tree, secondCategory, TVIS_EXPANDED) & TVIS_EXPANDED) == 0;
+		};struct PinProbe { int foreground; int background; COLORREF tint; bool drawn; };
+		auto probePin = [](FRBase* panel, bool pinned) -> PinProbe
+		{
+			PinProbe probe = {}; if (!panel) return probe;
+			const COLORREF surface = ThemeManager::ControlColor();
+			BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = 40;
+			info.bmiHeader.biHeight = -40; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
+			void* pixels = NULL; HDC screen = ::GetDC(panel->DialogWindow());
+			HBITMAP bitmap = screen ? ::CreateDIBSection(screen, &info, DIB_RGB_COLORS, &pixels, NULL, 0) : NULL;
+			HDC memory = bitmap ? ::CreateCompatibleDC(screen) : NULL;
+			if (!screen || !bitmap || !memory || !pixels) { if (memory) ::DeleteDC(memory); if (bitmap) ::DeleteObject(bitmap); if (screen) ::ReleaseDC(panel->DialogWindow(), screen); return probe; }
+			const DWORD background = 0xff000000 | RGB(GetRValue(surface), GetGValue(surface), GetBValue(surface));
+			DWORD* values = static_cast<DWORD*>(pixels); for (int index = 0; index < 40 * 40; ++index) values[index] = background;
+			HGDIOBJ previous = ::SelectObject(memory, bitmap); RECT target = { 4, 4, 36, 36 };
+			panel->DrawPresetPinGlyph(memory, target, pinned, surface);
+			for (int index = 0; index < 40 * 40; ++index)
+			{
+				if (values[index] == background) ++probe.background;
+				else { ++probe.foreground; probe.tint = RGB(GetBValue(values[index]), GetGValue(values[index]), GetRValue(values[index])); }
+			}
+			probe.drawn = probe.foreground > 0 && probe.background > 0 && probe.foreground < 40 * 40 / 2;
+			::SelectObject(memory, previous); ::DeleteDC(memory); ::DeleteObject(bitmap); ::ReleaseDC(panel->DialogWindow(), screen); return probe;
+		};
+		auto drawPinControl = [](FRBase* panel) -> bool
+		{
+			HWND pin = panel ? panel->FRBase::GetDlgItem(IDC_FIND_PRESETS_PIN) : NULL; RECT rect = {};
+			if (!pin || !::GetClientRect(pin, &rect)) return false;
+			HDC screen = ::GetDC(pin), memory = screen ? ::CreateCompatibleDC(screen) : NULL;
+			HBITMAP bitmap = screen ? ::CreateCompatibleBitmap(screen, rect.right, rect.bottom) : NULL;
+			if (!memory || !bitmap) { if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); if (screen) ::ReleaseDC(pin, screen); return false; }
+			HGDIOBJ old = ::SelectObject(memory, bitmap); DRAWITEMSTRUCT draw = {}; draw.CtlID = IDC_FIND_PRESETS_PIN; draw.hDC = memory; draw.rcItem = rect;
+			BOOL handled = FALSE; panel->OnDrawItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+			::SelectObject(memory, old); ::DeleteObject(bitmap); ::DeleteDC(memory); ::ReleaseDC(pin, screen); return true;
+		};
+		auto verifyPins = [&](FRBase* panel) -> bool
+		{
+			const InterfaceTheme original = ThemeManager::GetSelectedTheme();
+			ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT); const PinProbe lightOff = probePin(panel, false), lightOn = probePin(panel, true);
+			ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); const PinProbe darkOff = probePin(panel, false), darkOn = probePin(panel, true);
+			ThemeManager::SetSelectedTheme(original);
+			const bool distinctTints = ThemeManager::IsHighContrast() || (lightOff.tint != lightOn.tint && darkOff.tint != darkOn.tint);
+			return lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints && drawPinControl(panel);
+		};
+		BOOL handled = FALSE;
+		m_doc->m_body.OnFind(0, ID_EDIT_FIND, m_doc->m_body, handled);
+		CFindDlgBase* find = m_doc->m_body.m_find_dlg; if (find) find->SetPresetPanelVisible(true);
+		HWND findTree = find ? find->FRBase::GetDlgItem(IDC_FIND_PRESETS_TREE) : NULL;
+		const bool findOk = find && ::IsWindow(find->DialogWindow()) && findTree && hasRoots(findTree) && hasPreset(findTree) && preservesCategoryState(find, findTree) && verifyPins(find);
+		m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
+		CReplaceDlgBase* replace = m_doc->m_body.m_replace_dlg; if (replace) replace->SetPresetPanelVisible(true);
+		HWND replaceTree = replace ? replace->FRBase::GetDlgItem(IDC_FIND_PRESETS_TREE) : NULL;
+		const bool replaceOk = replace && ::IsWindow(replace->DialogWindow()) && replaceTree && hasRoots(replaceTree) && hasPreset(replaceTree) && preservesCategoryState(replace, replaceTree) && verifyPins(replace);
+		for (int pump = 0; pump < 8; ++pump) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } }
+		CStringA report; report.Format("find=%d\r\nreplace=%d\r\n", findOk ? 1 : 0, replaceOk ? 1 : 0);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		if (find) m_doc->m_body.CloseFindDialog(find); if (replace) m_doc->m_body.CloseFindDialog(replace);
+		::PostQuitMessage(findOk && replaceOk ? 0 : 1); return 0;
+	}	if (IsFbeTestScenario(L"binary-rename-runtime"))
 	{
 		MSHTML::IHTMLDocument2Ptr document(m_doc ? m_doc->m_body.Document() : NULL);
 		MSHTML::IHTMLWindow2Ptr window(document ? document->parentWindow : NULL);

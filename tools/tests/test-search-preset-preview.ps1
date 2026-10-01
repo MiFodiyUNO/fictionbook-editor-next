@@ -16,4 +16,7 @@ foreach($key in @('fbe.search_preset.preview.find', 'fbe.search_preset.preview.r
 }
 foreach($token in @('PresetPreviewText', 'PreviewHeightForCurrentSelection', 'DrawTextW', 'DT_CALCRECT | DT_WORDBREAK', 'lineHeight * 4', 'ResizePresetPanelForCurrentSelection')) { if($source -notmatch [regex]::Escape($token)) { throw "Missing dynamic preview behavior: $token" } }
 if($source -notmatch 'if\s*\(preset->hasReplacement\)') { throw 'A Find dialog must retain the Replace part of a stored preset preview.' }
+if($source -notmatch 'preset->builtIn && preset->safety == FbeSearchPresets::SearchPresetSafety::ReviewOnly') { throw 'Only built-in ReviewOnly presets may show the editorial review warning.' }
+$apply = [regex]::Match($source, '(?s)void ApplySelectedPreset\(\).*?(?=\n\s*LRESULT OnApplyPreset)').Value
+if($apply -notmatch 'if \(!preset\) return;' -or $apply -notmatch 'm_view->m_fo\.pattern = preset->findText;') { throw 'A selected ReviewOnly Find preset must still apply its search expression.' }
 Write-Host 'Search preset preview contract passed.'
