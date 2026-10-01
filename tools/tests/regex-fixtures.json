@@ -206,6 +206,77 @@
         "note": "Флаг caseless должен включать регистронезависимый поиск."
       },
       {
+        "id": "pcre_keep_out_reset",
+        "subject": "foobar",
+        "pattern": "foo\\Kbar",
+        "options": ["utf8"],
+        "expectedMatch": true,
+        "note": "PCRE2 \\K должен компилироваться и сохранять match после reset."
+      },
+      {
+        "id": "pcre_contiguous_anchor",
+        "subject": "abc",
+        "pattern": "\\Gabc",
+        "options": ["utf8"],
+        "expectedMatch": true,
+        "note": "PCRE2 \\G должен компилироваться в начальной позиции subject."
+      },
+      {
+        "id": "pcre_named_group",
+        "subject": "foo",
+        "pattern": "(?<name>foo)",
+        "options": ["utf8"],
+        "expectedMatch": true,
+        "note": "Именованная группа PCRE2 должна компилироваться."
+      },
+      {
+        "id": "pcre_named_backreference",
+        "subject": "foofoo",
+        "pattern": "(?<word>foo)\\k<word>",
+        "options": ["utf8"],
+        "expectedMatch": true,
+        "note": "Именованная обратная ссылка PCRE2 должна компилироваться."
+      },
+      {
+        "id": "pcre_branch_reset",
+        "subject": "b",
+        "pattern": "(?|(a)|(b))",
+        "options": ["utf8"],
+        "expectedMatch": true,
+        "note": "Branch reset PCRE2 должен компилироваться."
+      },
+      {
+        "id": "pcre_conditional_group",
+        "subject": "c",
+        "pattern": "(a)?(?(1)b|c)",
+        "options": ["utf8"],
+        "expectedMatch": true,
+        "note": "Условный паттерн PCRE2 должен компилироваться."
+      },
+      {
+        "id": "pcre_numeric_subroutine",
+        "subject": "abab",
+        "pattern": "(ab)(?1)",
+        "options": ["utf8"],
+        "expectedMatch": true,
+        "note": "Числовой subroutine call PCRE2 должен компилироваться."
+      },
+      {
+        "id": "pcre_named_subroutine",
+        "subject": "abab",
+        "pattern": "(?<pair>ab)(?&pair)",
+        "options": ["utf8"],
+        "expectedMatch": true,
+        "note": "Именованный subroutine call PCRE2 должен компилироваться."
+      },
+      {
+        "id": "pcre_skip_fail",
+        "subject": "bar",
+        "pattern": "foo(*SKIP)(*FAIL)|bar",
+        "options": ["utf8"],
+        "expectedMatch": true,
+        "note": "PCRE2 verbs (*SKIP) и (*FAIL) должны компилироваться."
+      },      {
         "id": "pcre_invalid_unclosed_group",
         "subject": "alpha",
         "pattern": "(",

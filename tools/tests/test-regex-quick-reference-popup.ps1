@@ -11,13 +11,15 @@ $resources = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\resource.h'
 foreach($token in @('RegexQuickReferencePopup', 'GetDlgItem(IDC_FIND_REGEX_HELP)', 'RegexQuickReferenceMode::Replacement', 'm_lastRegexTarget', 'm_view->SyncSearchOptionsToOpenDialogs(this)', 'InvalidateSearchSelectionState()', 'ShowRegexHelpDialog')) {
     if($dialog -notmatch [regex]::Escape($token)) { throw "Missing quick-reference dialog behavior: $token" }
 }
-foreach($token in @('WS_POPUP | WS_BORDER', 'WS_EX_TOOLWINDOW', 'MonitorFromWindow', 'UiMetrics::DpiForWindow', 'UiMetrics::ScaleForDpi', 'VK_ESCAPE', 'VK_RETURN', 'VK_F1', 'VK_LEFT', 'VK_RIGHT', 'm_left', 'm_right', 'AddRows', 'fbe.regex_quick.full_help', 'OnKillFocus', 'AddMessageFilter(this)', 'RemoveMessageFilter(this)', 'WM_LBUTTONDOWN', 'WM_RBUTTONDOWN', 'WM_MBUTTONDOWN', 'WM_NCLBUTTONDOWN', 'UpdateWindow()', 'OnNcDestroy', 'OnThemeChanged', 'LBS_OWNERDRAWFIXED', 'SYSTEM_FIXED_FONT', 'description is drawn in its own column')) {
+foreach($token in @('WS_POPUP | WS_BORDER', 'WS_EX_TOOLWINDOW', 'MonitorFromWindow', 'UiMetrics::DpiForWindow', 'UiMetrics::ScaleForDpi', 'VK_ESCAPE', 'VK_RETURN', 'VK_F1', 'VK_LEFT', 'VK_RIGHT', 'm_left', 'm_right', 'AddRows', 'fbe.regex_quick.full_help', 'OnKillFocus', 'AddMessageFilter(this)', 'RemoveMessageFilter(this)', 'WM_LBUTTONDOWN', 'WM_RBUTTONDOWN', 'WM_MBUTTONDOWN', 'WM_NCLBUTTONDOWN', 'UpdateWindow()', 'OnNcDestroy', 'OnThemeChanged', 'LBS_OWNERDRAWFIXED', 'CreateFontW', 'GetTextExtentPoint32', 'm_syntaxColumnWidth', 'description is drawn in its own column')) {
     if($popup -notmatch [regex]::Escape($token)) { throw "Missing quick-reference popup behavior: $token" }
 }
 foreach($token in @('ThemeManager::ApplyToWindow(m_hWnd)', 'ThemeManager.h')) {
     if($popup -notmatch [regex]::Escape($token)) { throw "Missing quick-reference popup theme integration: $token" }
 }
 if($popup -match 'displaySyntax \+ L') { throw 'Quick-reference syntax and descriptions must be rendered in separate columns.' }
+if ($popup -match 'syntax\.right = syntax\.left \+ \(text\.right - text\.left\) \* 36 / 100') { throw 'Quick-reference syntax column must be measured, not fixed at 36%.' }
+foreach ($token in @('VK_UP', 'VK_DOWN', 'VK_HOME', 'VK_END', 'MoveSelection', 'FirstEntryRow')) { if ($popup -notmatch [regex]::Escape($token)) { throw "Missing keyboard entry navigation: $token" } }
 if($popupHeader -notmatch 'WM_DRAWITEM' -or $popupHeader -notmatch 'WM_MEASUREITEM') { throw 'Popup must route owner-draw messages.' }
 if($popupHeader -notmatch 'public CMessageFilter') { throw 'Popup must be registered as a message filter.' }
 if($popup -match 'ShowWindow\(SW_SHOW\)\s*!=\s*FALSE') { throw 'ShowWindow return value must not control popup ownership.' }

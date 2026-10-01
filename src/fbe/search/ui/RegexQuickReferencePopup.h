@@ -10,6 +10,7 @@ class RegexQuickReferencePopup : public CWindowImpl<RegexQuickReferencePopup>, p
 public:
     DECLARE_WND_CLASS(L"FBERegexQuickReferencePopup")
     RegexQuickReferencePopup();
+    ~RegexQuickReferencePopup();
     bool Show(HWND owner, HWND anchor, FbeSearchPresets::SearchUiContext context, FbeSearchPresets::RegexQuickReferenceMode mode,
         const std::function<void(const FbeSearchPresets::RegexQuickReferenceEntry&)>& insert, const std::function<void()>& fullHelp);
     BOOL PreTranslateMessage(MSG* message);
@@ -41,6 +42,8 @@ private:
     void AddRows(CListBox& list, std::vector<int>& rows, const std::vector<int>& indexes);
     void DrawListItem(const DRAWITEMSTRUCT& draw, const std::vector<int>& rows);
     void MoveColumn(bool right);
+    bool MoveSelection(HWND listWindow, int direction);
+    int FirstEntryRow(const std::vector<int>& rows) const;
     CString Caption() const;
     CString CategoryCaption(FbeSearchPresets::RegexQuickReferenceCategory category) const;
     CStatic m_caption;
@@ -55,4 +58,6 @@ private:
     FbeSearchPresets::SearchUiContext m_context;
     FbeSearchPresets::RegexQuickReferenceMode m_mode;
     CMessageLoop* m_messageLoop;
+    HFONT m_monospaceFont;
+    int m_syntaxColumnWidth;
 };

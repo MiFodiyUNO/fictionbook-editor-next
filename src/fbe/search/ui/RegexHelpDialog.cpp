@@ -15,25 +15,40 @@ namespace
 CString HelpText(FbeSearchPresets::SearchUiContext context)
 {
     if (context == FbeSearchPresets::SearchUiContext::Source)
-        return FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.text.detail",
+    {
+        CString detail = FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.text.detail",
             L"Regular expressions — Source/Code\r\n\r\nEngine\r\n"
             L"Scintilla regular expressions / C++11 regex mode\r\n"
             L"Flags: SCFIND_REGEXP | SCFIND_CXX11REGEX\r\n\r\n"
             L"Basic syntax\r\n.  ^  $  [...]  \\d  \\s  \\w  \\b  *  +  ?  {n,m}  (...)  |\r\n\r\n"
             L"Replacement\r\nScintilla performs replacement. Back-reference \\1 is supported.\r\n\r\n"
             L"Limitations\r\nUnicode (UCP) applies to PCRE2 in Design mode and is unavailable for the current Source regex engine.");
-    return FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.text.detail",
-        L"Regular expressions — Design\r\n\r\nEngine\r\nPCRE2-16\r\n"
-        L"UTF is always enabled. Unicode (UCP) is enabled by the Unicode (UCP) checkbox.\r\n\r\n"
-        L"Basic syntax\r\n.  ^  $  [...]  [^...]  \\d  \\D  \\s  \\S  \\w  \\W  \\b  \\B  *  +  ?  *?  +?  ??  {n}  {n,}  {n,m}\r\n\r\n"
-        L"Groups\r\n(...)  (?:...)  |  (?=...)  (?!...)  (?<=...)  (?<!...)\r\n\r\n"
-        L"Unicode\r\n\\p{...}  \\P{...}  \\R\r\n\r\n"
-        L"Replacement in FBE\r\nFBE implements replacement syntax, not PCRE2.\r\n"
-        L"$0 or \\0 = whole match; $1..$9 or \\1..\\9 = capture groups; $+ or \\+ = last capture.\r\n"
-        L"\\U uppercase, \\L lowercase, \\T title case, \\Q ends formatting; \\S Strong/Bold; \\E Emphasis/Italic.\r\n\r\n"
-        L"Limitations\r\nOnly groups 1..9 are available in Replace. Cross-paragraph replacement is rejected to protect the document structure.");
+        const CString advanced = FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.advanced",
+            L"More Source examples\r\n\r\nPractical recipes\r\nDigits: \\d+.\r\nRepeated spaces: [ \\t]{2,}.\r\nA word: (\\w+) then \\1 in replacement.\r\n\r\nLimitations\r\nOnly the documented Scintilla C++11 subset is available.");
+        if (!advanced.IsEmpty()) detail += L"\r\n\r\n" + advanced;
+        return detail;
+    }
+    CString detail = FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.text.detail",
+        L"Regular expressions — Design\r\n\r\nEngine\r\nPCRE2-16\r\n\r\nBasic syntax\r\n.  ^  $  [...]  [^...]  \\d  \\D  \\s  \\S  \\w  \\W  \\b  \\B  *  +  ?  *?  +?  ??  {n}  {n,}  {n,m}\r\n\r\nGroups\r\n(...)  (?:...)  |  (?=...)  (?!...)  (?<=...) (?<!...)\r\n\r\nReplacement in FBE\r\n$0 or \\0 = whole match; $1..$9 or \\1..\\9 = capture groups.\r\n\r\nLimitations\r\nOnly groups 1..9 are available in Replace. Cross-paragraph replacement is rejected.");
+    const CString advanced = FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.advanced",
+        L"Advanced PCRE2\r\n\\K, \\G, named groups, branch reset, conditional and subroutine calls are supported and compile-tested.");
+    if (!advanced.IsEmpty()) detail += L"\r\n\r\n" + advanced;
+    return detail;
 }
+enum class HelpLineKind { Title, Heading, Body, Syntax, Example, Note };
 
+HelpLineKind ClassifyHelpLine(const CString& line, size_t index, bool beginsBlock)
+{
+    // Help catalog entries use explicit blank-line-separated blocks: the first
+    // line is the title and each later block begins with a heading.  This keeps
+    // formatting locale-neutral and deliberately does not infer code from
+    // characters such as a backslash or a square bracket.
+    if (index == 0) return HelpLineKind::Title;
+    if (!line.IsEmpty() && beginsBlock) return HelpLineKind::Heading;
+    if (line.Left(8) == L"Example:" || line.Left(9) == L"Пример:") return HelpLineKind::Example;
+    if (line.Left(12) == L"Limitations:" || line.Left(13) == L"Ограничения:") return HelpLineKind::Note;
+    return HelpLineKind::Body;
+}
 void ApplyParagraphHeadingStyle(HWND text, const CString& help)
 {
     std::vector<CString> lines;
@@ -41,48 +56,24 @@ void ApplyParagraphHeadingStyle(HWND text, const CString& help)
     int start = 0;
     while (start < help.GetLength())
     {
-        int end = help.Find(L'\n', start);
-        if (end < 0) end = help.GetLength();
-        int contentEnd = end;
-        if (contentEnd > start && help[contentEnd - 1] == L'\r') --contentEnd;
-        lines.push_back(help.Mid(start, contentEnd - start));
-        starts.push_back(start);
-        start = end + 1;
+        int end = help.Find(L'\n', start); if (end < 0) end = help.GetLength();
+        int contentEnd = end; if (contentEnd > start && help[contentEnd - 1] == L'\r') --contentEnd;
+        lines.push_back(help.Mid(start, contentEnd - start)); starts.push_back(start); start = end + 1;
     }
-
-    CHARFORMAT2 heading = {}; heading.cbSize = sizeof(heading);
-    heading.dwMask = CFM_BOLD;
-    heading.dwEffects = CFE_BOLD;
-    CHARFORMAT2 title = heading;
-    title.dwMask |= CFM_SIZE;
-    title.yHeight = 220; // 11 pt: slightly above the dialog body without a fixed face name.
-    LOGFONT fixed = {}; ::GetObject(::GetStockObject(SYSTEM_FIXED_FONT), sizeof(fixed), &fixed);
-    CHARFORMAT2 code = {}; code.cbSize = sizeof(code); code.dwMask = CFM_FACE;
-    ::lstrcpyn(code.szFaceName, fixed.lfFaceName, LF_FACESIZE);
-    PARAFORMAT2 paragraph = {}; paragraph.cbSize = sizeof(paragraph);
-    paragraph.dwMask = PFM_SPACEBEFORE | PFM_SPACEAFTER;
-    paragraph.dySpaceBefore = 100;
-    paragraph.dySpaceAfter = 40;
+    CHARFORMAT2 heading = {}; heading.cbSize = sizeof(heading); heading.dwMask = CFM_BOLD; heading.dwEffects = CFE_BOLD;
+    CHARFORMAT2 title = heading; title.dwMask |= CFM_SIZE; title.yHeight = 220;
+    PARAFORMAT2 paragraph = {}; paragraph.cbSize = sizeof(paragraph); paragraph.dwMask = PFM_SPACEBEFORE | PFM_SPACEAFTER; paragraph.dySpaceBefore = 100; paragraph.dySpaceAfter = 40;
     for (size_t index = 0; index < lines.size(); ++index)
     {
-        const bool paragraphStart = index == 0 || lines[index - 1].IsEmpty();
-        const bool isTitle = index == 0 && !lines[index].IsEmpty();
-        const bool isHeading = paragraphStart && index + 1 < lines.size() && !lines[index].IsEmpty() && !lines[index + 1].IsEmpty();
-        const bool isCode = lines[index].Find(static_cast<wchar_t>(92)) >= 0 || lines[index].Find(L'[') >= 0;
-        if (!isTitle && !isHeading && !isCode) continue;
+        const bool beginsBlock = index > 0 && lines[index - 1].IsEmpty();
+        const HelpLineKind kind = ClassifyHelpLine(lines[index], index, beginsBlock);
+        if (kind != HelpLineKind::Title && kind != HelpLineKind::Heading) continue;
         ::SendMessage(text, EM_SETSEL, starts[index], starts[index] + lines[index].GetLength());
-        if (isTitle || isHeading)
-        {
-            ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(isTitle ? &title : &heading));
-            ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&paragraph));
-        }
-        if (isCode)
-            ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&code));
+        ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(kind == HelpLineKind::Title ? &title : &heading));
+        ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&paragraph));
     }
-    ::SendMessage(text, EM_SETSEL, 0, 0);
-    ::SendMessage(text, EM_SCROLLCARET, 0, 0);
+    ::SendMessage(text, EM_SETSEL, 0, 0); ::SendMessage(text, EM_SCROLLCARET, 0, 0);
 }
-
 class RegexHelpDialog : public CDialogImpl<RegexHelpDialog>
 {
 public:

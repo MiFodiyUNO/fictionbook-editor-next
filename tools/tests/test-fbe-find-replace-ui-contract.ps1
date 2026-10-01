@@ -121,7 +121,9 @@ Require $regexHelp 'ApplyParagraphHeadingStyle' 'Regex help formats paragraph he
 Require $regexHelp 'CFM_BOLD' 'Regex help uses bold formatting for headings'
 Require $regexHelp 'CFM_SIZE' 'Regex help gives its title a distinct size'
 Require $regexHelp 'PFM_SPACEBEFORE' 'Regex help spaces heading paragraphs'
-Require $regexHelp 'SYSTEM_FIXED_FONT' 'Regex help uses a system monospace face for syntax and examples'
+Require $regexHelp 'enum class HelpLineKind' 'Regex help uses explicit help-line kinds'
+Require $regexHelp 'ClassifyHelpLine' 'Regex help classifies structural lines explicitly'
+if ($regexHelp -match 'Find\(static_cast<wchar_t>\(92\)\)') { throw 'Regex help must not classify whole lines as code merely because they contain a regex token.' }
 Require $regexHelp 'IDC_REGEX_HELP_CLOSE' 'Regex help uses its dedicated Close control for layout and dispatch'
 Require $regexHelp 'MonitorFromRect' 'Regex help restores its saved normal position on a valid monitor'
 Require $regexHelp 'WM_FBE_THEMECHANGED' 'Regex help reapplies its Rich Edit palette on app theme changes'
@@ -145,17 +147,19 @@ Require $dialog 'fbe\.tooltip\.find\.regex_help_source' 'Source regex-help toolt
 Require $dialog 'MakePresetPreviewValue' 'safe preset preview formatter'
 Require $dialog 'fbe\.search_preset\.preview\.find' 'Find preset preview localization'
 Require $dialog 'fbe\.search_preset\.preview\.replace' 'Replace preset preview localization'
-Require $dialog 'SetPresetPanelVisible\(!m_templatesExpanded\)' 'template panel expand/collapse integration'
+Require $dialog 'SetPresetPanelVisible\(!collapse\)' 'template panel expand/collapse integration'
 Require $dialog 'm_compactDialogHeight' 'separate compact dialog height'
 Require $dialog 'LayoutPresetPanel' 'templates panel uses a dedicated downward layout'
-Require $dialog 'RECT units = \{ 0, 0, 0, 142 \}' 'templates panel reserves vertical space for tree, preview and actions'
+Require $dialog 'struct PresetPanelMetrics' 'templates panel uses shared layout metrics'
+Require $dialog 'GetPresetPanelMetrics' 'templates panel height and layout share metrics'
+Require $dialog 'metrics\.treeHeight = \(std::max\)\(metrics\.lineHeight \* 4' 'templates panel keeps four tree rows at minimum'
 Require $dialog 'MakePresetPreviewValue\(preset->findText, 168\)' 'templates preview retains a useful clipped length'
 Require $rc 'IDC_FIND_PRESETS_PIN,"Button",BS_OWNERDRAW' 'templates pin uses an owner-drawn glyph rather than a text-only checkbox'
 Require $dialog 'SetSearchTemplatesPanelPinned' 'templates pin is persisted'
 Require $settings 'm_search_templates_panel_pinned' 'templates pin setting storage'
 Require $settingsSerialization 'SEARCH_TEMPLATES_PANEL_PINNED_KEY' 'templates pin serialized setting'
 Require $dialog 'const int width = m_compactDialogWidth' 'expanded templates keep compact width'
-Require $dialog 'visible \? m_compactDialogHeight \+ PresetPanelHeight\(\) : m_compactDialogHeight' 'expanded templates grow downward'
+Require $dialog 'm_presetPanelHeight = GetPresetPanelMetrics\(availablePanelHeight\)\.totalHeight' 'expanded templates fit monitor work area'
 Require $dialog 'MonitorFromWindow\(dialog, MONITOR_DEFAULTTONEAREST\)' 'expanded dialog is constrained to its current monitor'
 Require $dialog 'GetMonitorInfo\(monitor, &monitorInfo\)' 'expanded dialog uses monitor work area'
 Require $dialog 'UpdatePresetToggleCaption' 'template toggle caption changes by state'
@@ -178,7 +182,7 @@ Require $sourceView 'class CSciFindDlg[\s\S]*?SearchContext\(\) const \{ return 
 Require $sourceView 'class CSciReplaceDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Source;' 'CSciReplaceDlg Source context'
 Require $dialog 'class CViewFindDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Design;' 'CViewFindDlg Design context'
 Require $view 'class CViewReplaceDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Design;' 'CViewReplaceDlg Design context'
-foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.search_preset.caption', 'fbe.search_preset.apply', 'fbe.search_preset.save_current', 'fbe.search_preset.update', 'fbe.search_preset.rename', 'fbe.search_preset.delete', 'fbe.regex_help.design.caption', 'fbe.regex_help.source.caption', 'fbe.regex_help.design.text.detail', 'fbe.regex_help.source.text.detail', 'fbe.tooltip.find.unicode_properties_source',
+foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.search_preset.caption', 'fbe.search_preset.apply', 'fbe.search_preset.save_current', 'fbe.search_preset.update', 'fbe.search_preset.rename', 'fbe.search_preset.delete', 'fbe.regex_help.design.caption', 'fbe.regex_help.source.caption', 'fbe.regex_help.design.text.detail', 'fbe.regex_help.source.text.detail', 'fbe.regex_help.design.advanced', 'fbe.regex_help.source.advanced', 'fbe.tooltip.find.unicode_properties_source',
     'fbe.search_preset.normalize_spaces.name', 'fbe.search_preset.normalize_spaces.description',
     'fbe.search_preset.duplicate_word.name', 'fbe.search_preset.duplicate_word.description',
     'fbe.search_preset.source_repeated_punctuation.name', 'fbe.search_preset.source_repeated_punctuation.description',

@@ -226,6 +226,8 @@
 #define IDS_CTXMENU_CUT                 255
 #define IDI_ICON1                       255
 #define IDI_OLDICON                     255
+#define IDI_FIND_PRESETS_PIN            267
+#define IDI_FIND_PRESETS_PIN_OFF        268
 #define IDB_TABLE_INSERT_ROW_ABOVE       1204
 #define IDB_TABLE_INSERT_ROW_BELOW       1205
 #define IDB_TABLE_INSERT_COLUMN_LEFT     1206
@@ -805,7 +807,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        268
+#define _APS_NEXT_RESOURCE_VALUE        269
 #define _APS_NEXT_COMMAND_VALUE         57602
 #define _APS_NEXT_CONTROL_VALUE         1669
 #define _APS_NEXT_SYMED_VALUE           133
