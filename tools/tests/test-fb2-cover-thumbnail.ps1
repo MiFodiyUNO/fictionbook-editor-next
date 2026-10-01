@@ -17,7 +17,7 @@ New-Item -ItemType Directory -Path $testDir -Force | Out-Null
     (Join-Path $repoRoot "src\common\fb2\Fb2CoverImage.cpp") `
     (Join-Path $repoRoot "src\common\fb2\Fb2CoverThumbnail.cpp") `
     (Join-Path $PSScriptRoot "fb2-cover-thumbnail-smoke.cpp") `
-    "/link" "/SUBSYSTEM:CONSOLE" "ole32.lib" "oleaut32.lib" "comsuppw.lib" "gdiplus.lib" "/OUT:$testExe"
+    "/link" "/SUBSYSTEM:CONSOLE" "ole32.lib" "oleaut32.lib" "comsuppw.lib" "gdi32.lib" "/OUT:$testExe"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

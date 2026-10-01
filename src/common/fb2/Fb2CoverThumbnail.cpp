@@ -128,10 +128,11 @@ DecodedImage::DecodedImage() : bitmap(nullptr), width(0), height(0), hasAlpha(fa
 DecodedImage::~DecodedImage() { Reset(); }
 void DecodedImage::Reset()
 {
+    source.Release();
     if (bitmap != nullptr) { ::DeleteObject(bitmap); bitmap = nullptr; }
     width = 0; height = 0; hasAlpha = false;
 }
-bool DecodedImage::IsEmpty() const { return bitmap == nullptr; }
+bool DecodedImage::IsEmpty() const { return source == nullptr && bitmap == nullptr; }
 
 bool TryDecode(const std::vector<unsigned char>& bytes, DecodedImage& image, ATL::CString* errorMessage)
 {
@@ -161,14 +162,19 @@ bool TryDecode(const std::vector<unsigned char>& bytes, DecodedImage& image, ATL
         if (errorMessage != nullptr) errorMessage->Format(L"The Windows image stack could not decode the cover: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
-    return CreateDibFromWicSource(factory, frame, image, errorMessage);
+    UINT width = 0, height = 0;
+    if (!HasSafeImageDimensions(frame, width, height, errorMessage)) return false;
+    image.source = frame;
+    image.width = static_cast<int>(width);
+    image.height = static_cast<int>(height);
+    return true;
 }
 
 bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, DecodedImage& resizedImage, ATL::CString* errorMessage)
 {
     resizedImage.Reset();
     if (errorMessage != nullptr) errorMessage->Empty();
-    if (sourceImage.bitmap == nullptr || sourceImage.width <= 0 || sourceImage.height <= 0) {
+    if (sourceImage.source == nullptr || sourceImage.width <= 0 || sourceImage.height <= 0) {
         if (errorMessage != nullptr) *errorMessage = L"A valid decoded image was not provided for resizing.";
         return false;
     }
@@ -184,18 +190,16 @@ bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, Decod
     }
     CComPtr<IWICImagingFactory> factory;
     HRESULT hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
-    CComPtr<IWICBitmap> source;
-    if (SUCCEEDED(hr)) hr = factory->CreateBitmapFromHBITMAP(sourceImage.bitmap, nullptr, WICBitmapUsePremultipliedAlpha, &source);
     if (FAILED(hr)) {
-        if (errorMessage != nullptr) errorMessage->Format(L"The Windows image stack could not prepare the cover for resize: 0x%08X", static_cast<unsigned int>(hr));
+        if (errorMessage != nullptr) errorMessage->Format(L"The Windows image stack could not be initialized for resize: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
     if (targetWidth == sourceImage.width && targetHeight == sourceImage.height)
-        return CreateDibFromWicSource(factory, source, resizedImage, errorMessage);
+        return CreateDibFromWicSource(factory, sourceImage.source, resizedImage, errorMessage);
 
     CComPtr<IWICBitmapScaler> scaler;
     hr = factory->CreateBitmapScaler(&scaler);
-    if (SUCCEEDED(hr)) hr = scaler->Initialize(source, targetWidth, targetHeight, WICBitmapInterpolationModeFant);
+    if (SUCCEEDED(hr)) hr = scaler->Initialize(sourceImage.source, targetWidth, targetHeight, WICBitmapInterpolationModeFant);
     if (FAILED(hr)) {
         if (errorMessage != nullptr) errorMessage->Format(L"The Windows image stack could not resize the cover: 0x%08X", static_cast<unsigned int>(hr));
         return false;

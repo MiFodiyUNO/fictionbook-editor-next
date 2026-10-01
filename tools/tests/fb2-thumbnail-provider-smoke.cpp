@@ -143,6 +143,32 @@ bool GetBitmapSize(HBITMAP bitmap, int& width, int& height)
     return true;
 }
 
+bool HasPartiallyTransparentPixel(HBITMAP bitmap)
+{
+    int width = 0, height = 0;
+    if (!GetBitmapSize(bitmap, width, height) || width <= 0 || height <= 0)
+        return false;
+
+    BITMAPINFO info = {};
+    info.bmiHeader.biSize = sizeof(info.bmiHeader);
+    info.bmiHeader.biWidth = width;
+    info.bmiHeader.biHeight = -height;
+    info.bmiHeader.biPlanes = 1;
+    info.bmiHeader.biBitCount = 32;
+    info.bmiHeader.biCompression = BI_RGB;
+    std::vector<unsigned char> pixels(static_cast<size_t>(width) * height * 4);
+    HDC screen = ::GetDC(nullptr);
+    const int lines = screen == nullptr ? 0 : ::GetDIBits(screen, bitmap, 0, static_cast<UINT>(height), pixels.data(), &info, DIB_RGB_COLORS);
+    if (screen != nullptr) ::ReleaseDC(nullptr, screen);
+    if (lines != height) return false;
+
+    for (size_t index = 3; index < pixels.size(); index += 4) {
+        if (pixels[index] != 0 && pixels[index] != 0xFF)
+            return true;
+    }
+    return false;
+}
+
 } // namespace
 
 int wmain(int argc, wchar_t* argv[])
@@ -185,15 +211,15 @@ int wmain(int argc, wchar_t* argv[])
     success = ExpectTrue(L"bitmap.beforeInitialize.null", bitmap == nullptr) && success;
     delete providerWithoutInit;
 
-    struct ValidFixture { const wchar_t* path; const wchar_t* label; int width; int height; WTS_ALPHATYPE alpha; };
+    struct ValidFixture { const wchar_t* path; const wchar_t* label; int width; int height; WTS_ALPHATYPE alpha; bool requirePartialAlpha; };
     const ValidFixture validFixtures[] = {
-        { argv[1], L"png-tiny", 1, 1, WTSAT_RGB },
-        { argv[2], L"multiple-binaries", 1, 1, WTSAT_RGB },
-        { argv[3], L"jpeg", 1, 1, WTSAT_RGB },
-        { argv[4], L"bmp", 1, 1, WTSAT_RGB },
-        { argv[5], L"visible-portrait", 96, 128, WTSAT_ARGB },
-        { argv[6], L"large-horizontal", 768, 512, WTSAT_RGB },
-        { argv[7], L"large-vertical-alpha", 512, 768, WTSAT_ARGB }
+        { argv[1], L"png-tiny", 1, 1, WTSAT_RGB, false },
+        { argv[2], L"multiple-binaries", 1, 1, WTSAT_RGB, false },
+        { argv[3], L"jpeg", 1, 1, WTSAT_RGB, false },
+        { argv[4], L"bmp", 1, 1, WTSAT_RGB, false },
+        { argv[5], L"visible-portrait", 96, 128, WTSAT_ARGB, false },
+        { argv[6], L"large-horizontal", 768, 512, WTSAT_RGB, false },
+        { argv[7], L"large-vertical-alpha", 512, 768, WTSAT_ARGB, true }
     };
     const UINT requestedEdges[] = { 32, 64, 128, 256, 512 };
     for (size_t i = 0; i < _countof(validFixtures); ++i) {
@@ -225,6 +251,10 @@ int wmain(int argc, wchar_t* argv[])
             success = ExpectEqualInt(widthName, width, expectedWidth) && success;
             success = ExpectEqualInt(heightName, height, expectedHeight) && success;
             success = ExpectTrue(alphaName, alphaType == validFixtures[i].alpha) && success;
+            if (validFixtures[i].requirePartialAlpha) {
+                ATL::CString pixelsName; pixelsName.Format(L"bitmap.partialAlpha.%s.%u", validFixtures[i].label, requestedEdge);
+                success = ExpectTrue(pixelsName, HasPartiallyTransparentPixel(bitmap)) && success;
+            }
             std::wcout << L"[thumbnail-provider-smoke] " << validFixtures[i].label << L": " << width << L"x" << height << L", requested=" << requestedEdge << L", alpha=" << alphaType << L"\n";
             if (bitmap != nullptr) ::DeleteObject(bitmap);
         }

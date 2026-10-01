@@ -1,11 +1,14 @@
 #pragma once
 
+#include <atlbase.h>
 #include <atlstr.h>
+#include <wincodec.h>
 #include <vector>
 
 namespace FB2CoverThumbnail {
 
 struct DecodedImage {
+    CComPtr<IWICBitmapSource> source;
     HBITMAP bitmap;
     int width;
     int height;

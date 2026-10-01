@@ -5,10 +5,7 @@
 
 #include "..\..\src\common\fb2\Fb2CoverImage.h"
 #include "..\..\src\common\fb2\Fb2CoverThumbnail.h"
-#include "..\..\src\common\win32\atlimage.h"
 
-ATL::CImage::CInitGDIPlus ATL::CImage::s_initGDIPlus;
-ATL::CImage::CDCCache ATL::CImage::s_cache;
 
 namespace {
 
@@ -65,9 +62,16 @@ int wmain(int argc, wchar_t* argv[])
     }
 
     bool success = true;
-    success = ExpectTrue(L"bitmap.notNull", decodedImage.bitmap != nullptr) && success;
+    success = ExpectTrue(L"decodedImage.notEmpty", !decodedImage.IsEmpty()) && success;
+    success = ExpectTrue(L"decodedImage.wicSource", decodedImage.source != nullptr) && success;
+    success = ExpectTrue(L"decodedImage.noIntermediateBitmap", decodedImage.bitmap == nullptr) && success;
     success = ExpectEqual(L"width", decodedImage.width, 1) && success;
     success = ExpectEqual(L"height", decodedImage.height, 1) && success;
+
+    FB2CoverThumbnail::DecodedImage thumbnailImage;
+    CString resizeError;
+    success = ExpectTrue(L"resize.succeeds", FB2CoverThumbnail::TryResizeToFit(decodedImage, 256, thumbnailImage, &resizeError)) && success;
+    success = ExpectTrue(L"resize.finalBitmap", thumbnailImage.bitmap != nullptr) && success;
 
     std::vector<unsigned char> invalidBytes;
     invalidBytes.push_back(0x01);
