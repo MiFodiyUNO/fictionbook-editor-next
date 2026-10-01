@@ -46,6 +46,8 @@ CString TextOf(const CWindow& window) { CString text; window.GetWindowText(text)
 const UINT_PTR kContextAttributeThemeSubclassId = 0x46424152; // "FBAR"
 const UINT_PTR kContextAttributeBoxThemeSubclassId = 0x46424258; // "FBBX"
 std::map<HWND, LONG_PTR> g_contextAttributeBoxBaseExStyles;
+struct NativeControlMetric { int height; UINT dpi; };
+std::map<HWND, NativeControlMetric> g_contextAttributeBoxNativeHeights;
 
 bool IsContextControlEnabled(HWND control);
 
@@ -156,14 +158,20 @@ int CaptionHeight(HWND bar, HFONT font)
 	return metrics.tmHeight;
 }
 
+int NativeControlHeight(HWND box)
+{
+	const std::map<HWND, NativeControlMetric>::const_iterator saved = g_contextAttributeBoxNativeHeights.find(box);
+	if(saved != g_contextAttributeBoxNativeHeights.end())
+		return (std::max)(1, ::MulDiv(saved->second.height, static_cast<int>(UiMetrics::DpiForWindow(box)), static_cast<int>(saved->second.dpi)));
+	RECT rect = {}; return ::GetWindowRect(box, &rect) ? (std::max)(1, static_cast<int>(rect.bottom - rect.top)) : 1;
+}
 void SetContextRowHeight(HWND bar, CComboBox* const* boxes, size_t count)
 {
 	if(!::IsWindow(bar)) return;
 	int height = CaptionHeight(bar, reinterpret_cast<HFONT>(::SendMessage(bar, WM_GETFONT, 0, 0)));
 	for(size_t index = 0; index < count; ++index)
 	{
-		RECT rect = {}; if(boxes[index] != NULL && ::GetWindowRect(*boxes[index], &rect))
-			height = (std::max)(height, static_cast<int>(rect.bottom - rect.top));
+		if(boxes[index] != NULL) height = (std::max)(height, NativeControlHeight(*boxes[index]));
 	}
 	height += UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(bar));
 	const DWORD buttonSize = static_cast<DWORD>(::SendMessage(bar, TB_GETBUTTONSIZE, 0, 0));
@@ -225,6 +233,8 @@ bool ContextAttributeBars::AddBox(HWND bar, int position, CComboBox& box, CCusto
 	RECT rect = {}; ::SendMessage(bar, TB_GETITEMRECT, position, reinterpret_cast<LPARAM>(&rect)); --rect.bottom;
 	if(!box.Create(bar, rect, NULL, style, WS_EX_CLIENTEDGE, id)) return false;
 	box.SetFont(font);
+	RECT nativeRect = {}; ::GetWindowRect(box, &nativeRect);
+	g_contextAttributeBoxNativeHeights[box] = NativeControlMetric{ (std::max)(1, static_cast<int>(nativeRect.bottom - nativeRect.top)), UiMetrics::DpiForWindow(box) };
 	return edit.SubclassWindow(box.ChildWindowFromPoint(CPoint(3, 3))) != NULL;
 }
 
@@ -247,7 +257,7 @@ bool ContextAttributeBars::Create(HWND parent)
 	UpdateMetrics(); ApplyTheme(); return true;
 }
 
-void ContextAttributeBars::Destroy() { if(m_linksBar) ::DestroyWindow(m_linksBar); if(m_tableBar) ::DestroyWindow(m_tableBar); if(m_tableBar2) ::DestroyWindow(m_tableBar2); m_linksBar = m_tableBar = m_tableBar2 = NULL; }
+void ContextAttributeBars::Destroy() { if(m_linksBar) ::DestroyWindow(m_linksBar); if(m_tableBar) ::DestroyWindow(m_tableBar); if(m_tableBar2) ::DestroyWindow(m_tableBar2); g_contextAttributeBoxNativeHeights.clear(); m_linksBar = m_tableBar = m_tableBar2 = NULL; }
 void ContextAttributeBars::ApplyBoxTheme(CComboBox& box) { ApplyContextAttributeBoxTheme(box); }
 void ContextAttributeBars::ApplyTheme()
 {
@@ -311,8 +321,13 @@ void ContextAttributeBars::UpdateLocalization()
 			wchar_t text[MAX_LOAD_STRING + 1] = {};
 			FbeLoadString(_Module.GetResourceInstance(), bindings[index].textId, text, MAX_LOAD_STRING);
 			bindings[index].caption->SetWindowText(text);
-			::SetWindowPos(bindings[index].caption->m_hWnd, NULL, captionRect.left, captionRect.top, captionRect.right - captionRect.left, captionRect.bottom - captionRect.top, SWP_NOACTIVATE | SWP_NOZORDER);
-			::SetWindowPos(bindings[index].editor->m_hWnd, NULL, editorRect.left, editorRect.top, editorRect.right - editorRect.left, editorRect.bottom - editorRect.top, SWP_NOACTIVATE | SWP_NOZORDER);
+			const int rowHeight = editorRect.bottom - editorRect.top;
+			const int captionHeight = (std::min)(rowHeight, CaptionHeight(toolbar, reinterpret_cast<HFONT>(::SendMessage(toolbar, WM_GETFONT, 0, 0))));
+			const int controlHeight = (std::min)(rowHeight, NativeControlHeight(bindings[index].editor->m_hWnd));
+			const int captionTop = editorRect.top + (rowHeight - captionHeight) / 2;
+			const int controlTop = editorRect.top + (rowHeight - controlHeight) / 2;
+			::SetWindowPos(bindings[index].caption->m_hWnd, NULL, captionRect.left, captionTop, captionRect.right - captionRect.left, captionHeight, SWP_NOACTIVATE | SWP_NOZORDER);
+			::SetWindowPos(bindings[index].editor->m_hWnd, NULL, editorRect.left, controlTop, editorRect.right - editorRect.left, controlHeight, SWP_NOACTIVATE | SWP_NOZORDER);
 		}
 		::SendMessage(toolbar, WM_SETREDRAW, TRUE, 0);
 		::RedrawWindow(toolbar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);

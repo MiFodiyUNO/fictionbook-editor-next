@@ -1,4 +1,4 @@
-<# Guards the UI-only boundary of contextual attribute bars. #>
+﻿<# Guards the UI-only boundary of contextual attribute bars. #>
 [CmdletBinding()]
 param()
 
@@ -48,6 +48,12 @@ foreach($token in @('CaptionHeight(', 'SetContextRowHeight(', 'TB_SETBUTTONSIZE'
     if($barsSource -notmatch [regex]::Escape($token) -and $barsHeader -notmatch [regex]::Escape($token)) { throw "Context row height contract is missing $token." }
 }
 Require $mainSource 'UpdateMetrics\(\);[\s\S]{0,220}NormalizeRebarBands\(m_rebar\);[\s\S]{0,120}m_rebar\.SendMessage\(WM_SIZE\);[\s\S]{0,120}UpdateLayout\(\)' 'context metric updates trigger a full main-frame relayout'
+Require $barsSource 'g_contextAttributeBoxNativeHeights' 'native closed ComboBox height is retained'
+Require $barsSource 'NativeControlHeight\(' 'row sizing uses the retained native height'
+Require $barsSource 'height = \(std::max\)\(height, NativeControlHeight' 'row height derives from native control height'
+Require $barsSource 'controlTop = editorRect\.top \+ \(rowHeight - controlHeight\) / 2' 'controls are vertically centred in their toolbar row'
+Require $barsSource 'captionTop = editorRect\.top \+ \(rowHeight - captionHeight\) / 2' 'captions are vertically centred in their toolbar row'
+if($barsSource -match 'editorRect\.bottom - editorRect\.top, SWP_NOACTIVATE \| SWP_NOZORDER') { throw 'Context controls must not be stretched to the toolbar slot height.' }
 if($barsHeader -match 'ContextBarMode|\bSetMode\s*\(|\bMode\s*\(' -or $barsSource -match 'ContextBarMode|\bSetMode\s*\(') { throw 'ContextAttributeBars must not retain test-only visibility modes.' }
 Require $controlsHeader 'class\s+CCustomEdit' 'custom edit moved from main frame'
 Require $controlsHeader 'class\s+CCustomStatic' 'custom static moved from main frame'

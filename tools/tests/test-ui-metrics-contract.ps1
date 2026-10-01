@@ -1,4 +1,4 @@
-<# Guards the native UI-font and fixed 24x24 command-toolbar contract. #>
+﻿<# Guards the native UI-font and fixed 24x24 command-toolbar contract. #>
 [CmdletBinding()]
 param()
 
@@ -33,7 +33,11 @@ Require $contextBars 'SendMessage\(m_linksBar, WM_GETFONT' 'links row obtains it
 Require $contextBars 'GetTextExtentPoint32W' 'context captions measure localized text'
 Require $contextBars 'UiMetrics::ScaleForDpi' 'context fields use DPI-aware width classes'
 Require $contextBars 'SetContextRowHeight' 'context rows account for nested ComboBox height'
-Require $contextBars 'TB_SETBUTTONSIZE' 'context rows explicitly set toolbar height'
+Require $contextBars 'NativeControlHeight' 'context rows retain the native closed-control height'
+Require $contextBars 'MulDiv\(saved->second\.height, static_cast<int>\(UiMetrics::DpiForWindow\(box\)\)' 'native control height scales for the current DPI'
+
+Require $contextBars 'controlHeight = \(std::min\)\(rowHeight, NativeControlHeight' 'context controls retain native height inside the row'
+Require $contextBars 'controlTop = editorRect\.top \+ \(rowHeight - controlHeight\) / 2' 'context controls use vertical centering'Require $contextBars 'TB_SETBUTTONSIZE' 'context rows explicitly set toolbar height'
 Require $mainFrame 'NormalizeRebarBands' 'rebar bands follow context child height'
 Require $contextBars 'SetDialogFontForToolbarRow\(m_tableBar\);' 'first table row receives DialogFont'
 Require $contextBars 'SetDialogFontForToolbarRow\(m_tableBar2\);' 'second table row receives DialogFont'
