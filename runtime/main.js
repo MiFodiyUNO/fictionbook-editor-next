@@ -168,6 +168,32 @@ function BinaryIdExists(id, exceptBinary)
  return false;
 }
 
+// Keep manual binary IDs within the same conservative XML-name subset used by
+// FbeBinary::NormalizeXmlId: a letter or '_' first, then letters, digits,
+// '-' and '.'. The Unicode ranges cover letter scripts supported by the
+// editor while deliberately excluding whitespace, punctuation and symbols.
+function IsBinaryXmlId(id)
+{
+ id=String(id || "");
+ if(id=="") return false;
+ function isLetter(code)
+ {
+  return (code>=65 && code<=90) || (code>=97 && code<=122) ||
+   (code>=0x00c0 && code<=0x02ff) || (code>=0x0370 && code<=0x1fff) ||
+   (code>=0x2070 && code<=0x218f) || (code>=0x2c00 && code<=0x2fef) ||
+   (code>=0x3001 && code<=0xd7ff) || (code>=0xf900 && code<=0xfdcf) ||
+   (code>=0xfdf0 && code<=0xfffd);
+ }
+ var first=id.charCodeAt(0);
+ if(first!=95 && !isLetter(first)) return false;
+ for(var i=1; i<id.length; ++i)
+ {
+  var value=id.charCodeAt(i);
+  if(value!=45 && value!=46 && value!=95 && !(value>=48 && value<=57) && !isLetter(value)) return false;
+ }
+ return true;
+}
+
 function IsBinaryReferenceValue(value, id)
 {
  return value == "#"+id || value == "fbw-internal:#"+id;
@@ -196,9 +222,23 @@ function UpdateBinaryReferences(oldId, newId)
   }
  }
 
+ var selectedReferences=[];
  var lists=document.getElementsByTagName("SELECT");
  for(var j=0; j<lists.length; ++j)
-  if(lists[j].value == "#"+oldId) lists[j].value="#"+newId;
+  if(lists[j].value == "#"+oldId) selectedReferences.push({list:lists[j], value:"#"+newId});
+ return selectedReferences;
+}
+
+function RestoreBinaryReferenceSelects(selectedReferences)
+{
+ if(!selectedReferences) return;
+ for(var i=0; i<selectedReferences.length; ++i)
+ {
+  var reference=selectedReferences[i];
+  var options=reference.list.getElementsByTagName("OPTION");
+  for(var j=0; j<options.length; ++j)
+   if(options[j].value==reference.value) { reference.list.value=reference.value; break; }
+ }
 }
 
 function BinaryIsReferenced(id)
@@ -233,14 +273,14 @@ function OnBinaryChange()
   var oldId=idInput.getAttribute("oldId");
   if(oldId == null) oldId=idInput.value;
   var newId=String(idInput.value).replace(/^\s+|\s+$/g, "");
-  if(newId == "" || BinaryIdExists(newId, binary))
+  if(newId == "" || !IsBinaryXmlId(newId) || BinaryIdExists(newId, binary))
   {
    idInput.value=oldId;
-   MsgBox(newId == "" ? LocalizedBinaryMessage("fbe.binary.id.empty") : LocalizedBinaryMessage("fbe.binary.id.duplicate"));
+   MsgBox(newId == "" ? LocalizedBinaryMessage("fbe.binary.id.empty") : (!IsBinaryXmlId(newId) ? LocalizedBinaryMessage("fbe.binary.id.invalid") : LocalizedBinaryMessage("fbe.binary.id.duplicate")));
    return;
   }
   idInput.value=newId;
-  if(oldId != newId) UpdateBinaryReferences(oldId, newId);
+  if(oldId != newId) var selectedReferences=UpdateBinaryReferences(oldId, newId);
   idInput.setAttribute("oldId", newId);
  }
  else if(input == typeInput)
@@ -249,6 +289,7 @@ function OnBinaryChange()
  }
  RebuildImagesInfo();
  FillLists();
+ RestoreBinaryReferenceSelects(selectedReferences);
 }
 
 function RebuildImagesInfo()

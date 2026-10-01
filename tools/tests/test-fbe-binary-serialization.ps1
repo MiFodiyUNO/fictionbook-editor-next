@@ -24,6 +24,8 @@ Assert-True ($mainJsSource -match '(?s)newb\.dataType="bin\.base64";.*?newb\.nod
 $binaryIdHeader = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\BinaryId.h') -Raw
 Assert-True ($docSource -match 'FbeBinary::NormalizeXmlId' -and $insertSource -match 'FbeBinary::NormalizeXmlId') 'Генерация binary ID должна использовать общий helper.'
 Assert-True ($binaryIdHeader -match 'IsCharAlphaW' -and $binaryIdHeader -notmatch 'Transliterate') 'Общий helper должен сохранять допустимые Unicode XML ID без транслитерации.'
+Assert-True ($binaryIdHeader -match 'IsValidXmlId' -and $mainJsSource -match 'function IsBinaryXmlId') 'Ручной ввод ID и генерация ID должны иметь явные валидаторы.'
+Assert-True ($mainJsSource -match 'RestoreBinaryReferenceSelects' -and $mainJsSource -match 'selectedReferences') 'Переименование binary должно восстанавливать cover SELECT после FillLists.'
 
 $document = New-Object -ComObject Msxml2.DOMDocument.6.0
 $document.async = $false

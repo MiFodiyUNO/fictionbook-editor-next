@@ -20,6 +20,14 @@ namespace FbeBinary
 			value == _T('-') || value == _T('.');
 	}
 
+	inline bool IsValidXmlId(const CString& value)
+	{
+		if (value.IsEmpty() || !IsXmlIdStart(value[0])) return false;
+		for (int index = 1; index < value.GetLength(); ++index)
+			if (!IsXmlIdCharacter(value[index])) return false;
+		return true;
+	}
+
 	inline CString NormalizeXmlId(const CString& pathOrId)
 	{
 		int start = pathOrId.ReverseFind(_T('\\'));

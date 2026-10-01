@@ -31,19 +31,20 @@ var localized={"fbe.binary.id.empty":'empty',"fbe.binary.id.duplicate":'duplicat
 var window={event:null,external:{GetImageDimsByData:function(){return '2x3';},GetBinarySize:function(){return 4;},GetImageDimsByPath:function(){return '';},GetLocalizedString:function(key){return localized[key];}}};
 function Binary(id,type){var b={base64data:'AQID',all:{},parentNode:binobj,innerHTML:''}; b.all.id=new Input(id); b.all.type=new Input(type); b.all.id.setAttribute('oldId',id); b.all.id.parentNode=b; b.all.type.parentNode=b; b.getElementsByTagName=function(){return [b.all.id,b.all.type];}; b.removeNode=function(){for(var i=0;i<binaries.length;i++)if(binaries[i]===b)binaries.splice(i,1);}; return b;}
 function Ref(href,src){this.attrs={href:href,src:src}; this.href=href; this.src=src; this.getAttribute=function(name){return this.attrs[name];}; this.setAttribute=function(name,value){this.attrs[name]=value; if(name=='href')this.href=value; if(name=='src')this.src=value;};}
+function Cover(value){this.value=value; this.options=[]; this.getElementsByTagName=function(name){return name=='OPTION' ? this.options : [];};}
 $helpers
 $controls
 $addBinary
 $remove
 function RebuildImagesInfo(){ImagesInfo.length=0; rebuilds++; for(var i=0;i<binaries.length;i++){var b=binaries[i]; if(IsImageBinaryType(b.all.type.value)) ImagesInfo.push({id:b.all.id.value,src:'fbw-internal:#'+b.all.id.value,width:'2',height:'3'});}}
-function FillLists(){fills++;}
+function FillLists(){fills++; for(var i=0;i<covers.length;i++){covers[i].options=[]; for(var j=0;j<binaries.length;j++){if(IsImageBinaryType(binaries[j].all.type.value)) covers[i].options.push({value:'#'+binaries[j].all.id.value});}}}
 
 var first=Binary('cover-part-01.jpg','image/jpeg'); var other=Binary('other.jpg','image/jpeg'); binaries.push(first); binaries.push(other);
 BuildBinaryControls(first,'','cover-part-01.jpg','image/jpeg',first.base64data);
 assert(first.innerHTML.split('id="dims"').length-1==1, 'image binary must contain exactly one dimensions control');
 assert(first.all.id.onchange==OnBinaryChange && first.all.type.onchange==OnBinaryChange, 'control build must retain ID and Type handlers');
 references.push(new Ref('#cover-part-01.jpg',null)); references.push(new Ref(null,'fbw-internal:#cover-part-01.jpg')); references.push(new Ref('#cover-part-01.jpg','fbw-internal:#cover-part-01.jpg'));
-covers.push({value:'#cover-part-01.jpg'}); RebuildImagesInfo();
+covers.push(new Cover('#cover-part-01.jpg')); RebuildImagesInfo();
 first.all.id.value='renamed.jpg'; window.event={srcElement:first.all.id}; OnBinaryChange();
 assert(first.all.id.value=='renamed.jpg', 'rename must keep new ID');
 assert(references[0].href=='#renamed.jpg' && references[1].src=='fbw-internal:#renamed.jpg' && references[2].href=='#renamed.jpg' && references[2].src=='fbw-internal:#renamed.jpg', 'rename must update every href and IMG src');
@@ -52,7 +53,12 @@ assert(ImagesInfo.length==2 && ImagesInfo[0].id=='renamed.jpg', 'rename must reb
 SaveBinary(first); assert(saved=='fbw-internal:#renamed.jpg', 'Save must use the renamed binary ID');
 first.all.id.value='other.jpg'; window.event={srcElement:first.all.id}; OnBinaryChange();
 assert(first.all.id.value=='renamed.jpg' && messages.length==1, 'duplicate ID must be rejected and restored');
-Remove(first); assert(binaries.length==2 && messages.length==2, 'used binary must not be deleted');
+var rejectedIds=['','1starts-digit','contains space','bad!symbol'];
+for(var rejected=0; rejected<rejectedIds.length;rejected++){first.all.id.value=rejectedIds[rejected]; window.event={srcElement:first.all.id}; OnBinaryChange(); assert(first.all.id.value=='renamed.jpg', 'invalid ID must be rejected and restored: '+rejectedIds[rejected]);}
+first.all.id.value='\u041e\u0431\u043b\u043e\u0436\u043a\u0430_1-2.jpg'; window.event={srcElement:first.all.id}; OnBinaryChange();
+assert(first.all.id.value=='\u041e\u0431\u043b\u043e\u0436\u043a\u0430_1-2.jpg' && covers[0].value=='#\u041e\u0431\u043b\u043e\u0436\u043a\u0430_1-2.jpg', 'Unicode XML ID must be accepted and cover selection restored after list rebuild');
+first.all.id.value='renamed.jpg'; window.event={srcElement:first.all.id}; OnBinaryChange();
+Remove(first); assert(binaries.length==2 && messages.length==6, 'used binary must not be deleted');
 first.all.type.value='application/octet-stream'; window.event={srcElement:first.all.type}; OnBinaryChange();
 assert(first.innerHTML.indexOf('id="show"')==-1 && first.innerHTML.indexOf('id="save"')==-1 && first.innerHTML.indexOf('id="dims"')==-1 && first.all.id.onchange==OnBinaryChange && first.all.type.onchange==OnBinaryChange && ImagesInfo.length==1 && ImagesInfo[0].id=='other.jpg', 'image to non-image must remove image controls and retain handlers');
 first.all.type.value='image/png'; window.event={srcElement:first.all.type}; OnBinaryChange();

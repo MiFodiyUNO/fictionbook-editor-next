@@ -17,6 +17,7 @@ foreach($required in @(
     'function BinaryIsReferenced(id)',
     'function LocalizedBinaryMessage(key)',
     'fbe.binary.id.empty',
+    'fbe.binary.id.invalid',
     'fbe.binary.id.duplicate',
     'fbe.binary.delete.referenced'
 )) {
