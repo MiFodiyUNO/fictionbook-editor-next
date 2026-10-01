@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param()
 
 $ErrorActionPreference = "Stop"
@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 
-$testDir = Join-Path $repoRoot "out\tests\fb2-cover-thumbnail"
+$testDir = Join-Path $repoRoot "out\tests\fb2-cover-thumbnail-wic"
 $testExe = Join-Path $testDir "fb2-cover-thumbnail-smoke.exe"
 $fixture = Join-Path $PSScriptRoot "fb2-cover-smoke.fb2"
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null

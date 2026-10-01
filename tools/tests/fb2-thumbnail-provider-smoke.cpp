@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <algorithm>
 
 #include "..\..\src\fbshell\Fb2ThumbnailProvider.h"
 
@@ -123,6 +124,11 @@ HRESULT CreateReadOnlyStreamFromFile(const wchar_t* filePath, IStream** stream)
     return hr;
 }
 
+int FitDimension(int sourceDimension, int sourceMaxEdge, UINT requestedEdge)
+{
+    if (sourceMaxEdge <= static_cast<int>(requestedEdge)) return sourceDimension;
+    return (std::max)(1, static_cast<int>(static_cast<long long>(sourceDimension) * requestedEdge / sourceMaxEdge));
+}
 bool GetBitmapSize(HBITMAP bitmap, int& width, int& height)
 {
     width = 0;
@@ -143,8 +149,8 @@ int wmain(int argc, wchar_t* argv[])
 {
     const int requestedEdge = 256;
 
-    if (argc != 9) {
-        std::wcerr << L"Использование: fb2-thumbnail-provider-smoke.exe <png-fb2> <несколько-binary-fb2> <jpeg-fb2> <bmp-fb2> <вертикальная-обложка-fb2> <битый-fb2> <без-coverpage-fb2> <без-binary-fb2>\n";
+    if (argc != 11) {
+        std::wcerr << L"Использование: fb2-thumbnail-provider-smoke.exe <png-fb2> <несколько-binary-fb2> <jpeg-fb2> <bmp-fb2> <малая-вертикальная-fb2> <крупная-горизонтальная-fb2> <крупная-alpha-вертикальная-fb2> <битый-fb2> <без-coverpage-fb2> <без-binary-fb2>\n";
         return 10;
     }
 
@@ -179,88 +185,53 @@ int wmain(int argc, wchar_t* argv[])
     success = ExpectTrue(L"bitmap.beforeInitialize.null", bitmap == nullptr) && success;
     delete providerWithoutInit;
 
-    const wchar_t* validFixtures[5] = { argv[1], argv[2], argv[3], argv[4], argv[5] };
-    const wchar_t* validLabels[5] = { L"png", L"multiple-binaries", L"jpeg", L"bmp", L"visible-portrait" };
-    for (int i = 0; i < 5; ++i) {
+    struct ValidFixture { const wchar_t* path; const wchar_t* label; int width; int height; WTS_ALPHATYPE alpha; };
+    const ValidFixture validFixtures[] = {
+        { argv[1], L"png-tiny", 1, 1, WTSAT_RGB },
+        { argv[2], L"multiple-binaries", 1, 1, WTSAT_RGB },
+        { argv[3], L"jpeg", 1, 1, WTSAT_RGB },
+        { argv[4], L"bmp", 1, 1, WTSAT_RGB },
+        { argv[5], L"visible-portrait", 96, 128, WTSAT_ARGB },
+        { argv[6], L"large-horizontal", 768, 512, WTSAT_RGB },
+        { argv[7], L"large-vertical-alpha", 512, 768, WTSAT_ARGB }
+    };
+    const UINT requestedEdges[] = { 32, 64, 128, 256, 512 };
+    for (size_t i = 0; i < _countof(validFixtures); ++i) {
         CComPtr<IStream> validStream;
-        hr = CreateReadOnlyStreamFromFile(validFixtures[i], &validStream);
-        if (FAILED(hr)) {
-            std::wcerr << L"Не удалось открыть валидный fixture как IStream (" << validLabels[i] << L"): 0x"
-                       << std::hex << hr << std::dec << L"\n";
-            ::CoUninitialize();
-            return 13 + i;
-        }
-
+        hr = CreateReadOnlyStreamFromFile(validFixtures[i].path, &validStream);
+        if (FAILED(hr)) { std::wcerr << L"Unable to open valid fixture: " << validFixtures[i].label << L"\n"; ::CoUninitialize(); return 13 + static_cast<int>(i); }
         CComObject<Fb2ThumbnailProvider>* validProvider = nullptr;
         hr = CComObject<Fb2ThumbnailProvider>::CreateInstance(&validProvider);
-        if (FAILED(hr) || validProvider == nullptr) {
-            std::wcerr << L"Не удалось создать provider для валидного файла (" << validLabels[i] << L"): 0x"
-                       << std::hex << hr << std::dec << L"\n";
-            ::CoUninitialize();
-            return 20 + i;
+        if (FAILED(hr) || validProvider == nullptr) { ::CoUninitialize(); return 20 + static_cast<int>(i); }
+        ATL::CString initializeName; initializeName.Format(L"Initialize.valid.%s", validFixtures[i].label);
+        success = ExpectHResult(initializeName, validProvider->Initialize(validStream, STGM_READ), S_OK) && success;
+        ATL::CString initializeSecondName; initializeSecondName.Format(L"Initialize.secondCall.%s", validFixtures[i].label);
+        success = ExpectHResult(initializeSecondName, validProvider->Initialize(validStream, STGM_READ), HRESULT_FROM_WIN32(ERROR_ALREADY_INITIALIZED)) && success;
+
+        const int sourceMaxEdge = (std::max)(validFixtures[i].width, validFixtures[i].height);
+        for (size_t requested = 0; requested < _countof(requestedEdges); ++requested) {
+            const UINT requestedEdge = requestedEdges[requested];
+            bitmap = nullptr; alphaType = WTSAT_UNKNOWN;
+            ATL::CString getThumbnailName; getThumbnailName.Format(L"GetThumbnail.%s.%u", validFixtures[i].label, requestedEdge);
+            success = ExpectHResult(getThumbnailName, validProvider->GetThumbnail(requestedEdge, &bitmap, &alphaType), S_OK) && success;
+            int width = 0, height = 0;
+            ATL::CString sizeName; sizeName.Format(L"bitmap.size.%s.%u", validFixtures[i].label, requestedEdge);
+            success = ExpectTrue(sizeName, bitmap != nullptr && GetBitmapSize(bitmap, width, height)) && success;
+            const int expectedWidth = FitDimension(validFixtures[i].width, sourceMaxEdge, requestedEdge);
+            const int expectedHeight = FitDimension(validFixtures[i].height, sourceMaxEdge, requestedEdge);
+            ATL::CString widthName; widthName.Format(L"bitmap.width.%s.%u", validFixtures[i].label, requestedEdge);
+            ATL::CString heightName; heightName.Format(L"bitmap.height.%s.%u", validFixtures[i].label, requestedEdge);
+            ATL::CString alphaName; alphaName.Format(L"bitmap.alpha.%s.%u", validFixtures[i].label, requestedEdge);
+            success = ExpectEqualInt(widthName, width, expectedWidth) && success;
+            success = ExpectEqualInt(heightName, height, expectedHeight) && success;
+            success = ExpectTrue(alphaName, alphaType == validFixtures[i].alpha) && success;
+            std::wcout << L"[thumbnail-provider-smoke] " << validFixtures[i].label << L": " << width << L"x" << height << L", requested=" << requestedEdge << L", alpha=" << alphaType << L"\n";
+            if (bitmap != nullptr) ::DeleteObject(bitmap);
         }
-
-        ATL::CString initializeName;
-        initializeName.Format(L"Initialize.valid.%s", validLabels[i]);
-        hr = validProvider->Initialize(validStream, STGM_READ);
-        success = ExpectHResult(initializeName, hr, S_OK) && success;
-
-        ATL::CString initializeSecondName;
-        initializeSecondName.Format(L"Initialize.secondCall.%s", validLabels[i]);
-        hr = validProvider->Initialize(validStream, STGM_READ);
-        success = ExpectHResult(initializeSecondName, hr, HRESULT_FROM_WIN32(ERROR_ALREADY_INITIALIZED)) && success;
-
-        bitmap = nullptr;
-        alphaType = WTSAT_UNKNOWN;
-        ATL::CString getThumbnailName;
-        getThumbnailName.Format(L"GetThumbnail.valid.%s", validLabels[i]);
-        hr = validProvider->GetThumbnail(requestedEdge, &bitmap, &alphaType);
-        success = ExpectHResult(getThumbnailName, hr, S_OK) && success;
-
-        ATL::CString notNullName;
-        notNullName.Format(L"bitmap.valid.notNull.%s", validLabels[i]);
-        success = ExpectTrue(notNullName, bitmap != nullptr) && success;
-
-        ATL::CString alphaName;
-        alphaName.Format(L"alphaType.valid.known.%s", validLabels[i]);
-        success = ExpectTrue(alphaName, alphaType == WTSAT_RGB) && success;
-
-        int width = 0;
-        int height = 0;
-        ATL::CString sizeReadableName;
-        sizeReadableName.Format(L"bitmap.valid.sizeReadable.%s", validLabels[i]);
-        success = ExpectTrue(sizeReadableName, bitmap != nullptr && GetBitmapSize(bitmap, width, height)) && success;
-        std::wcout << L"[thumbnail-provider-smoke] " << validLabels[i]
-                   << L": " << width << L"x" << height
-                   << L", requested=" << requestedEdge << L"\n";
-
-        ATL::CString widthMaxName;
-        widthMaxName.Format(L"bitmap.valid.widthMax.%s", validLabels[i]);
-        success = ExpectLessOrEqualInt(widthMaxName, width, requestedEdge) && success;
-
-        ATL::CString heightMaxName;
-        heightMaxName.Format(L"bitmap.valid.heightMax.%s", validLabels[i]);
-        success = ExpectLessOrEqualInt(heightMaxName, height, requestedEdge) && success;
-
-        ATL::CString edgeName;
-        edgeName.Format(L"bitmap.valid.maxEdge.%s", validLabels[i]);
-        const int actualMaxEdge = width > height ? width : height;
-        success = ExpectEqualInt(edgeName, actualMaxEdge, requestedEdge) && success;
-
-        if (i == 4) {
-            // 96x128 source image must fit within 256px as 192x256, without
-            // stretching to a square or cropping the portrait cover.
-            success = ExpectEqualInt(L"bitmap.visiblePortrait.width", width, 192) && success;
-            success = ExpectEqualInt(L"bitmap.visiblePortrait.height", height, 256) && success;
-        }
-
-        if (bitmap != nullptr)
-            ::DeleteObject(bitmap);
         delete validProvider;
     }
-
     CComPtr<IStream> brokenStream;
-    hr = CreateReadOnlyStreamFromFile(argv[6], &brokenStream);
+    hr = CreateReadOnlyStreamFromFile(argv[8], &brokenStream);
     if (FAILED(hr)) {
         std::wcerr << L"Не удалось открыть битый fixture как IStream: 0x"
                    << std::hex << hr << std::dec << L"\n";
@@ -288,7 +259,7 @@ int wmain(int argc, wchar_t* argv[])
     delete brokenProvider;
 
     CComPtr<IStream> missingCoverStream;
-    hr = CreateReadOnlyStreamFromFile(argv[7], &missingCoverStream);
+    hr = CreateReadOnlyStreamFromFile(argv[9], &missingCoverStream);
     if (FAILED(hr)) {
         std::wcerr << L"Не удалось открыть fixture без coverpage как IStream: 0x"
                    << std::hex << hr << std::dec << L"\n";
@@ -315,7 +286,7 @@ int wmain(int argc, wchar_t* argv[])
     delete missingCoverProvider;
 
     CComPtr<IStream> missingBinaryStream;
-    hr = CreateReadOnlyStreamFromFile(argv[8], &missingBinaryStream);
+    hr = CreateReadOnlyStreamFromFile(argv[10], &missingBinaryStream);
     if (FAILED(hr)) {
         std::wcerr << L"Не удалось открыть fixture без binary как IStream: 0x"
                    << std::hex << hr << std::dec << L"\n";

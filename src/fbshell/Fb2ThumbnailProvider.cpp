@@ -166,7 +166,7 @@ HRESULT BuildThumbnailFromStream(IStream* stream, UINT requestedEdge, HBITMAP* b
 
     AppendThumbnailTraceFormat(L"Thumbnail prepared for shell contract: %dx%d, requested=%u", thumbnailImage.width, thumbnailImage.height, static_cast<unsigned int>(requestedEdge));
 
-    *alphaType = WTSAT_RGB;
+    *alphaType = thumbnailImage.hasAlpha ? WTSAT_ARGB : WTSAT_RGB;
     *bitmap = thumbnailImage.bitmap;
     thumbnailImage.bitmap = nullptr;
     thumbnailImage.width = 0;

@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [switch]$IncludePrimeDiagnostic,
     [switch]$RequireLiveShellRegistration
@@ -93,13 +93,17 @@ $shellApiCases = @(
     @{ Name = "shell-api png tiny"; File = "tools\tests\fb2-cover-smoke.fb2" },
     @{ Name = "shell-api png visible"; File = "tools\tests\fb2-cover-visible-smoke.fb2" },
     @{ Name = "shell-api jpeg"; File = "tools\tests\fb2-cover-jpeg-smoke.fb2" },
-    @{ Name = "shell-api bmp"; File = "tools\tests\fb2-cover-bmp-smoke.fb2" }
+    @{ Name = "shell-api bmp"; File = "tools\tests\fb2-cover-bmp-smoke.fb2" },
+    @{ Name = "shell-api large horizontal"; File = "tools\tests\fb2-cover-large-horizontal-smoke.fb2" },
+    @{ Name = "shell-api alpha vertical"; File = "tools\tests\fb2-cover-large-vertical-alpha-smoke.fb2" }
 )
 
 $forcedPositiveCases = @(
     @{ Name = "forced png visible"; File = "tools\tests\fb2-cover-visible-smoke.fb2"; Dump = "visible-force.bmp" },
     @{ Name = "forced jpeg"; File = "tools\tests\fb2-cover-jpeg-smoke.fb2"; Dump = "jpeg-force.bmp" },
-    @{ Name = "forced bmp"; File = "tools\tests\fb2-cover-bmp-smoke.fb2"; Dump = "bmp-force.bmp" }
+    @{ Name = "forced bmp"; File = "tools\tests\fb2-cover-bmp-smoke.fb2"; Dump = "bmp-force.bmp" },
+    @{ Name = "forced large horizontal"; File = "tools\tests\fb2-cover-large-horizontal-smoke.fb2"; Dump = "large-horizontal-force.bmp" },
+    @{ Name = "forced alpha vertical"; File = "tools\tests\fb2-cover-large-vertical-alpha-smoke.fb2"; Dump = "alpha-vertical-force.bmp" }
 )
 
 $forcedNegativeCases = @(

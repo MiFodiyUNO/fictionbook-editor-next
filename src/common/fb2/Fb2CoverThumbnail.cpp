@@ -5,9 +5,9 @@
 #include <atlbase.h>
 #include <atlstr.h>
 #include <cstring>
+#include <vector>
+#include <algorithm>
 #include <wincodec.h>
-
-#include "..\win32\atlimage.h"
 
 namespace {
 
@@ -16,289 +16,191 @@ namespace {
 const int kMaximumSourceImageDimension = 16384;
 const long long kMaximumSourceImagePixels = 64000000LL;
 
-bool HasSafeImageDimensions(IStream* stream, ATL::CString* errorMessage)
-{
-    CComPtr<IWICImagingFactory> factory;
-    HRESULT hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
-    if (FAILED(hr)) {
-        if (errorMessage != nullptr) *errorMessage = L"The Windows image stack could not be initialized.";
-        return false;
-    }
-    LARGE_INTEGER origin = {};
-    if (FAILED(stream->Seek(origin, STREAM_SEEK_SET, nullptr))) {
-        if (errorMessage != nullptr) *errorMessage = L"The cover image stream could not be rewound.";
-        return false;
-    }
-    CComPtr<IWICBitmapDecoder> decoder;
-    hr = factory->CreateDecoderFromStream(stream, nullptr, WICDecodeMetadataCacheOnDemand, &decoder);
-    if (FAILED(hr)) {
-        if (errorMessage != nullptr) *errorMessage = L"The Windows image stack could not inspect the cover image.";
-        return false;
-    }
-    CComPtr<IWICBitmapFrameDecode> frame;
-    hr = decoder->GetFrame(0, &frame);
-    UINT width = 0, height = 0;
-    if (FAILED(hr) || FAILED(frame->GetSize(&width, &height)) || width == 0 || height == 0 ||
-        width > kMaximumSourceImageDimension || height > kMaximumSourceImageDimension ||
-        static_cast<long long>(width) * height > kMaximumSourceImagePixels) {
-        if (errorMessage != nullptr) *errorMessage = L"Cover image dimensions exceed the thumbnail safety limit.";
-        return false;
-    }
-    if (FAILED(stream->Seek(origin, STREAM_SEEK_SET, nullptr))) {
-        if (errorMessage != nullptr) *errorMessage = L"The cover image stream could not be rewound.";
-        return false;
-    }
-    return true;
-}
-
 HRESULT CreateStreamFromBytes(const std::vector<unsigned char>& bytes, IStream** stream)
 {
-    if (stream == nullptr)
-        return E_POINTER;
-
+    if (stream == nullptr) return E_POINTER;
     *stream = nullptr;
-
-    if (bytes.empty())
-        return E_INVALIDARG;
+    if (bytes.empty()) return E_INVALIDARG;
 
     HGLOBAL memory = ::GlobalAlloc(GMEM_MOVEABLE, bytes.size());
-    if (memory == nullptr)
-        return E_OUTOFMEMORY;
-
+    if (memory == nullptr) return E_OUTOFMEMORY;
     void* buffer = ::GlobalLock(memory);
     if (buffer == nullptr) {
         const HRESULT hr = HRESULT_FROM_WIN32(::GetLastError());
         ::GlobalFree(memory);
         return hr;
     }
-
     std::memcpy(buffer, bytes.data(), bytes.size());
     ::GlobalUnlock(memory);
-
     const HRESULT hr = ::CreateStreamOnHGlobal(memory, TRUE, stream);
-    if (FAILED(hr))
-        ::GlobalFree(memory);
-
+    if (FAILED(hr)) ::GlobalFree(memory);
     return hr;
 }
 
-int ScaleDimension(int value, int sourceMaxEdge, unsigned int targetMaxEdge)
+bool HasSafeImageDimensions(IWICBitmapSource* source, UINT& width, UINT& height, ATL::CString* errorMessage)
 {
-    if (value <= 0 || sourceMaxEdge <= 0 || targetMaxEdge == 0)
-        return 0;
-
-    const long long scaled = static_cast<long long>(value) * static_cast<long long>(targetMaxEdge);
-    const int result = static_cast<int>(scaled / sourceMaxEdge);
-    return result > 0 ? result : 1;
+    width = 0; height = 0;
+    if (source == nullptr || FAILED(source->GetSize(&width, &height)) || width == 0 || height == 0 ||
+        width > kMaximumSourceImageDimension || height > kMaximumSourceImageDimension ||
+        static_cast<long long>(width) * height > kMaximumSourceImagePixels) {
+        if (errorMessage != nullptr) *errorMessage = L"Cover image dimensions exceed the thumbnail safety limit.";
+        return false;
+    }
+    return true;
 }
 
-void ComputeFitSize(
-    int sourceWidth,
-    int sourceHeight,
-    unsigned int maxEdge,
-    int& targetWidth,
-    int& targetHeight)
+bool CreateDibFromWicSource(IWICImagingFactory* factory, IWICBitmapSource* source,
+    FB2CoverThumbnail::DecodedImage& image, ATL::CString* errorMessage)
 {
-    targetWidth = 0;
-    targetHeight = 0;
+    if (factory == nullptr || source == nullptr) return false;
+    UINT width = 0, height = 0;
+    if (!HasSafeImageDimensions(source, width, height, errorMessage)) return false;
 
-    if (sourceWidth <= 0 || sourceHeight <= 0 || maxEdge == 0)
+    CComPtr<IWICFormatConverter> converter;
+    HRESULT hr = factory->CreateFormatConverter(&converter);
+    if (SUCCEEDED(hr)) {
+        hr = converter->Initialize(source, GUID_WICPixelFormat32bppPBGRA,
+            WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom);
+    }
+    if (FAILED(hr)) {
+        if (errorMessage != nullptr) errorMessage->Format(L"The Windows image stack could not convert the cover: 0x%08X", static_cast<unsigned int>(hr));
+        return false;
+    }
+
+    const UINT stride = width * 4;
+    const UINT bufferSize = stride * height;
+    std::vector<unsigned char> pixels(bufferSize);
+    hr = converter->CopyPixels(nullptr, stride, bufferSize, pixels.data());
+    if (FAILED(hr)) {
+        if (errorMessage != nullptr) errorMessage->Format(L"The Windows image stack could not read cover pixels: 0x%08X", static_cast<unsigned int>(hr));
+        return false;
+    }
+
+    bool hasAlpha = false;
+    for (size_t index = 3; index < pixels.size(); index += 4) {
+        if (pixels[index] != 0xFF) { hasAlpha = true; break; }
+    }
+
+    BITMAPINFO info = {};
+    info.bmiHeader.biSize = sizeof(info.bmiHeader);
+    info.bmiHeader.biWidth = static_cast<LONG>(width);
+    info.bmiHeader.biHeight = -static_cast<LONG>(height); // top-down BGRA DIB
+    info.bmiHeader.biPlanes = 1;
+    info.bmiHeader.biBitCount = 32;
+    info.bmiHeader.biCompression = BI_RGB;
+    void* dibPixels = nullptr;
+    HDC screen = ::GetDC(nullptr);
+    HBITMAP bitmap = ::CreateDIBSection(screen, &info, DIB_RGB_COLORS, &dibPixels, nullptr, 0);
+    if (screen != nullptr) ::ReleaseDC(nullptr, screen);
+    if (bitmap == nullptr || dibPixels == nullptr) {
+        if (bitmap != nullptr) ::DeleteObject(bitmap);
+        if (errorMessage != nullptr) *errorMessage = L"Failed to create a 32-bit bitmap for thumbnail pixels.";
+        return false;
+    }
+    std::memcpy(dibPixels, pixels.data(), pixels.size());
+    image.Reset();
+    image.bitmap = bitmap;
+    image.width = static_cast<int>(width);
+    image.height = static_cast<int>(height);
+    image.hasAlpha = hasAlpha;
+    return true;
+}
+
+void ComputeFitSize(int sourceWidth, int sourceHeight, unsigned int maxEdge, int& targetWidth, int& targetHeight)
+{
+    targetWidth = 0; targetHeight = 0;
+    if (sourceWidth <= 0 || sourceHeight <= 0 || maxEdge == 0) return;
+    const int sourceMaxEdge = (std::max)(sourceWidth, sourceHeight);
+    if (sourceMaxEdge <= static_cast<int>(maxEdge)) {
+        targetWidth = sourceWidth;
+        targetHeight = sourceHeight;
         return;
-
-    const int sourceMaxEdge = sourceWidth > sourceHeight ? sourceWidth : sourceHeight;
-    targetWidth = ScaleDimension(sourceWidth, sourceMaxEdge, maxEdge);
-    targetHeight = ScaleDimension(sourceHeight, sourceMaxEdge, maxEdge);
+    }
+    targetWidth = (std::max)(1, static_cast<int>(static_cast<long long>(sourceWidth) * maxEdge / sourceMaxEdge));
+    targetHeight = (std::max)(1, static_cast<int>(static_cast<long long>(sourceHeight) * maxEdge / sourceMaxEdge));
 }
 
 } // namespace
 
 namespace FB2CoverThumbnail {
 
-DecodedImage::DecodedImage() :
-    bitmap(nullptr),
-    width(0),
-    height(0)
-{
-}
-
-DecodedImage::~DecodedImage()
-{
-    Reset();
-}
-
+DecodedImage::DecodedImage() : bitmap(nullptr), width(0), height(0), hasAlpha(false) {}
+DecodedImage::~DecodedImage() { Reset(); }
 void DecodedImage::Reset()
 {
-    if (bitmap != nullptr) {
-        ::DeleteObject(bitmap);
-        bitmap = nullptr;
-    }
-
-    width = 0;
-    height = 0;
+    if (bitmap != nullptr) { ::DeleteObject(bitmap); bitmap = nullptr; }
+    width = 0; height = 0; hasAlpha = false;
 }
-
-bool DecodedImage::IsEmpty() const
-{
-    return bitmap == nullptr;
-}
+bool DecodedImage::IsEmpty() const { return bitmap == nullptr; }
 
 bool TryDecode(const std::vector<unsigned char>& bytes, DecodedImage& image, ATL::CString* errorMessage)
 {
     image.Reset();
-
-    if (errorMessage != nullptr)
-        errorMessage->Empty();
-
+    if (errorMessage != nullptr) errorMessage->Empty();
     if (bytes.empty()) {
-        if (errorMessage != nullptr)
-            *errorMessage = L"Cover image bytes were not provided.";
+        if (errorMessage != nullptr) *errorMessage = L"Cover image bytes were not provided.";
         return false;
     }
-
     CComPtr<IStream> stream;
     HRESULT hr = CreateStreamFromBytes(bytes, &stream);
     if (FAILED(hr)) {
-        if (errorMessage != nullptr)
-            errorMessage->Format(L"Failed to create a stream from cover bytes: 0x%08X", static_cast<unsigned int>(hr));
+        if (errorMessage != nullptr) errorMessage->Format(L"Failed to create a stream from cover bytes: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
-
-    if (!HasSafeImageDimensions(stream, errorMessage))
-        return false;
-
-    ATL::CImage decodedImage;
-    hr = decodedImage.Load(stream);
-    if (FAILED(hr) || decodedImage.IsNull()) {
-        if (errorMessage != nullptr)
-            errorMessage->Format(L"The Windows image stack could not decode the cover: 0x%08X", static_cast<unsigned int>(hr));
+    CComPtr<IWICImagingFactory> factory;
+    hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
+    if (FAILED(hr)) {
+        if (errorMessage != nullptr) *errorMessage = L"The Windows image stack could not be initialized.";
         return false;
     }
-
-    image.width = decodedImage.GetWidth();
-    image.height = decodedImage.GetHeight();
-    if (image.width > kMaximumSourceImageDimension || image.height > kMaximumSourceImageDimension ||
-        static_cast<long long>(image.width) * image.height > kMaximumSourceImagePixels) {
-        if (errorMessage != nullptr)
-            *errorMessage = L"Cover image dimensions exceed the thumbnail safety limit.";
+    CComPtr<IWICBitmapDecoder> decoder;
+    hr = factory->CreateDecoderFromStream(stream, nullptr, WICDecodeMetadataCacheOnLoad, &decoder);
+    CComPtr<IWICBitmapFrameDecode> frame;
+    if (SUCCEEDED(hr)) hr = decoder->GetFrame(0, &frame);
+    if (FAILED(hr)) {
+        if (errorMessage != nullptr) errorMessage->Format(L"The Windows image stack could not decode the cover: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
-    image.bitmap = decodedImage.Detach();
-
-    if (image.bitmap == nullptr || image.width <= 0 || image.height <= 0) {
-        image.Reset();
-        if (errorMessage != nullptr)
-            *errorMessage = L"Cover image was decoded, but bitmap or dimensions are invalid.";
-        return false;
-    }
-
-    return true;
+    return CreateDibFromWicSource(factory, frame, image, errorMessage);
 }
 
 bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, DecodedImage& resizedImage, ATL::CString* errorMessage)
 {
     resizedImage.Reset();
-
-    if (errorMessage != nullptr)
-        errorMessage->Empty();
-
+    if (errorMessage != nullptr) errorMessage->Empty();
     if (sourceImage.bitmap == nullptr || sourceImage.width <= 0 || sourceImage.height <= 0) {
-        if (errorMessage != nullptr)
-            *errorMessage = L"A valid decoded image was not provided for resizing.";
+        if (errorMessage != nullptr) *errorMessage = L"A valid decoded image was not provided for resizing.";
         return false;
     }
-
     if (maxEdge == 0) {
-        if (errorMessage != nullptr)
-            *errorMessage = L"Requested thumbnail size is zero.";
+        if (errorMessage != nullptr) *errorMessage = L"Requested thumbnail size is zero.";
         return false;
     }
-
-    int targetWidth = 0;
-    int targetHeight = 0;
-    ComputeFitSize(
-        sourceImage.width,
-        sourceImage.height,
-        maxEdge,
-        targetWidth,
-        targetHeight);
-
+    int targetWidth = 0, targetHeight = 0;
+    ComputeFitSize(sourceImage.width, sourceImage.height, maxEdge, targetWidth, targetHeight);
     if (targetWidth <= 0 || targetHeight <= 0) {
-        if (errorMessage != nullptr)
-            *errorMessage = L"Failed to calculate thumbnail dimensions.";
+        if (errorMessage != nullptr) *errorMessage = L"Failed to calculate thumbnail dimensions.";
         return false;
     }
-
-    ATL::CImage sourceCImage;
-    sourceCImage.Attach(sourceImage.bitmap);
-
-    ATL::CImage targetCImage;
-    const BOOL created = targetCImage.Create(targetWidth, targetHeight, 32);
-    if (!created || targetCImage.IsNull()) {
-        sourceCImage.Detach();
-        if (errorMessage != nullptr)
-            *errorMessage = L"Failed to create target bitmap for thumbnail.";
+    CComPtr<IWICImagingFactory> factory;
+    HRESULT hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
+    CComPtr<IWICBitmap> source;
+    if (SUCCEEDED(hr)) hr = factory->CreateBitmapFromHBITMAP(sourceImage.bitmap, nullptr, WICBitmapUsePremultipliedAlpha, &source);
+    if (FAILED(hr)) {
+        if (errorMessage != nullptr) errorMessage->Format(L"The Windows image stack could not prepare the cover for resize: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
+    if (targetWidth == sourceImage.width && targetHeight == sourceImage.height)
+        return CreateDibFromWicSource(factory, source, resizedImage, errorMessage);
 
-    HDC targetDc = targetCImage.GetDC();
-    if (targetDc == nullptr) {
-        sourceCImage.Detach();
-        targetCImage.Destroy();
-        if (errorMessage != nullptr)
-            *errorMessage = L"Failed to get DC for target thumbnail.";
+    CComPtr<IWICBitmapScaler> scaler;
+    hr = factory->CreateBitmapScaler(&scaler);
+    if (SUCCEEDED(hr)) hr = scaler->Initialize(source, targetWidth, targetHeight, WICBitmapInterpolationModeFant);
+    if (FAILED(hr)) {
+        if (errorMessage != nullptr) errorMessage->Format(L"The Windows image stack could not resize the cover: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
-
-    HDC sourceDc = sourceCImage.GetDC();
-    if (sourceDc == nullptr) {
-        targetCImage.ReleaseDC();
-        sourceCImage.Detach();
-        targetCImage.Destroy();
-        if (errorMessage != nullptr)
-            *errorMessage = L"Failed to get DC for the source cover.";
-        return false;
-    }
-
-    const BOOL stretchModeOk = ::SetStretchBltMode(targetDc, HALFTONE) != 0;
-    if (stretchModeOk)
-        ::SetBrushOrgEx(targetDc, 0, 0, nullptr);
-
-    const BOOL stretchOk = ::StretchBlt(
-        targetDc,
-        0,
-        0,
-        targetWidth,
-        targetHeight,
-        sourceDc,
-        0,
-        0,
-        sourceImage.width,
-        sourceImage.height,
-        SRCCOPY);
-
-    sourceCImage.ReleaseDC();
-    targetCImage.ReleaseDC();
-    sourceCImage.Detach();
-
-    if (!stretchOk) {
-        targetCImage.Destroy();
-        if (errorMessage != nullptr)
-            errorMessage->Format(L"Failed to resize cover bitmap: Win32 0x%08X", static_cast<unsigned int>(::GetLastError()));
-        return false;
-    }
-
-    resizedImage.width = targetWidth;
-    resizedImage.height = targetHeight;
-    resizedImage.bitmap = targetCImage.Detach();
-
-    if (resizedImage.bitmap == nullptr) {
-        resizedImage.Reset();
-        if (errorMessage != nullptr)
-            *errorMessage = L"Resizing finished without a resulting bitmap.";
-        return false;
-    }
-
-    return true;
+    return CreateDibFromWicSource(factory, scaler, resizedImage, errorMessage);
 }
 
 } // namespace FB2CoverThumbnail

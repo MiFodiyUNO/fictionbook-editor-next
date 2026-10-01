@@ -6,13 +6,15 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 
-$testDir = Join-Path $repoRoot "out\tests\fb2-thumbnail-provider"
+$testDir = Join-Path $repoRoot "out\tests\fb2-thumbnail-provider-wic"
 $testExe = Join-Path $testDir "fb2-thumbnail-provider-smoke.exe"
 $pngFixture = Join-Path $PSScriptRoot "fb2-cover-smoke.fb2"
 $multipleBinariesFixture = Join-Path $PSScriptRoot "fb2-cover-multiple-binaries.fb2"
 $visibleFixture = Join-Path $PSScriptRoot "fb2-cover-visible-smoke.fb2"
 $jpegFixture = Join-Path $PSScriptRoot "fb2-cover-jpeg-smoke.fb2"
 $bmpFixture = Join-Path $PSScriptRoot "fb2-cover-bmp-smoke.fb2"
+$horizontalFixture = Join-Path $PSScriptRoot "fb2-cover-large-horizontal-smoke.fb2"
+$alphaFixture = Join-Path $PSScriptRoot "fb2-cover-large-vertical-alpha-smoke.fb2"
 $brokenFixture = Join-Path $PSScriptRoot "fb2-cover-broken.fb2"
 $missingCoverFixture = Join-Path $PSScriptRoot "fb2-cover-missing-coverpage.fb2"
 $missingBinaryFixture = Join-Path $PSScriptRoot "fb2-cover-missing-binary.fb2"
@@ -35,7 +37,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Push-Location $testDir
 try {
-    & $testExe $pngFixture $multipleBinariesFixture $jpegFixture $bmpFixture $visibleFixture $brokenFixture $missingCoverFixture $missingBinaryFixture
+    & $testExe $pngFixture $multipleBinariesFixture $jpegFixture $bmpFixture $visibleFixture $horizontalFixture $alphaFixture $brokenFixture $missingCoverFixture $missingBinaryFixture
     if ($LASTEXITCODE -ne 0) {
         throw "Smoke-тест COM thumbnail provider завершился с кодом $LASTEXITCODE."
     }

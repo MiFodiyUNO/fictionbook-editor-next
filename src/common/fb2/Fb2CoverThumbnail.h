@@ -9,6 +9,7 @@ struct DecodedImage {
     HBITMAP bitmap;
     int width;
     int height;
+    bool hasAlpha;
 
     DecodedImage();
     ~DecodedImage();
