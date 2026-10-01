@@ -8,12 +8,39 @@
 
 namespace
 {
-void AddPlaceholder(HWND bar, LPCWSTR text)
+int FieldWidth(ContextAttributeFieldWidth width, UINT dpi)
 {
-	TBBUTTON button = {}; button.iString = reinterpret_cast<INT_PTR>(text); button.fsStyle = TBSTYLE_BUTTON;
+	switch(width)
+	{
+	case ContextAttributeFieldWidth::Short: return UiMetrics::ScaleForDpi(36, dpi);
+	case ContextAttributeFieldWidth::Medium: return UiMetrics::ScaleForDpi(88, dpi);
+	case ContextAttributeFieldWidth::Long: return UiMetrics::ScaleForDpi(150, dpi);
+	default: return UiMetrics::ScaleForDpi(76, dpi);
+	}
+}
+
+int CaptionWidth(HWND bar, LPCWSTR text, HFONT font)
+{
+	HDC dc = ::GetDC(bar); if(dc == NULL) return 0;
+	HFONT old = font ? static_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+	SIZE size = {}; ::GetTextExtentPoint32W(dc, text, static_cast<int>(wcslen(text)), &size);
+	if(old) ::SelectObject(dc, old); ::ReleaseDC(bar, dc);
+	return size.cx + UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(bar));
+}
+
+void AddFixedWidthSlot(HWND bar, int width)
+{
+	TBBUTTON button = {}; button.iBitmap = width; button.fsStyle = TBSTYLE_SEP;
 	::SendMessage(bar, TB_ADDBUTTONS, 1, reinterpret_cast<LPARAM>(&button));
 }
 
+void AddAttributePairSlots(HWND bar, LPCWSTR text, ContextAttributeFieldWidth width, HFONT font)
+{
+	const UINT dpi = UiMetrics::DpiForWindow(bar);
+	AddFixedWidthSlot(bar, CaptionWidth(bar, text, font));
+	AddFixedWidthSlot(bar, FieldWidth(width, dpi));
+	AddFixedWidthSlot(bar, UiMetrics::ScaleForDpi(6, dpi));
+}
 CString TextOf(const CWindow& window) { CString text; window.GetWindowText(text); return text; }
 
 const UINT_PTR kContextAttributeThemeSubclassId = 0x46424152; // "FBAR"
@@ -126,16 +153,15 @@ void ApplyContextBarTheme(HWND bar)
 }
 }
 
-bool ContextAttributeBars::AddCaption(CCustomStatic& caption, HWND bar, int position, UINT textId, LPCWSTR placeholder, HFONT font)
+bool ContextAttributeBars::AddCaption(CCustomStatic& caption, HWND bar, int position, UINT textId, ContextAttributeFieldWidth width, HFONT font)
 {
 	wchar_t text[MAX_LOAD_STRING + 1] = {};
 	FbeLoadString(_Module.GetResourceInstance(), textId, text, MAX_LOAD_STRING);
-	AddPlaceholder(bar, text);
+	AddAttributePairSlots(bar, text, width, font);
 	RECT rect = {}; ::SendMessage(bar, TB_GETITEMRECT, position, reinterpret_cast<LPARAM>(&rect)); --rect.bottom;
 	if(!caption.Create(bar, rect, NULL, WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | SS_NOPREFIX, 0, IDC_ID)) return false;
 	caption.SetFont(UiMetrics::DialogFont() ? UiMetrics::DialogFont() : font);
 	caption.SetWindowText(text); caption.SetEnabled(true);
-	AddPlaceholder(bar, placeholder);
 	return true;
 }
 
@@ -158,9 +184,9 @@ bool ContextAttributeBars::Create(HWND parent)
 	::SendMessage(m_linksBar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0); ::SendMessage(m_tableBar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0); ::SendMessage(m_tableBar2, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
 	::SendMessage(m_linksBar, TB_SETDRAWTEXTFLAGS, DT_CALCRECT, DT_CALCRECT); ::SendMessage(m_tableBar, TB_SETDRAWTEXTFLAGS, DT_CALCRECT, DT_CALCRECT); ::SendMessage(m_tableBar2, TB_SETDRAWTEXTFLAGS, DT_CALCRECT, DT_CALCRECT);
 	HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_linksBar, WM_GETFONT, 0, 0));
-	if(!AddCaption(m_idCaption, m_linksBar, 0, IDS_TB_CAPT_ID, L"123456789012345678901234567890", font) || !AddCaption(m_hrefCaption, m_linksBar, 2, IDS_TB_CAPT_HREF, L"123456789012345678901234567890", font) || !AddCaption(m_sectionCaption, m_linksBar, 4, IDS_TB_CAPT_SECTION_ID, L"123456789012345678901234567890", font) || !AddCaption(m_imageTitleCaption, m_linksBar, 6, IDS_TB_CAPT_IMAGE_TITLE, L"123456789012345678901234567890", font) || !AddCaption(m_tableIdCaption, m_tableBar, 0, IDS_TB_CAPT_TABLE_ID, L"12345678901234567890", font) || !AddCaption(m_tableStyleCaption, m_tableBar, 2, IDS_TB_CAPT_TABLE_STYLE, L"123456789012345", font) || !AddCaption(m_cellIdCaption, m_tableBar, 4, IDS_TB_CAPT_ID, L"12345678901234567890", font) || !AddCaption(m_cellStyleCaption, m_tableBar, 6, IDS_TB_CAPT_STYLE, L"123456789012345", font) || !AddCaption(m_colspanCaption, m_tableBar2, 0, IDS_TB_CAPT_COLSPAN, L"12345", font) || !AddCaption(m_rowspanCaption, m_tableBar2, 2, IDS_TB_CAPT_ROWSPAN, L"12345", font) || !AddCaption(m_rowAlignCaption, m_tableBar2, 4, IDS_TB_CAPT_TR_ALIGN, L"12345678", font) || !AddCaption(m_alignCaption, m_tableBar2, 6, IDS_TB_CAPT_TD_ALIGN, L"12345678", font) || !AddCaption(m_valignCaption, m_tableBar2, 8, IDS_TB_CAPT_TD_VALIGN, L"12345678", font)) { Destroy(); return false; }
+	if(!AddCaption(m_idCaption, m_linksBar, 0, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_hrefCaption, m_linksBar, 3, IDS_TB_CAPT_HREF, ContextAttributeFieldWidth::Long, font) || !AddCaption(m_sectionCaption, m_linksBar, 6, IDS_TB_CAPT_SECTION_ID, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_imageTitleCaption, m_linksBar, 9, IDS_TB_CAPT_IMAGE_TITLE, ContextAttributeFieldWidth::Long, font) || !AddCaption(m_tableIdCaption, m_tableBar, 0, IDS_TB_CAPT_TABLE_ID, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_tableStyleCaption, m_tableBar, 3, IDS_TB_CAPT_TABLE_STYLE, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_cellIdCaption, m_tableBar, 6, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_cellStyleCaption, m_tableBar, 9, IDS_TB_CAPT_STYLE, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_colspanCaption, m_tableBar2, 0, IDS_TB_CAPT_COLSPAN, ContextAttributeFieldWidth::Short, font) || !AddCaption(m_rowspanCaption, m_tableBar2, 3, IDS_TB_CAPT_ROWSPAN, ContextAttributeFieldWidth::Short, font) || !AddCaption(m_rowAlignCaption, m_tableBar2, 6, IDS_TB_CAPT_TR_ALIGN, ContextAttributeFieldWidth::Dropdown, font) || !AddCaption(m_alignCaption, m_tableBar2, 9, IDS_TB_CAPT_TD_ALIGN, ContextAttributeFieldWidth::Dropdown, font) || !AddCaption(m_valignCaption, m_tableBar2, 12, IDS_TB_CAPT_TD_VALIGN, ContextAttributeFieldWidth::Dropdown, font)) { Destroy(); return false; }
 	const DWORD common = WS_CHILD | WS_VISIBLE | CBS_AUTOHSCROLL;
-	if(!AddBox(m_linksBar, 1, m_idBox, m_id, common, IDC_ID, font) || !AddBox(m_linksBar, 3, m_hrefBox, m_href, common | WS_VSCROLL | CBS_DROPDOWN | CBS_SORT, IDC_HREF, font) || !AddBox(m_linksBar, 5, m_sectionBox, m_section, common, IDC_SECTION, font) || !AddBox(m_linksBar, 7, m_imageTitleBox, m_imageTitle, common, IDC_IMAGE_TITLE, font) || !AddBox(m_tableBar, 1, m_tableIdBox, m_tableId, common, IDC_IDT, font) || !AddBox(m_tableBar, 3, m_tableStyleBox, m_tableStyle, common, IDC_STYLET, font) || !AddBox(m_tableBar, 5, m_cellIdBox, m_cellId, common, IDC_ID, font) || !AddBox(m_tableBar, 7, m_cellStyleBox, m_cellStyle, common, IDC_STYLE, font) || !AddBox(m_tableBar2, 1, m_colspanBox, m_colspan, common, IDC_COLSPAN, font) || !AddBox(m_tableBar2, 3, m_rowspanBox, m_rowspan, common, IDC_ROWSPAN, font) || !AddBox(m_tableBar2, 5, m_rowAlignBox, m_rowAlign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGNTR, font) || !AddBox(m_tableBar2, 7, m_alignBox, m_align, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGN, font) || !AddBox(m_tableBar2, 9, m_valignBox, m_valign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_VALIGN, font)) { Destroy(); return false; }
+	if(!AddBox(m_linksBar, 1, m_idBox, m_id, common, IDC_ID, font) || !AddBox(m_linksBar, 4, m_hrefBox, m_href, common | WS_VSCROLL | CBS_DROPDOWN | CBS_SORT, IDC_HREF, font) || !AddBox(m_linksBar, 7, m_sectionBox, m_section, common, IDC_SECTION, font) || !AddBox(m_linksBar, 10, m_imageTitleBox, m_imageTitle, common, IDC_IMAGE_TITLE, font) || !AddBox(m_tableBar, 1, m_tableIdBox, m_tableId, common, IDC_IDT, font) || !AddBox(m_tableBar, 4, m_tableStyleBox, m_tableStyle, common, IDC_STYLET, font) || !AddBox(m_tableBar, 7, m_cellIdBox, m_cellId, common, IDC_ID, font) || !AddBox(m_tableBar, 10, m_cellStyleBox, m_cellStyle, common, IDC_STYLE, font) || !AddBox(m_tableBar2, 1, m_colspanBox, m_colspan, common, IDC_COLSPAN, font) || !AddBox(m_tableBar2, 4, m_rowspanBox, m_rowspan, common, IDC_ROWSPAN, font) || !AddBox(m_tableBar2, 7, m_rowAlignBox, m_rowAlign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGNTR, font) || !AddBox(m_tableBar2, 10, m_alignBox, m_align, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGN, font) || !AddBox(m_tableBar2, 13, m_valignBox, m_valign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_VALIGN, font)) { Destroy(); return false; }
 	for(int i = 0; i != 4; ++i) { static const wchar_t* align[] = { L"", L"left", L"right", L"center" }; m_rowAlignBox.InsertString(i, align[i]); m_alignBox.InsertString(i, align[i]); }
 	static const wchar_t* valign[] = { L"", L"top", L"middle", L"bottom" }; for(int i = 0; i != 4; ++i) m_valignBox.InsertString(i, valign[i]);
 	UpdateMetrics(); ApplyTheme(); return true;
@@ -174,13 +200,13 @@ void ContextAttributeBars::ApplyTheme()
 	CComboBox* boxes[] = { &m_idBox, &m_hrefBox, &m_sectionBox, &m_imageTitleBox, &m_tableIdBox, &m_tableStyleBox, &m_cellIdBox, &m_cellStyleBox, &m_colspanBox, &m_rowspanBox, &m_rowAlignBox, &m_alignBox, &m_valignBox };
 	for(CComboBox* box : boxes) ApplyBoxTheme(*box);
 }
-void ContextAttributeBars::UpdateMetrics() { ToolbarFactory::SetDialogFontForToolbarRow(m_linksBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar2, true); ToolbarFactory::AutoSizeToolbar(m_linksBar); ToolbarFactory::AutoSizeToolbar(m_tableBar); ToolbarFactory::AutoSizeToolbar(m_tableBar2); }
+void ContextAttributeBars::UpdateMetrics() { ToolbarFactory::SetDialogFontForToolbarRow(m_linksBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar2, true); UpdateLocalization(); }
 void ContextAttributeBars::UpdateLocalization()
 {
-	struct Binding { CCustomStatic* caption; CWindow* editor; UINT textId; LPCWSTR placeholder; };
-	const Binding links[] = { { &m_idCaption, &m_idBox, IDS_TB_CAPT_ID, L"123456789012345678901234567890" }, { &m_hrefCaption, &m_hrefBox, IDS_TB_CAPT_HREF, L"123456789012345678901234567890" }, { &m_sectionCaption, &m_sectionBox, IDS_TB_CAPT_SECTION_ID, L"123456789012345678901234567890" }, { &m_imageTitleCaption, &m_imageTitleBox, IDS_TB_CAPT_IMAGE_TITLE, L"123456789012345678901234567890" } };
-	const Binding table[] = { { &m_tableIdCaption, &m_tableIdBox, IDS_TB_CAPT_TABLE_ID, L"12345678901234567890" }, { &m_tableStyleCaption, &m_tableStyleBox, IDS_TB_CAPT_TABLE_STYLE, L"123456789012345" }, { &m_cellIdCaption, &m_cellIdBox, IDS_TB_CAPT_ID, L"12345678901234567890" }, { &m_cellStyleCaption, &m_cellStyleBox, IDS_TB_CAPT_STYLE, L"123456789012345" } };
-	const Binding table2[] = { { &m_colspanCaption, &m_colspanBox, IDS_TB_CAPT_COLSPAN, L"12345" }, { &m_rowspanCaption, &m_rowspanBox, IDS_TB_CAPT_ROWSPAN, L"12345" }, { &m_rowAlignCaption, &m_rowAlignBox, IDS_TB_CAPT_TR_ALIGN, L"12345678" }, { &m_alignCaption, &m_alignBox, IDS_TB_CAPT_TD_ALIGN, L"12345678" }, { &m_valignCaption, &m_valignBox, IDS_TB_CAPT_TD_VALIGN, L"12345678" } };
+	struct Binding { CCustomStatic* caption; CWindow* editor; UINT textId; ContextAttributeFieldWidth width; };
+	const Binding links[] = { { &m_idCaption, &m_idBox, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium }, { &m_hrefCaption, &m_hrefBox, IDS_TB_CAPT_HREF, ContextAttributeFieldWidth::Long }, { &m_sectionCaption, &m_sectionBox, IDS_TB_CAPT_SECTION_ID, ContextAttributeFieldWidth::Medium }, { &m_imageTitleCaption, &m_imageTitleBox, IDS_TB_CAPT_IMAGE_TITLE, ContextAttributeFieldWidth::Long } };
+	const Binding table[] = { { &m_tableIdCaption, &m_tableIdBox, IDS_TB_CAPT_TABLE_ID, ContextAttributeFieldWidth::Medium }, { &m_tableStyleCaption, &m_tableStyleBox, IDS_TB_CAPT_TABLE_STYLE, ContextAttributeFieldWidth::Medium }, { &m_cellIdCaption, &m_cellIdBox, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium }, { &m_cellStyleCaption, &m_cellStyleBox, IDS_TB_CAPT_STYLE, ContextAttributeFieldWidth::Medium } };
+	const Binding table2[] = { { &m_colspanCaption, &m_colspanBox, IDS_TB_CAPT_COLSPAN, ContextAttributeFieldWidth::Short }, { &m_rowspanCaption, &m_rowspanBox, IDS_TB_CAPT_ROWSPAN, ContextAttributeFieldWidth::Short }, { &m_rowAlignCaption, &m_rowAlignBox, IDS_TB_CAPT_TR_ALIGN, ContextAttributeFieldWidth::Dropdown }, { &m_alignCaption, &m_alignBox, IDS_TB_CAPT_TD_ALIGN, ContextAttributeFieldWidth::Dropdown }, { &m_valignCaption, &m_valignBox, IDS_TB_CAPT_TD_VALIGN, ContextAttributeFieldWidth::Dropdown } };
 	const auto rebuild = [](HWND toolbar, const Binding* bindings, size_t count)
 	{
 		if(!::IsWindow(toolbar)) return;
@@ -190,14 +216,14 @@ void ContextAttributeBars::UpdateLocalization()
 		{
 			wchar_t text[MAX_LOAD_STRING + 1] = {};
 			FbeLoadString(_Module.GetResourceInstance(), bindings[index].textId, text, MAX_LOAD_STRING);
-			AddPlaceholder(toolbar, text); AddPlaceholder(toolbar, bindings[index].placeholder);
+			AddAttributePairSlots(toolbar, text, bindings[index].width, reinterpret_cast<HFONT>(::SendMessage(toolbar, WM_GETFONT, 0, 0)));
 		}
 		::SendMessage(toolbar, TB_AUTOSIZE, 0, 0);
 		for(size_t index = 0; index < count; ++index)
 		{
 			RECT captionRect = {}, editorRect = {};
-			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 2), reinterpret_cast<LPARAM>(&captionRect));
-			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 2 + 1), reinterpret_cast<LPARAM>(&editorRect));
+			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 3), reinterpret_cast<LPARAM>(&captionRect));
+			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 3 + 1), reinterpret_cast<LPARAM>(&editorRect));
 			--captionRect.bottom; --editorRect.bottom;
 			wchar_t text[MAX_LOAD_STRING + 1] = {};
 			FbeLoadString(_Module.GetResourceInstance(), bindings[index].textId, text, MAX_LOAD_STRING);

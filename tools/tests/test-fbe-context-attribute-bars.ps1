@@ -36,6 +36,14 @@ Require $barsHeader 'ApplySelectionState\s*\(' 'selection state application'
 Require $barsHeader 'UpdateMetrics\s*\(' 'central metrics update'
 Require $barsHeader 'UpdateLocalization\s*\(' 'central localization update'
 Require $barsSource 'TB_DELETEBUTTON' 'context-owned caption-toolbar rebuild'
+if($barsSource -match '1234567890') { throw 'Context attribute layout must not size fields with digit placeholders.' }
+foreach($token in @('ContextAttributeFieldWidth::Short', 'ContextAttributeFieldWidth::Medium', 'ContextAttributeFieldWidth::Long', 'ContextAttributeFieldWidth::Dropdown', 'FieldWidth(', 'CaptionWidth(', 'GetTextExtentPoint32W', 'UiMetrics::ScaleForDpi', 'AddFixedWidthSlot', 'AddAttributePairSlots')) {
+    if($barsSource -notmatch [regex]::Escape($token)) { throw "Context attribute sizing must use $token." }
+}
+foreach($required in @('m_colspanCaption.*ContextAttributeFieldWidth::Short', 'm_rowspanCaption.*ContextAttributeFieldWidth::Short', 'm_hrefCaption.*ContextAttributeFieldWidth::Long', 'm_imageTitleCaption.*ContextAttributeFieldWidth::Long')) {
+    if($barsSource -notmatch $required) { throw "Context attribute field class is missing: $required" }
+}
+if($barsSource -notmatch 'index \* 3 \+ 1') { throw 'Context attribute toolbar pairs must retain a separate fixed DPI gap slot.' }
 if($barsHeader -match 'ContextBarMode|\bSetMode\s*\(|\bMode\s*\(' -or $barsSource -match 'ContextBarMode|\bSetMode\s*\(') { throw 'ContextAttributeBars must not retain test-only visibility modes.' }
 Require $controlsHeader 'class\s+CCustomEdit' 'custom edit moved from main frame'
 Require $controlsHeader 'class\s+CCustomStatic' 'custom static moved from main frame'
