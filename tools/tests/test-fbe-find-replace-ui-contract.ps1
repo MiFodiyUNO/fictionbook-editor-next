@@ -15,6 +15,8 @@ $view = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp'
 $sourceView = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $presetCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\SearchPresetCatalog.cpp')
 $regexHelp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ui\RegexHelpDialog.cpp')
+$settings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.h')
+$settingsSerialization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\SettingsSerialization.cpp')
 $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
 
 function Require([string]$text, [string]$pattern, [string]$description) {
@@ -115,6 +117,21 @@ Require $regexHelp 'FbeApplyRuntimeDialogLocalization\(m_hWnd, IDD_REGEX_HELP\)'
 Require $regexHelp 'EM_SETSEL, 0, 0' 'Regex help clears its initial selection'
 Require $regexHelp 'EM_SCROLLCARET' 'Regex help scrolls to its beginning'
 Require $regexHelp 'SetFocus\(GetDlgItem\(IDCANCEL\)\)' 'Regex help focuses Close'
+Require $regexHelp 'ApplyParagraphHeadingStyle' 'Regex help formats paragraph headings'
+Require $regexHelp 'CFM_BOLD' 'Regex help uses bold formatting for headings'
+Require $regexHelp 'WM_GETMINMAXINFO' 'Regex help enforces a minimum resizable size'
+Require $regexHelp 'WM_SIZE' 'Regex help lays out controls while resizing'
+Require $regexHelp '_Settings\.GetRegexHelpPlacement' 'Regex help restores its saved size'
+Require $regexHelp '_Settings\.SetRegexHelpPlacement' 'Regex help persists its size'
+Require $regexHelp 'LoadLibraryW\(L"Msftedit\.dll"\)' 'Regex help loads the Rich Edit control before creation'
+Require $settings 'm_regex_help_placement' 'Regex help placement setting storage'
+Require $settings 'GetRegexHelpPlacement' 'Regex help placement setting getter'
+Require $settings 'SetRegexHelpPlacement' 'Regex help placement setting setter'
+Require $settingsSerialization 'REGEX_HELP_PLACEMENT_KEY' 'Regex help placement serialized setting'
+Require $rc '(?s)IDD_REGEX_HELP.*?WS_THICKFRAME' 'Regex help dialog is resizable'
+Require $rc '(?s)IDD_REGEX_HELP.*?RICHEDIT50W' 'Regex help uses Rich Edit formatting'
+Require $pane 'HFONT listFont = UiMetrics::DialogFont\(\)' 'Results Pane custom context painting uses the dialog font'
+Require $pane 'SelectObject\(dc,\s*listFont\)' 'Results Pane selects the dialog font before drawing context'
 Require $rc 'IDD_REGEX_HELP[\s\S]*?DEFPUSHBUTTON\s+"Close",IDCANCEL' 'Regex help uses Close rather than Cancel'
 Require $dialog 'fbe\.tooltip\.find\.templates' 'Templates button tooltip'
 Require $dialog 'fbe\.tooltip\.find\.regex_help_design' 'Design regex-help tooltip'

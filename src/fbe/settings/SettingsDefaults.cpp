@@ -79,6 +79,7 @@ void CSettings::SetDefaults()
 
 	::ZeroMemory(&m_wnd_placement, sizeof(WINDOWPLACEMENT));
 	::ZeroMemory(&m_scripts_toolbar_customize_placement, sizeof(WINDOWPLACEMENT));
+	::ZeroMemory(&m_regex_help_placement, sizeof(WINDOWPLACEMENT));
 	m_desc.SetDefaults();
 }
 

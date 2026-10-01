@@ -240,6 +240,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	WINDOWPLACEMENT m_words_dlg_placement;
 	WINDOWPLACEMENT m_wnd_placement;
 	WINDOWPLACEMENT m_scripts_toolbar_customize_placement;
+	WINDOWPLACEMENT m_regex_help_placement;
 
 	DESCSHOWINFO m_desc;
 	TREEITEMSHOWINFO m_tree_items;
@@ -335,6 +336,7 @@ public:
 	CString GetScriptCommandIds()const;
 	CSize GetScriptsToolbarCustomizeSize() const;
 	bool GetScriptsToolbarCustomizePlacement(WINDOWPLACEMENT& wpl) const;
+	bool GetRegexHelpPlacement(WINDOWPLACEMENT& wpl) const;
 	const CRegKey& GetKey()const;
 
 	// added by SeNS
@@ -419,6 +421,7 @@ public:
 	void	SetScriptCommandIds(const CString& ids, bool apply = false);
 	void SetScriptsToolbarCustomizeSize(const CSize& size, bool apply = false);
 	void SetScriptsToolbarCustomizePlacement(const WINDOWPLACEMENT& wpl, bool apply = false);
+	void SetRegexHelpPlacement(const WINDOWPLACEMENT& wpl, bool apply = false);
 	void	SetExtElementStyle(const CString& elem, bool ext, bool apply = false);
 	void	SetWindowPosition(const WINDOWPLACEMENT& wpl,  bool apply = false);
 	void	SetRestoreFilePosition(bool restore, bool apply = false);	

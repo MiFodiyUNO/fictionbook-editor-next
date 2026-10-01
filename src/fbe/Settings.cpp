@@ -314,6 +314,13 @@ bool CSettings::GetScriptsToolbarCustomizePlacement(WINDOWPLACEMENT& wpl) const
 	wpl.showCmd = SW_SHOWNORMAL;
 	return true;
 }
+bool CSettings::GetRegexHelpPlacement(WINDOWPLACEMENT& wpl) const
+{
+	if(m_regex_help_placement.length != sizeof(WINDOWPLACEMENT)) return false;
+	wpl = m_regex_help_placement;
+	wpl.showCmd = SW_SHOWNORMAL;
+	return true;
+}
 CString CSettings::GetKeyPath()const
 {
 	return m_key_path;
@@ -1110,6 +1117,14 @@ void CSettings::SetScriptsToolbarCustomizePlacement(const WINDOWPLACEMENT& wpl, 
 	m_scripts_toolbar_customize_placement.length = sizeof(WINDOWPLACEMENT);
 	m_scripts_toolbar_customize_placement.showCmd = SW_SHOWNORMAL;
 	m_scripts_toolbar_customize_placement.flags = 0;
+	if(apply) Save();
+}
+void CSettings::SetRegexHelpPlacement(const WINDOWPLACEMENT& wpl, bool apply)
+{
+	m_regex_help_placement = wpl;
+	m_regex_help_placement.length = sizeof(WINDOWPLACEMENT);
+	m_regex_help_placement.showCmd = SW_SHOWNORMAL;
+	m_regex_help_placement.flags = 0;
 	if(apply) Save();
 }
 

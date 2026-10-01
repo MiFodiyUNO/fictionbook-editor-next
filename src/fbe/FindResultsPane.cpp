@@ -133,7 +133,10 @@ LRESULT CFindResultsPane::OnListCustomDraw(int, LPNMHDR header, BOOL&)
 	if (item < 0) return CDRF_DODEFAULT;
 	RECT cell = {}; if (!m_list.GetSubItemRect(item, 1, LVIR_BOUNDS, &cell)) return CDRF_DODEFAULT;
 	const RECT paintCell = cell;
-	cell.left += Scale(3); HDC dc = draw->nmcd.hdc; HFONT oldFont = static_cast<HFONT>(::SelectObject(dc, reinterpret_cast<HGDIOBJ>(::SendMessage(m_list, WM_GETFONT, 0, 0))));
+	cell.left += Scale(3); HDC dc = draw->nmcd.hdc;
+	HFONT listFont = UiMetrics::DialogFont();
+	if (listFont == NULL) listFont = reinterpret_cast<HFONT>(::SendMessage(m_list, WM_GETFONT, 0, 0));
+	HFONT oldFont = listFont != NULL ? static_cast<HFONT>(::SelectObject(dc, listFont)) : NULL;
 	const bool selected = (m_list.GetItemState(item, LVIS_SELECTED) & LVIS_SELECTED) != 0;
 	// Owner-data ListView can repaint a previous row after the selection has
 	// moved. Query the control's authoritative state and always erase the whole
@@ -152,5 +155,6 @@ LRESULT CFindResultsPane::OnListCustomDraw(int, LPNMHDR header, BOOL&)
 			::DrawText(dc, matched, matched.GetLength(), &highlight, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_NOCLIP);
 		}
 	}
-	::SelectObject(dc, oldFont); return CDRF_SKIPDEFAULT;
+	if (oldFont != NULL) ::SelectObject(dc, oldFont);
+	return CDRF_SKIPDEFAULT;
 }
