@@ -6,7 +6,7 @@ void CCustomStatic::DoPaint(CDCHandle dc)
 {
 	RECT rc; GetClientRect(&rc);
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
-	::FillRect(dc, &rc, dark ? ThemeManager::ControlBrush() : ::GetSysColorBrush(COLOR_BTNFACE));
+	::FillRect(dc, &rc, ThemeManager::ControlBrush());
 	HFONT oldFont = (HFONT)SelectObject(dc, m_font);
 	const int length = GetWindowTextLength();
 	std::vector<wchar_t> text(length + 1);
@@ -19,12 +19,12 @@ void CCustomStatic::DoPaint(CDCHandle dc)
 	SelectObject(dc, oldFont);
 }
 
-LRESULT CCustomStatic::OnPaint(UINT, WPARAM wParam, LPARAM, BOOL&)
+LRESULT CCustomStatic::OnPaint(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
+	if(ThemeManager::IsHighContrast()) { bHandled = FALSE; return 0; }
 	if(wParam != NULL) DoPaint((HDC)wParam); else { CPaintDC dc(m_hWnd); DoPaint(dc.m_hDC); }
 	return 0;
 }
-
 LRESULT CCustomStatic::OnSetFont(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
 	m_font = reinterpret_cast<HFONT>(wParam); Invalidate(); bHandled = FALSE; return 0;

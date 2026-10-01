@@ -47,6 +47,8 @@ const UINT_PTR kContextAttributeThemeSubclassId = 0x46424152; // "FBAR"
 const UINT_PTR kContextAttributeBoxThemeSubclassId = 0x46424258; // "FBBX"
 std::map<HWND, LONG_PTR> g_contextAttributeBoxBaseExStyles;
 
+bool IsContextControlEnabled(HWND control);
+
 bool IsHighContrastEnabled()
 {
 	HIGHCONTRAST value = {}; value.cbSize = sizeof(value);
@@ -91,8 +93,20 @@ LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM 
 	{
 		HDC dc = reinterpret_cast<HDC>(wParam);
 		HWND control = reinterpret_cast<HWND>(lParam);
-		const bool enabled = !control || ::IsWindowEnabled(control) != FALSE;
-		::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+		const bool enabled = IsContextControlEnabled(control);
+		if(ThemeManager::IsDark())
+		{
+			::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+			::SetBkColor(dc, ThemeManager::ControlColor());
+			return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
+		}
+		if(message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX)
+		{
+			::SetTextColor(dc, ::GetSysColor(enabled ? COLOR_WINDOWTEXT : COLOR_GRAYTEXT));
+			::SetBkColor(dc, ::GetSysColor(enabled ? COLOR_WINDOW : COLOR_BTNFACE));
+			return reinterpret_cast<LRESULT>(::GetSysColorBrush(enabled ? COLOR_WINDOW : COLOR_BTNFACE));
+		}
+		::SetTextColor(dc, ::GetSysColor(enabled ? COLOR_BTNTEXT : COLOR_GRAYTEXT));
 		::SetBkColor(dc, ThemeManager::ControlColor());
 		return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
 	}
@@ -124,6 +138,38 @@ LRESULT CALLBACK ContextAttributeBoxThemeProc(HWND window, UINT message, WPARAM 
 	return result;
 }
 
+int CaptionHeight(HWND bar, HFONT font)
+{
+	HDC dc = ::GetDC(bar); if(dc == NULL) return 0;
+	HFONT old = font ? static_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+	TEXTMETRIC metrics = {}; ::GetTextMetrics(dc, &metrics);
+	if(old) ::SelectObject(dc, old); ::ReleaseDC(bar, dc);
+	return metrics.tmHeight;
+}
+
+void SetContextRowHeight(HWND bar, CComboBox* const* boxes, size_t count)
+{
+	if(!::IsWindow(bar)) return;
+	int height = CaptionHeight(bar, reinterpret_cast<HFONT>(::SendMessage(bar, WM_GETFONT, 0, 0)));
+	for(size_t index = 0; index < count; ++index)
+	{
+		RECT rect = {}; if(boxes[index] != NULL && ::GetWindowRect(*boxes[index], &rect))
+			height = (std::max)(height, static_cast<int>(rect.bottom - rect.top));
+	}
+	height += UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(bar));
+	const DWORD buttonSize = static_cast<DWORD>(::SendMessage(bar, TB_GETBUTTONSIZE, 0, 0));
+	::SendMessage(bar, TB_SETBUTTONSIZE, 0, MAKELONG(LOWORD(buttonSize), height));
+	::SendMessage(bar, TB_AUTOSIZE, 0, 0);
+}
+
+bool IsContextControlEnabled(HWND control)
+{
+	if(control == NULL || ::IsWindowEnabled(control) == FALSE) return false;
+	wchar_t className[32] = {}; const HWND parent = ::GetParent(control);
+	if(parent != NULL && ::GetClassNameW(parent, className, _countof(className)) > 0 && _wcsicmp(className, WC_COMBOBOXW) == 0)
+		return ::IsWindowEnabled(parent) != FALSE;
+	return true;
+}
 void ApplyContextAttributeBoxTheme(HWND box)
 {
 	if(!::IsWindow(box)) return;
@@ -200,7 +246,32 @@ void ContextAttributeBars::ApplyTheme()
 	CComboBox* boxes[] = { &m_idBox, &m_hrefBox, &m_sectionBox, &m_imageTitleBox, &m_tableIdBox, &m_tableStyleBox, &m_cellIdBox, &m_cellStyleBox, &m_colspanBox, &m_rowspanBox, &m_rowAlignBox, &m_alignBox, &m_valignBox };
 	for(CComboBox* box : boxes) ApplyBoxTheme(*box);
 }
-void ContextAttributeBars::UpdateMetrics() { ToolbarFactory::SetDialogFontForToolbarRow(m_linksBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar2, true); UpdateLocalization(); }
+void ContextAttributeBars::UpdateMetrics()
+{
+	ToolbarFactory::SetDialogFontForToolbarRow(m_linksBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar2, true);
+	CComboBox* const links[] = { &m_idBox, &m_hrefBox, &m_sectionBox, &m_imageTitleBox };
+	CComboBox* const table[] = { &m_tableIdBox, &m_tableStyleBox, &m_cellIdBox, &m_cellStyleBox };
+	CComboBox* const table2[] = { &m_colspanBox, &m_rowspanBox, &m_rowAlignBox, &m_alignBox, &m_valignBox };
+	SetContextRowHeight(m_linksBar, links, _countof(links)); SetContextRowHeight(m_tableBar, table, _countof(table)); SetContextRowHeight(m_tableBar2, table2, _countof(table2));
+	UpdateLocalization();
+}
+
+void ContextAttributeBars::NormalizeRebarBands(CReBarCtrl& rebar)
+{
+	if(!::IsWindow(rebar)) return;
+	const HWND bars[] = { m_linksBar, m_tableBar, m_tableBar2 };
+	for(int band = 0; band < static_cast<int>(rebar.GetBandCount()); ++band)
+	{
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_CHILDSIZE | RBBIM_SIZE;
+		if(!rebar.GetBandInfo(band, &info)) continue;
+		bool contextBar = false; for(HWND bar : bars) if(info.hwndChild == bar) { contextBar = true; break; }
+		if(!contextBar) continue;
+		RECT rect = {}; ::GetWindowRect(info.hwndChild, &rect);
+		const UINT height = static_cast<UINT>((std::max)(1, static_cast<int>(rect.bottom - rect.top)));
+		info.cyChild = height; info.cyMinChild = height; info.cyMaxChild = height;
+		rebar.SetBandInfo(band, &info);
+	}
+}
 void ContextAttributeBars::UpdateLocalization()
 {
 	struct Binding { CCustomStatic* caption; CWindow* editor; UINT textId; ContextAttributeFieldWidth width; };

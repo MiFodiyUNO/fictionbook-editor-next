@@ -127,6 +127,11 @@ if($settingsEditorPage -notlike '*OnBackgroundSelectionChanged*RefreshAutomaticC
 if($settingsEditorPage -notlike '*OnThemeChanged*' -or $settingsEditorPageHeader -notlike '*MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)*') {
 	throw 'Automatic BODY colour buttons do not refresh while Settings previews a live theme change.'
 }
+foreach($required in @('COLOR_WINDOWTEXT', 'COLOR_WINDOW', 'COLOR_BTNFACE', 'COLOR_GRAYTEXT', 'IsContextControlEnabled', 'ThemeManager::IsDark()', 'IsHighContrastEnabled()')) {
+    if($contextAttributeBars -notlike "*$required*") { throw "Context attribute light/dark control palette is missing $required." }
+}
+if($contextAttributeControls -like '*GetSysColorBrush(COLOR_BTNFACE)*') { throw 'Context captions must not paint a separate COLOR_BTNFACE rectangle.' }
+if($contextAttributeControls -notlike '*ThemeManager::ControlBrush()*' -or $contextAttributeControls -notlike '*ThemeManager::IsHighContrast()*') { throw 'Context captions must inherit toolbar background and leave High Contrast native.' }
 foreach($required in @('ThemeManager::ControlBrush()', 'ThemeManager::TextColor()', 'ThemeManager::DisabledTextColor()', 'IsWindowEnabled(m_hWnd)')) {
 	if($contextAttributeControls -notlike "*$required*") { throw "Context attribute captions do not apply the theme palette: $required." }
 }

@@ -3261,6 +3261,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	ApplyMainRebarTheme(m_rebar);
 	ApplyMainMenuRebarBandTheme(m_rebar, hWndCmdBar);
 	ApplyContextAttributeRebarBandTheme(m_rebar, m_contextAttributeBars);
+	// Context bars own child ComboBox heights; synchronize their rebar bands after metrics.
+	m_contextAttributeBars.NormalizeRebarBands(m_rebar);
 	m_rebar.SendMessage(WM_SIZE);
 	StartupTrace::Event(L"mainframe", L"M110", L"menus and toolbars created");
 
@@ -3825,6 +3827,7 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 	if (::IsWindow(m_CmdToolbar)) { SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
 	if (::IsWindow(m_ScriptsToolbar)) { SetDialogFontForToolbarRow(m_ScriptsToolbar); AutoSizeToolbar(m_ScriptsToolbar); }
 	m_contextAttributeBars.UpdateMetrics();
+	if (::IsWindow(m_rebar)) m_contextAttributeBars.NormalizeRebarBands(m_rebar);
 	if (::IsWindow(m_rebar)) m_rebar.SendMessage(WM_SIZE);
 	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());
 	if (m_doc)
@@ -3873,6 +3876,7 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	if (::IsWindow(m_CmdToolbar)) { SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
 	if (::IsWindow(m_ScriptsToolbar)) { SetDialogFontForToolbarRow(m_ScriptsToolbar); AutoSizeToolbar(m_ScriptsToolbar); }
 	m_contextAttributeBars.UpdateMetrics();
+	if (::IsWindow(m_rebar)) m_contextAttributeBars.NormalizeRebarBands(m_rebar);
 	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());
 	if(m_source.IsWindow())
 	{

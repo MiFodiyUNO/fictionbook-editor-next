@@ -21,6 +21,7 @@ public:
 	HWND LinksBar() const { return m_linksBar; } HWND TableBar() const { return m_tableBar; } HWND TableBar2() const { return m_tableBar2; }
 	bool IsBar(HWND window) const { return window == m_linksBar || window == m_tableBar || window == m_tableBar2; }
 	void ApplyTheme();
+	void NormalizeRebarBands(CReBarCtrl& rebar);
 	void UpdateMetrics(); void UpdateLocalization();
 	void SetLinkState(const LinkAttributeState& state); LinkAttributeState GetLinkState() const;
 	void SetTableState(const TableAttributeState& state); TableAttributeState GetTableState() const;
