@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Guards the common Find/Replace controls, their localized labels, and Results
 Pane painting contracts without materializing virtual ListView rows.
@@ -111,18 +111,21 @@ foreach ($dialogBlock in @($find, $replace)) {
     Require $dialogBlock 'DIALOGEX 0, 0, 326,' 'base compact dialog width provides a shared grid'
 }
 Require $regexHelp 'PCRE2-16' 'Design regex help engine'
-Require $regexHelp 'Scintilla regular expressions / C\+\+11 regex mode' 'Source regex help engine'
+Require $regexHelp 'Scintilla regular expressions in its documented C\+\+11 mode' 'Source regex help engine'
 Require $regexHelp 'ThemeManager::ApplyToWindow\(m_hWnd\)' 'Regex help theme integration'
 Require $regexHelp 'FbeApplyRuntimeDialogLocalization\(m_hWnd, IDD_REGEX_HELP\)' 'Regex help runtime localization'
 Require $regexHelp 'EM_SETSEL, 0, 0' 'Regex help clears its initial selection'
 Require $regexHelp 'EM_SCROLLCARET' 'Regex help scrolls to its beginning'
 Require $regexHelp 'SetFocus\(GetDlgItem\(IDC_REGEX_HELP_CLOSE\)\)' 'Regex help focuses Close'
-Require $regexHelp 'ApplyParagraphHeadingStyle' 'Regex help formats paragraph headings'
+Require $regexHelp 'ApplyHelpBlockStyles' 'Regex help formats explicit blocks'
 Require $regexHelp 'CFM_BOLD' 'Regex help uses bold formatting for headings'
 Require $regexHelp 'CFM_SIZE' 'Regex help gives its title a distinct size'
 Require $regexHelp 'PFM_SPACEBEFORE' 'Regex help spaces heading paragraphs'
 Require $regexHelp 'enum class HelpLineKind' 'Regex help uses explicit help-line kinds'
-Require $regexHelp 'ClassifyHelpLine' 'Regex help classifies structural lines explicitly'
+Require $regexHelp 'struct HelpBlock' 'Regex help stores explicit structural blocks'
+Require $regexHelp 'BuildHelpBlocks' 'Regex help builds Design and Source blocks explicitly'
+Require $regexHelp 'AddQuickReferenceSyntax' 'Regex help reuses Quick Reference syntax'
+if($regexHelp -match 'ClassifyHelpLine|section ==') { throw 'Regex help must not classify blocks by paragraph number.' }
 if ($regexHelp -match 'Find\(static_cast<wchar_t>\(92\)\)') { throw 'Regex help must not classify whole lines as code merely because they contain a regex token.' }
 Require $regexHelp 'IDC_REGEX_HELP_CLOSE' 'Regex help uses its dedicated Close control for layout and dispatch'
 Require $regexHelp 'MonitorFromRect' 'Regex help restores its saved normal position on a valid monitor'
@@ -160,8 +163,11 @@ Require $dialog 'applyMaximum' 'templates Apply width has a bounded maximum'
 Require $dialog 'PreviewHeightForCurrentSelection' 'templates preview height follows its content'
 Require $dialog 'DT_CALCRECT \| DT_WORDBREAK' 'templates preview measures wrapped localized text'
 Require $dialog 'lineHeight \* 4' 'templates preview is bounded to four lines'
-Require $dialog 'monochrome AND mask' 'templates pin derives coverage from alpha or the ICO mask'
-Require $dialog 'pixels\[index\] >> 24' 'templates pin uses alpha coverage rather than RGB coverage'
+Require $dialog 'PresetPinMaskResource' 'templates pin selects an authored bitmap mask'
+Require $dialog 'GetDIBits' 'templates pin derives coverage from its bitmap mask'
+Require $dialog 'maskInfo.bmiHeader.biBitCount = 1' 'templates pin uses a monochrome authored mask'
+Require $dialog 'maskBits\[' 'templates pin uses mask bits instead of RGB coverage'
+if($dialog -match 'DrawIconEx\(|GetIconInfo\(|maskPixels\[index\]') { throw 'Templates pin must not recover alpha from an ICO.' }
 Require $dialog 'MakePresetPreviewValue\(preset->findText, 168\)' 'templates preview retains a useful clipped length'
 Require $rc 'IDC_FIND_PRESETS_PIN,"Button",BS_OWNERDRAW' 'templates pin uses an owner-drawn glyph rather than a text-only checkbox'
 Require $dialog 'SetSearchTemplatesPanelPinned' 'templates pin is persisted'

@@ -80,8 +80,8 @@ void RegexQuickReferencePopup::DrawListItem(const DRAWITEMSTRUCT& draw, const st
     RECT row = draw.rcItem;
     const bool heading = entryIndex < 0;
     const bool selected = !heading && (draw.itemState & ODS_SELECTED) != 0;
-    const COLORREF background = selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor();
-    ::FillRect(dc, &row, ThemeManager::Brush(selected ? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_CONTROL));
+    const COLORREF background = selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::WindowColor();
+    ::FillRect(dc, &row, ThemeManager::Brush(selected ? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_WINDOW));
     ::SetBkMode(dc, TRANSPARENT);
     ::SetTextColor(dc, selected ? ThemeManager::SelectionTextColor() : (heading ? ThemeManager::SecondaryTextColor() : ThemeManager::TextColor()));
     RECT text = row;
@@ -224,9 +224,8 @@ LRESULT RegexQuickReferencePopup::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
     const int captionHeight = UiMetrics::ScaleForDpi(18, dpi);
     const int buttonHeight = UiMetrics::ScaleForDpi(22, dpi);
     ::FillRect(dc, &client, ThemeManager::WindowBrush());
-    HBRUSH borderBrush = ::CreateSolidBrush(ThemeManager::BorderColor());
+    HBRUSH borderBrush = ::CreateSolidBrush(ThemeManager::SeparatorColor());
     ::FrameRect(dc, &client, borderBrush);
-    if(border > 1) { RECT inner = client; ::InflateRect(&inner, -border + 1, -border + 1); ::FrameRect(dc, &inner, borderBrush); }
     ::DeleteObject(borderBrush);
     RECT separator = { client.right / 2, inset + captionHeight, client.right / 2 + border, client.bottom - buttonHeight - inset * 2 };
     ::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
@@ -234,15 +233,6 @@ LRESULT RegexQuickReferencePopup::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
     return 0;
 }
 
-LRESULT RegexQuickReferencePopup::OnMouseMove(UINT, WPARAM, LPARAM lParam, BOOL&)
-{
-    POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-    HWND child = ::ChildWindowFromPoint(m_hWnd, point);
-    if(child == m_left || child == m_right) { ::ScreenToClient(child, &point); UpdateHoverSelection(child, point); }
-    return 0;
-}
-
-LRESULT RegexQuickReferencePopup::OnMouseLeave(UINT, WPARAM, LPARAM, BOOL&) { return 0; }
 
 CString RegexQuickReferencePopup::Caption() const {
     const bool source = m_context == FbeSearchPresets::SearchUiContext::Source;
@@ -261,6 +251,11 @@ CString RegexQuickReferencePopup::CategoryCaption(FbeSearchPresets::RegexQuickRe
 }
 
 BOOL RegexQuickReferencePopup::PreTranslateMessage(MSG* message) {
+    if(message->message == WM_LBUTTONUP && (message->hwnd == m_left || message->hwnd == m_right)) {
+        POINT point = { GET_X_LPARAM(message->lParam), GET_Y_LPARAM(message->lParam) };
+        ActivateAtPoint(message->hwnd, point);
+        return TRUE;
+    }
     if(message->message == WM_MOUSEMOVE && (message->hwnd == m_left || message->hwnd == m_right)) {
         POINT point = { GET_X_LPARAM(message->lParam), GET_Y_LPARAM(message->lParam) };
         UpdateHoverSelection(message->hwnd, point);
@@ -302,6 +297,16 @@ bool RegexQuickReferencePopup::UpdateHoverSelection(HWND listWindow, POINT point
     if(list.GetCurSel() != row) list.SetCurSel(row);
     ClearOtherSelection(listWindow);
     return true;
+}
+
+bool RegexQuickReferencePopup::ActivateAtPoint(HWND listWindow, POINT point)
+{
+    const std::vector<int>& rows = listWindow == m_right ? m_rightRows : m_leftRows;
+    const LRESULT item = ::SendMessage(listWindow, LB_ITEMFROMPOINT, 0, MAKELPARAM(point.x, point.y));
+    const int row = LOWORD(item);
+    CListBox& list = listWindow == m_right ? m_right : m_left;
+    if(HIWORD(item) != 0 || row < 0 || static_cast<size_t>(row) >= rows.size() || rows[row] < 0) { list.SetCurSel(-1); return false; }
+    list.SetCurSel(row); ClearOtherSelection(listWindow); list.SetFocus(); Activate(); return true;
 }
 
 bool RegexQuickReferencePopup::MoveSelection(HWND listWindow, int direction)

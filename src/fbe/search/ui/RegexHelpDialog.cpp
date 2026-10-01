@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "..\\..\\resource.h"
 #include "RegexHelpDialog.h"
+#include "..\\RegexQuickReference.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\ThemeManager.h"
@@ -12,80 +13,134 @@ extern CSettings _Settings;
 
 namespace
 {
-CString HelpText(FbeSearchPresets::SearchUiContext context)
-{
-    if (context == FbeSearchPresets::SearchUiContext::Source)
-    {
-        return FbeLoadRuntimeStringByKey(L"fbe.regex_help.source.text.detail",
-            L"Regular expressions — Source/Code\r\n\r\nEngine\r\nScintilla regular expressions / C++11 regex mode\r\n"
-            L"Flags: SCFIND_REGEXP | SCFIND_CXX11REGEX\r\n\r\nSupported syntax\r\nOnly the documented Scintilla C++11 subset is available.\r\n\r\n"
-            L"Classes\r\n[abc], [^abc], [a-z], \\d, \\D, \\s, \\S, \\w and \\W.\r\n\r\nAnchors\r\n^ and $ match line boundaries; \\b and \\B match word boundaries.\r\n\r\n"
-            L"Quantifiers\r\nUse *, +, ?, {n} and {n,m}.\r\n\r\nGroups and alternatives\r\nCapturing groups (...) and alternation | are supported.\r\n\r\n"
-            L"Back-references\r\nUse \\1 in a replacement for the first captured group.\r\n\r\nReplacement\r\nScintilla performs replacement.\r\n\r\n"
-            L"Examples\r\nDigits: Find \\d+.\r\n\r\nLimitations\r\nThis is not PCRE2; Unicode (UCP) is only for PCRE2 in Design mode.");
-    }
-    // The advanced entry is the complete Design manual and prevents base/advanced duplication.
-    return FbeLoadRuntimeStringByKey(L"fbe.regex_help.design.advanced",
-        L"Regular expressions — Design\r\n\r\nEngine\r\nPCRE2-16\r\n\r\nEscaping and classes\r\nUse \\ to quote metacharacters.\r\n\r\nUnicode and UCP\r\nUTF is always on; enable UCP for Unicode properties.\r\n\r\n"
-        L"Anchors\r\n^/$, \\A/\\z and \\b/\\B.\r\n\r\nQuantifiers\r\n* + ? and {n,m}; lazy and possessive forms are available.\r\n\r\n"
-        L"Groups, named groups and alternatives\r\nCapturing, non-capturing, atomic and named groups are supported.\r\n\r\nLookaround\r\nLookahead and lookbehind are available.\r\n\r\n"
-        L"Inline options\r\n(?i), (?m), (?s) and (?x).\r\n\r\nAdvanced PCRE2\r\nCompile-tested advanced constructs are available.\r\n\r\n"
-        L"Replacement in FBE\r\n$0/\\0 and capture references are supported.\r\n\r\nExamples\r\nUse [ \\t]{2,} for repeated spaces.\r\n\r\nLimitations\r\nOnly groups 1..9 are replaceable.");
-}
-
 enum class HelpLineKind { Title, Heading, Body, Syntax, Example, Note };
 
-HelpLineKind ClassifyHelpLine(size_t index, bool beginsBlock, int section, FbeSearchPresets::SearchUiContext context)
+struct HelpBlock
 {
-    // The catalog has an explicit blank-line-separated structure.  Formatting
-    // follows the section position, never a guess based on regex punctuation.
-    if (index == 0) return HelpLineKind::Title;
-    if (beginsBlock) return HelpLineKind::Heading;
-    const int examples = context == FbeSearchPresets::SearchUiContext::Source ? 9 : 14;
-    const int limitations = examples + 1;
-    if (section == examples) return HelpLineKind::Example;
-    if (section == limitations) return HelpLineKind::Note;
-    return section >= 2 ? HelpLineKind::Syntax : HelpLineKind::Body;
+    HelpLineKind kind;
+    CString text;
+};
+
+void AddHelpBlock(std::vector<HelpBlock>& blocks, HelpLineKind kind, LPCWSTR text)
+{
+    if(text != NULL && *text != 0) blocks.push_back(HelpBlock{ kind, CString(text) });
 }
 
-void ApplyParagraphHeadingStyle(HWND text, const CString& help, FbeSearchPresets::SearchUiContext context)
+CString LocalizedHelpText(LPCWSTR key, LPCWSTR fallback)
 {
-    std::vector<CString> lines;
-    std::vector<int> starts;
-    int start = 0;
-    while (start < help.GetLength())
+    return FbeLoadRuntimeStringByKey(key, fallback);
+}
+
+void AddQuickReferenceSyntax(std::vector<HelpBlock>& blocks, FbeSearchPresets::SearchUiContext context, FbeSearchPresets::RegexQuickReferenceMode mode)
+{
+    std::vector<FbeSearchPresets::RegexQuickReferenceEntry> entries;
+    FbeSearchPresets::GetRegexQuickReferenceEntries(context, mode, entries);
+    for(size_t index = 0; index < entries.size(); ++index)
     {
-        int end = help.Find(L'\n', start); if (end < 0) end = help.GetLength();
-        int contentEnd = end; if (contentEnd > start && help[contentEnd - 1] == L'\r') --contentEnd;
-        lines.push_back(help.Mid(start, contentEnd - start)); starts.push_back(start); start = end + 1;
+        const CString description = FbeLoadRuntimeStringByKey(entries[index].descriptionKey, entries[index].descriptionFallback);
+        CString line; line.Format(L"%s  —  %s", static_cast<LPCWSTR>(entries[index].displaySyntax), static_cast<LPCWSTR>(description));
+        blocks.push_back(HelpBlock{ HelpLineKind::Syntax, line });
     }
+}
+
+std::vector<HelpBlock> BuildHelpBlocks(FbeSearchPresets::SearchUiContext context)
+{
+    std::vector<HelpBlock> blocks;
+    const bool source = context == FbeSearchPresets::SearchUiContext::Source;
+    AddHelpBlock(blocks, HelpLineKind::Title, FbeLoadRuntimeStringByKey(source ? L"fbe.regex_help.source.caption" : L"fbe.regex_help.design.caption", source ? L"Regular expression help — Source" : L"Regular expression help — Design"));
+    if(source)
+    {
+        AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.engine", L"Engine"));
+        AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.source.engine", L"Source search uses Scintilla regular expressions in its documented C++11 mode. This is not PCRE2."));
+        AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.characters", L"Classes and escapes"));
+        AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.source.classes", L"Use literal characters, escaping with \\, character classes [abc] and [^abc], ranges such as [a-z], and the documented \\d, \\D, \\s, \\S, \\w and \\W classes."));
+        AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.anchors", L"Anchors and boundaries"));
+        AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.source.anchors", L"^ and $ match line boundaries. \\b and \\B match word-boundary positions."));
+        AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.quantifiers", L"Quantifiers"));
+        AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.source.quantifiers", L"Use *, +, ?, {n} and {n,m} for repetition."));
+        AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.groups", L"Groups, alternation and backreferences"));
+        AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.source.groups", L"Capturing groups (...) and alternation | are supported. Use \\1 for the first captured group where Scintilla replacement accepts it."));
+        AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.replacement", L"Replacement"));
+        AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.source.replacement", L"Replacement is performed by Scintilla. FBE Design replacement formatting is not available here."));
+        AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.syntax", L"Syntax reference"));
+        AddQuickReferenceSyntax(blocks, context, FbeSearchPresets::RegexQuickReferenceMode::Search);
+        AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.examples", L"Practical examples"));
+        AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_digits", L"Digits: Find \\d+"));
+        AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_spaces", L"Repeated spaces: Find [ \\t]{2,}"));
+        AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_capture", L"Capture: Find (\\w+), replace with \\1"));
+        AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.limitations", L"Limitations"));
+        AddHelpBlock(blocks, HelpLineKind::Note, LocalizedHelpText(L"fbe.regex_help.body.source.limitations", L"No UCP, Unicode property classes, lookbehind, \\K, \\G, branch reset, PCRE2 verbs, or FBE Design replacement formatting."));
+        return blocks;
+    }
+
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.engine", L"Engine"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.engine", L"Design search uses PCRE2-16. UTF mode is always enabled."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.unicode_ucp", L"Unicode and UCP"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.unicode", L"Enable Unicode (UCP) for Unicode-aware character properties and word classes. Use \\p{L}, \\p{N} and \\P{...} for Unicode properties."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.characters", L"Characters, metacharacters and escapes"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.characters", L"Ordinary characters match themselves. Escape regex metacharacters with \\. Escape sequences include \\t, \\r, \\n and \\R."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.classes", L"Classes and ranges"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.classes", L"Use [abc], [^abc] and ranges such as [a-z]. The shorthand classes \\d, \\D, \\s, \\S, \\w and \\W are available."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.anchors", L"Anchors and boundaries"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.anchors", L"^ and $ are line anchors; \\A and \\z anchor the subject. \\b and \\B match word-boundary positions."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.quantifiers", L"Quantifiers"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.quantifiers", L"Use *, +, ?, {n} and {n,m}. They are greedy by default; append ? for lazy matching and + for possessive matching."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.groups", L"Groups, alternation and backreferences"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.groups", L"Capturing (...), non-capturing (?:...), named (?<name>...), atomic (?>...) groups and alternation | are supported. Use \\1 and \\k<name> for backreferences."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.lookaround", L"Lookaround and inline options"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.lookaround", L"Use lookahead (?=...) and (?!...), lookbehind (?<=...) and (?<!...), and inline options (?i), (?m), (?s) and (?x)."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.advanced", L"Advanced PCRE2"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.advanced", L"Conditional patterns, \\K, \\G, branch reset (?|...), numeric (?1) and named (?&name) subroutine calls are available. (*SKIP)(*FAIL) can exclude alternatives."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.syntax", L"Syntax reference"));
+    AddQuickReferenceSyntax(blocks, context, FbeSearchPresets::RegexQuickReferenceMode::Search);
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.replacement", L"Replacement in FBE"));
+    AddHelpBlock(blocks, HelpLineKind::Body, LocalizedHelpText(L"fbe.regex_help.body.design.replacement", L"Use $0 or \\0 for the whole match, $1..$9 or \\1..\\9 for captured groups, and $+ or \\+ for the last captured group. \\U, \\L and \\T change case; \\Q resets it; \\S applies Strong and \\E applies Emphasis."));
+    AddQuickReferenceSyntax(blocks, context, FbeSearchPresets::RegexQuickReferenceMode::Replacement);
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.examples", L"Practical examples"));
+    AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_spaces", L"Multiple spaces: Find [ \\t]{2,}, replace with one space."));
+    AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_punctuation", L"Before punctuation: Find [ \\t]+([,;:!?]), replace with $1."));
+    AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_word", L"Repeated word: Find \\b(\\p{L}+)\\s+\\1\\b with UCP enabled."));
+    AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.limitations", L"Limitations"));
+    AddHelpBlock(blocks, HelpLineKind::Note, LocalizedHelpText(L"fbe.regex_help.body.design.limitations", L"Only groups 1..9 are replaceable in FBE, and replacement across paragraphs is rejected."));
+    return blocks;
+}
+
+CString JoinHelpBlocks(const std::vector<HelpBlock>& blocks, std::vector<int>& starts)
+{
+    CString text;
+    starts.clear();
+    for(size_t index = 0; index < blocks.size(); ++index)
+    {
+        if(!text.IsEmpty()) text += L"\r\n\r\n";
+        starts.push_back(text.GetLength());
+        text += blocks[index].text;
+    }
+    return text;
+}
+
+void ApplyHelpBlockStyles(HWND text, const std::vector<HelpBlock>& blocks)
+{
+    std::vector<int> starts; const CString joined = JoinHelpBlocks(blocks, starts);
     CHARFORMAT2 heading = {}; heading.cbSize = sizeof(heading); heading.dwMask = CFM_BOLD; heading.dwEffects = CFE_BOLD;
     CHARFORMAT2 title = heading; title.dwMask |= CFM_SIZE; title.yHeight = 220;
     CHARFORMAT2 syntax = {}; syntax.cbSize = sizeof(syntax); syntax.dwMask = CFM_FACE; ::lstrcpynW(syntax.szFaceName, L"Consolas", LF_FACESIZE);
     PARAFORMAT2 headingParagraph = {}; headingParagraph.cbSize = sizeof(headingParagraph); headingParagraph.dwMask = PFM_SPACEBEFORE | PFM_SPACEAFTER; headingParagraph.dySpaceBefore = 100; headingParagraph.dySpaceAfter = 40;
     PARAFORMAT2 exampleParagraph = {}; exampleParagraph.cbSize = sizeof(exampleParagraph); exampleParagraph.dwMask = PFM_STARTINDENT | PFM_SPACEAFTER; exampleParagraph.dxStartIndent = 180; exampleParagraph.dySpaceAfter = 40;
-    int section = 0;
-    for (size_t index = 0; index < lines.size(); ++index)
+    for(size_t index = 0; index < blocks.size(); ++index)
     {
-        const bool beginsBlock = index > 0 && lines[index - 1].IsEmpty();
-        if (beginsBlock) ++section;
-        const HelpLineKind kind = ClassifyHelpLine(index, beginsBlock, section, context);
-        if (lines[index].IsEmpty()) continue;
-        ::SendMessage(text, EM_SETSEL, starts[index], starts[index] + lines[index].GetLength());
-        if (kind == HelpLineKind::Title || kind == HelpLineKind::Heading)
+        ::SendMessage(text, EM_SETSEL, starts[index], starts[index] + blocks[index].text.GetLength());
+        const HelpLineKind kind = blocks[index].kind;
+        if(kind == HelpLineKind::Title || kind == HelpLineKind::Heading)
         {
             ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(kind == HelpLineKind::Title ? &title : &heading));
             ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&headingParagraph));
         }
-        else if (kind == HelpLineKind::Syntax || kind == HelpLineKind::Example)
+        else if(kind == HelpLineKind::Syntax || kind == HelpLineKind::Example)
         {
             ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&syntax));
-            if (kind == HelpLineKind::Example) ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&exampleParagraph));
+            if(kind == HelpLineKind::Example) ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&exampleParagraph));
         }
-        else if (kind == HelpLineKind::Note)
-        {
-            ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&headingParagraph));
-        }
+        else if(kind == HelpLineKind::Note) ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&headingParagraph));
     }
     ::SendMessage(text, EM_SETSEL, 0, 0); ::SendMessage(text, EM_SCROLLCARET, 0, 0);
 }
@@ -104,6 +159,7 @@ public:
         MESSAGE_HANDLER(WM_SETTINGCHANGE, OnThemeChanged)
         MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
         COMMAND_ID_HANDLER(IDC_REGEX_HELP_CLOSE, OnClose)
+        COMMAND_ID_HANDLER(IDCANCEL, OnClose)
     END_MSG_MAP()
 
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
@@ -113,10 +169,11 @@ public:
             m_context == FbeSearchPresets::SearchUiContext::Design ? L"fbe.regex_help.design.caption" : L"fbe.regex_help.source.caption",
             m_context == FbeSearchPresets::SearchUiContext::Design ? L"Regular expression help — Design" : L"Regular expression help — Source"));
 
-        const CString help = HelpText(m_context);
-        SetDlgItemText(IDC_REGEX_HELP_TEXT, help);
+        m_blocks = BuildHelpBlocks(m_context);
+        std::vector<int> starts;
+        SetDlgItemText(IDC_REGEX_HELP_TEXT, JoinHelpBlocks(m_blocks, starts));
         const HWND text = GetDlgItem(IDC_REGEX_HELP_TEXT);
-        if (text) ApplyTheme(text, help);
+        if (text) ApplyTheme(text);
         ThemeManager::ApplyToWindow(m_hWnd);
         CaptureLayoutMetrics();
         RestoreSize();
@@ -133,18 +190,18 @@ public:
         return 0;
     }
     LRESULT OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { SaveSize(); EndDialog(IDC_REGEX_HELP_CLOSE); return 0; }
-    LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&) { ThemeManager::ApplyToWindow(m_hWnd); ApplyTheme(GetDlgItem(IDC_REGEX_HELP_TEXT), HelpText(m_context)); return 0; }
+    LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&) { ThemeManager::ApplyToWindow(m_hWnd); ApplyTheme(GetDlgItem(IDC_REGEX_HELP_TEXT)); return 0; }
     LRESULT OnClose(WORD, WORD, HWND, BOOL&) { SaveSize(); EndDialog(IDC_REGEX_HELP_CLOSE); return 0; }
 
 private:
-    void ApplyTheme(HWND text, const CString& help)
+    void ApplyTheme(HWND text)
     {
         if (!text) return;
-        ::SendMessage(text, EM_SETBKGNDCOLOR, 0, ThemeManager::ControlColor());
+        ::SendMessage(text, EM_SETBKGNDCOLOR, 0, ThemeManager::WindowColor());
         CHARFORMAT2 body = {}; body.cbSize = sizeof(body); body.dwMask = CFM_COLOR; body.crTextColor = ThemeManager::TextColor();
         ::SendMessage(text, EM_SETSEL, 0, -1);
         ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&body));
-        ApplyParagraphHeadingStyle(text, help, m_context);
+        ApplyHelpBlockStyles(text, m_blocks);
     }
     void CaptureLayoutMetrics()
     {
@@ -202,6 +259,7 @@ private:
     }
 
     FbeSearchPresets::SearchUiContext m_context;
+    std::vector<HelpBlock> m_blocks;
     CSize m_minimumSize = CSize(0, 0);
     CSize m_buttonSize = CSize(0, 0);
     int m_margin = 0;

@@ -20,24 +20,18 @@ public:
         MESSAGE_HANDLER(WM_CREATE, OnCreate)
         MESSAGE_HANDLER(WM_NCDESTROY, OnNcDestroy)
         MESSAGE_HANDLER(WM_PAINT, OnPaint)
-        MESSAGE_HANDLER(WM_MOUSEMOVE, OnMouseMove)
-        MESSAGE_HANDLER(WM_MOUSELEAVE, OnMouseLeave)
         NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipGetDispInfo)
         MESSAGE_HANDLER(WM_KEYDOWN, OnKeyDown)
         MESSAGE_HANDLER(WM_KILLFOCUS, OnKillFocus)
         MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
         MESSAGE_HANDLER(WM_DRAWITEM, OnDrawItem)
         MESSAGE_HANDLER(WM_MEASUREITEM, OnMeasureItem)
-        COMMAND_HANDLER(IDC_REGEX_QUICK_LEFT, LBN_DBLCLK, OnActivate)
-        COMMAND_HANDLER(IDC_REGEX_QUICK_RIGHT, LBN_DBLCLK, OnActivate)
         COMMAND_ID_HANDLER(IDC_REGEX_QUICK_FULL_HELP, OnFullHelp)
     END_MSG_MAP()
 private:
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL&);
-    LRESULT OnMouseMove(UINT, WPARAM, LPARAM, BOOL&);
-    LRESULT OnMouseLeave(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnToolTipGetDispInfo(int, LPNMHDR, BOOL&);
     LRESULT OnKeyDown(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnKillFocus(UINT, WPARAM, LPARAM, BOOL&);
@@ -53,6 +47,7 @@ private:
     void MoveColumn(bool right);
     bool MoveSelection(HWND listWindow, int direction);
     bool UpdateHoverSelection(HWND listWindow, POINT point);
+    bool ActivateAtPoint(HWND listWindow, POINT point);
     void ClearOtherSelection(HWND listWindow);
     int FirstEntryRow(const std::vector<int>& rows) const;
     CString Caption() const;

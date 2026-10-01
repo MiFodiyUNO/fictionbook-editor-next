@@ -468,55 +468,50 @@ public:
         ::SetFocus(GetDlgItem(IDC_TEXT));
     }
 
-    HICON PresetPinIcon(int size) const
+UINT PresetPinMaskResource(int size) const
     {
-        return reinterpret_cast<HICON>(::LoadImage(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_FIND_PRESETS_PIN), IMAGE_ICON,
-            size, size, LR_DEFAULTCOLOR));
+        if(size <= 16) return IDB_FIND_PRESETS_PIN_16;
+        if(size <= 20) return IDB_FIND_PRESETS_PIN_20;
+        if(size <= 24) return IDB_FIND_PRESETS_PIN_24;
+        return IDB_FIND_PRESETS_PIN_32;
     }
 
-    void DrawPresetPinGlyph(HDC dc, const RECT& target, bool pinned) const
+    void DrawPresetPinGlyph(HDC dc, const RECT& target, bool pinned, COLORREF surface) const
     {
         const UINT dpi = UiMetrics::DpiForWindow(DialogWindow());
         const int size = (std::min)(UiMetrics::ScaleForDpi(16, dpi), (std::min)(static_cast<int>(target.right - target.left - 2), static_cast<int>(target.bottom - target.top - 2)));
         if(size <= 0) return;
-        const HICON icon = PresetPinIcon(size);
-        if (icon == NULL) return;
+        const HBITMAP mask = reinterpret_cast<HBITMAP>(::LoadImage(::GetModuleHandle(NULL), MAKEINTRESOURCE(PresetPinMaskResource(size)), IMAGE_BITMAP, size, size, LR_CREATEDIBSECTION));
+        if(mask == NULL) return;
+        const int maskStride = ((size + 31) / 32) * 4;
+        BITMAPINFO maskInfo = {}; maskInfo.bmiHeader.biSize = sizeof(maskInfo.bmiHeader); maskInfo.bmiHeader.biWidth = size;
+        maskInfo.bmiHeader.biHeight = -size; maskInfo.bmiHeader.biPlanes = 1; maskInfo.bmiHeader.biBitCount = 1; maskInfo.bmiHeader.biCompression = BI_RGB;
+        std::vector<BYTE> maskBits(static_cast<size_t>(maskStride) * size);
+        if(::GetDIBits(dc, mask, 0, size, &maskBits[0], &maskInfo, DIB_RGB_COLORS) == 0) { ::DeleteObject(mask); return; }
         BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = size;
         info.bmiHeader.biHeight = -size; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
         void* bits = NULL; const HBITMAP bitmap = ::CreateDIBSection(dc, &info, DIB_RGB_COLORS, &bits, NULL, 0);
         const HDC memory = bitmap ? ::CreateCompatibleDC(dc) : NULL;
-        if (memory && bits)
+        if(memory && bits)
         {
-            const HGDIOBJ previous = ::SelectObject(memory, bitmap);
-            ::ZeroMemory(bits, static_cast<size_t>(size) * size * sizeof(DWORD));
-            ::DrawIconEx(memory, 0, 0, icon, size, size, 0, NULL, DI_NORMAL);
-            ICONINFO iconInfo = {}; HDC maskDc = NULL; HGDIOBJ previousMask = NULL;
-            if(::GetIconInfo(icon, &iconInfo) && iconInfo.hbmMask != NULL) { maskDc = ::CreateCompatibleDC(dc); if(maskDc) previousMask = ::SelectObject(maskDc, iconInfo.hbmMask); }
-            const COLORREF surface = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_BTNFACE) : ThemeManager::ControlColor();
             const COLORREF tint = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) :
                 (pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor());
             DWORD* pixels = static_cast<DWORD*>(bits);
-            for (int index = 0; index < size * size; ++index)
-            {
-                const int x = index % size, y = index / size;
-                int alpha = static_cast<int>((pixels[index] >> 24) & 0xff);
-                // Legacy ICOs may not expose alpha; use their monochrome AND mask,
-                // never RGB coverage from a white staging bitmap.
-                if(alpha == 0 && maskDc != NULL) alpha = ::GetPixel(maskDc, x, y) == RGB(255, 255, 255) ? 0 : 255;
-                const int red = GetRValue(surface) + (GetRValue(tint) - GetRValue(surface)) * alpha / 255;
-                const int green = GetGValue(surface) + (GetGValue(tint) - GetGValue(surface)) * alpha / 255;
-                const int blue = GetBValue(surface) + (GetBValue(tint) - GetBValue(surface)) * alpha / 255;
-                pixels[index] = RGB(red, green, blue);
-            }
-            if(previousMask) ::SelectObject(maskDc, previousMask); if(maskDc) ::DeleteDC(maskDc);
-            if(iconInfo.hbmColor) ::DeleteObject(iconInfo.hbmColor); if(iconInfo.hbmMask) ::DeleteObject(iconInfo.hbmMask);
+            for(int y = 0; y < size; ++y)
+                for(int x = 0; x < size; ++x)
+                {
+                    const BYTE bit = static_cast<BYTE>(0x80 >> (x & 7));
+                    const bool covered = (maskBits[static_cast<size_t>(y) * maskStride + x / 8] & bit) != 0;
+                    pixels[y * size + x] = 0xff000000 | (covered ? RGB(GetRValue(tint), GetGValue(tint), GetBValue(tint)) : RGB(GetRValue(surface), GetGValue(surface), GetBValue(surface)));
+                }
+            const HGDIOBJ previous = ::SelectObject(memory, bitmap);
             const int x = target.left + ((target.right - target.left) - size) / 2;
             const int y = target.top + ((target.bottom - target.top) - size) / 2;
             ::BitBlt(dc, x, y, size, size, memory, 0, 0, SRCCOPY);
             ::SelectObject(memory, previous); ::DeleteDC(memory);
         }
-        if (bitmap) ::DeleteObject(bitmap);
-        ::DestroyIcon(icon);
+        if(bitmap) ::DeleteObject(bitmap);
+        ::DeleteObject(mask);
     }
     LRESULT OnDrawItem(UINT, WPARAM, LPARAM data, BOOL&)
     {
@@ -525,7 +520,7 @@ public:
         const bool pinned = _Settings.SearchTemplatesPanelPinned();
         const COLORREF surface = pinned && !ThemeManager::IsHighContrast() ? ThemeManager::PressedColor() : ThemeManager::ControlColor();
         const HBRUSH brush = ::CreateSolidBrush(surface); ::FillRect(draw->hDC, &draw->rcItem, brush); ::DeleteObject(brush);
-        DrawPresetPinGlyph(draw->hDC, draw->rcItem, pinned);
+        DrawPresetPinGlyph(draw->hDC, draw->rcItem, pinned, surface);
         if (draw->itemState & ODS_FOCUS) ::DrawFocusRect(draw->hDC, &draw->rcItem);
         return TRUE;
     }

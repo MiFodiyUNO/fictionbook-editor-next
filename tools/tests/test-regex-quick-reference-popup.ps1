@@ -1,4 +1,4 @@
-<# Guards the native quick-reference popup integration and its modal-help escape hatch. #>
+﻿<# Guards the native quick-reference popup integration and its modal-help escape hatch. #>
 [CmdletBinding()]
 param()
 
@@ -14,9 +14,13 @@ foreach($token in @('RegexQuickReferencePopup', 'GetDlgItem(IDC_FIND_REGEX_HELP)
 foreach($token in @('WS_EX_TOOLWINDOW', 'MonitorFromWindow', 'UiMetrics::DpiForWindow', 'UiMetrics::ScaleForDpi', 'VK_ESCAPE', 'VK_RETURN', 'VK_F1', 'VK_LEFT', 'VK_RIGHT', 'm_left', 'm_right', 'AddRows', 'fbe.regex_quick.full_help', 'OnKillFocus', 'AddMessageFilter(this)', 'RemoveMessageFilter(this)', 'WM_LBUTTONDOWN', 'WM_RBUTTONDOWN', 'WM_MBUTTONDOWN', 'WM_NCLBUTTONDOWN', 'UpdateWindow()', 'OnNcDestroy', 'OnThemeChanged', 'LBS_OWNERDRAWFIXED', 'CreateFontW', 'GetTextExtentPoint32', 'm_syntaxColumnWidth', 'description is drawn in its own column')) {
     if($popup -notmatch [regex]::Escape($token)) { throw "Missing quick-reference popup behavior: $token" }
 }
-foreach($token in @('ThemeManager::ApplyToWindow(m_hWnd)', 'ThemeManager.h', 'ThemeManager::BorderColor()', 'CreateSolidBrush', 'FrameRect', 'WM_MOUSEMOVE', 'LB_ITEMFROMPOINT', 'TrackMouseEvent', 'UpdateHoverSelection', 'ClearOtherSelection')) {
+foreach($token in @('ThemeManager::ApplyToWindow(m_hWnd)', 'ThemeManager.h', 'ThemeManager::SeparatorColor()', 'CreateSolidBrush', 'FrameRect', 'WM_MOUSEMOVE', 'LB_ITEMFROMPOINT', 'TrackMouseEvent', 'UpdateHoverSelection', 'ClearOtherSelection')) {
     if($popup -notmatch [regex]::Escape($token)) { throw "Missing quick-reference popup theme integration: $token" }
 }
+foreach($required in @('WM_LBUTTONUP', 'ActivateAtPoint', 'LB_ITEMFROMPOINT', 'ThemeManager::WindowColor()', 'THEME_COLOR_WINDOW')) {
+    if($popup -notlike "*$required*") { throw "Quick-reference single-click/surface contract is missing $required." }
+}
+if($popupHeader -match 'LBN_DBLCLK|OnMouseMove|OnMouseLeave') { throw 'Quick-reference popup retains an obsolete double-click or parent mouse path.' }
 if($popup -match 'HWND hwnd = Create\([\s\S]{0,180}WS_POPUP \| WS_BORDER') { throw 'Quick-reference popup must not use the system WS_BORDER.' }
 if($popup -notmatch 'rows\[row\] < 0') { throw 'Quick-reference hover must skip section headers.' }
 if($popup -notmatch 'ClearOtherSelection\(listWindow\)') { throw 'Quick-reference hover must clear the other column selection.' }

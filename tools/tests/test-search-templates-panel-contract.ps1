@@ -1,10 +1,10 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SearchReplace.h')
 $resources = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBE.rc')
-$catalog = Get-Content -Raw -LiteralPath (Join-Path $root 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
+$catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
 function Require([string]$pattern, [string]$description) { if ($source -notmatch $pattern) { throw "Missing $description." } }
 Require 'OnTogglePresets[\s\S]*?SetPresetPanelVisible\(!collapse\)[\s\S]*?collapse && _Settings\.SearchTemplatesPanelPinned\(\)[\s\S]*?SetSearchTemplatesPanelPinned\(false, true\)' 'manual collapse pin reset'
 $pinStart = $source.IndexOf('LRESULT OnTogglePresetPin')
@@ -30,13 +30,14 @@ Require 'row2Width = \(std::max\)\(0, \(contentWidth - margin \* 2\) / 3\)' 'equ
 Require 'm_presetPanelHeight = GetPresetPanelMetrics\(availablePanelHeight\)\.totalHeight' 'monitor constrained expanded height'
 Require 'UiMetrics::ScaleForDpi\(18, UiMetrics::DpiForWindow\(dialog\)\)' 'DPI-aware compact pin size'
 foreach ($control in @('IDC_FIND_PRESET_APPLY','IDC_FIND_PRESET_SAVE','IDC_FIND_PRESET_UPDATE','IDC_FIND_PRESET_RENAME','IDC_FIND_PRESET_DELETE')) { Require ("SetWindowPos\(GetDlgItem\(" + $control + '\)') "layout for $control" }
-foreach ($asset in @('src\fbe\res\icons\lucide\pin.svg','src\fbe\res\icons\lucide\pin.ico','src\fbe\res\icons\lucide\LICENSE.txt')) { if (-not (Test-Path (Join-Path $root $asset))) { throw "Missing asset $asset" } }
-if ($resources -notmatch 'IDI_FIND_PRESETS_PIN\s+ICON' -or $resources -match 'IDI_FIND_PRESETS_PIN_OFF\s+ICON') { throw 'Pin must have one production icon resource.' }
-if ($source -match '::Ellipse\(draw->hDC|::Rectangle\(draw->hDC|::LineTo\(draw->hDC, center') { throw 'Unexpected manual pin drawing.' }
-Require 'LoadImage\([\s\S]*?IDI_FIND_PRESETS_PIN[\s\S]*?IMAGE_ICON' 'pin HICON loader'
-Require 'DrawIconEx\(' 'pin alpha-mask rendering'
-Require 'pixels\[index\] >> 24' 'pin reads alpha coverage'
-Require 'monochrome AND mask' 'pin has an ICO mask fallback'
+foreach ($asset in @('src\fbe\res\icons\lucide\pin.svg','src\fbe\res\icons\lucide\pin-mask-16.bmp','src\fbe\res\icons\lucide\pin-mask-20.bmp','src\fbe\res\icons\lucide\pin-mask-24.bmp','src\fbe\res\icons\lucide\pin-mask-32.bmp','src\fbe\res\icons\lucide\LICENSE.txt')) { if (-not (Test-Path (Join-Path $root $asset))) { throw "Missing asset $asset" } }
+foreach($resource in @('IDB_FIND_PRESETS_PIN_16 BITMAP','IDB_FIND_PRESETS_PIN_20 BITMAP','IDB_FIND_PRESETS_PIN_24 BITMAP','IDB_FIND_PRESETS_PIN_32 BITMAP')) { if($resources -notlike "*$resource*") { throw "Missing pin mask resource $resource." } }
+if ($source -match 'DrawIconEx\(|GetIconInfo\(|IDI_FIND_PRESETS_PIN|IMAGE_ICON|maskPixels\\[index\\]') { throw 'Pin renderer must not recover alpha from an ICO.' }
+Require 'PresetPinMaskResource' 'pin bitmap-mask resource selection'
+Require 'IMAGE_BITMAP' 'pin bitmap-mask loader'
+Require 'GetDIBits' 'pin reads the authored bitmap mask'
+Require 'maskInfo.bmiHeader.biBitCount = 1' 'pin reads monochrome mask coverage'
+Require 'maskBits\[' 'pin tints authored mask coverage'
 Require 'ThemeManager::AccentColor\(\)' 'pinned accent glyph'
 Require 'ThemeManager::SecondaryTextColor\(\)' 'unpinned secondary glyph'
 if ($source -match 'IDI_FIND_PRESETS_PIN_OFF') { throw 'Pin-off icon remains a production dependency.' }

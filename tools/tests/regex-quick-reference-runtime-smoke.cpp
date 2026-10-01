@@ -14,6 +14,7 @@ namespace ThemeManager
 {
 void ApplyToWindow(HWND) {}
 COLORREF TextColor() { return RGB(0, 0, 0); }
+COLORREF WindowColor() { return RGB(255, 255, 255); }
 COLORREF ControlColor() { return RGB(255, 255, 255); }
 COLORREF BorderColor() { return RGB(96, 96, 96); }
 COLORREF SeparatorColor() { return RGB(192, 192, 192); }
@@ -137,25 +138,31 @@ bool TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(8, 22));
     DispatchMessages(messageLoop);
     if (::SendMessage(left, LB_GETCURSEL, 0, 0) <= 0 || ::SendMessage(right, LB_GETCURSEL, 0, 0) != LB_ERR || inserts != 1) return false;
+    ::PostMessage(left, WM_LBUTTONUP, 0, MAKELPARAM(8, 5));
+    DispatchMessages(messageLoop);
+    if (!::IsWindow(popupWindow) || inserts != 1) return false;
+    ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(8, 22));
+    DispatchMessages(messageLoop);
     ::PostMessage(left, WM_KEYDOWN, VK_RIGHT, 0);
     DispatchMessages(messageLoop);
     if (::GetFocus() != right) return false;
     ::PostMessage(right, WM_KEYDOWN, VK_LEFT, 0);
     DispatchMessages(messageLoop);
     if (::GetFocus() != left) return false;
-    ::DestroyWindow(popupWindow);
+    ::PostMessage(left, WM_LBUTTONUP, 0, MAKELPARAM(8, 22));
     DispatchMessages(messageLoop);
+    if (::IsWindow(popupWindow) || inserts != 2) return false;
 
     if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
     HWND fullHelpButton = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_FULL_HELP);
     ::PostMessage(popupWindow, WM_COMMAND, MAKEWPARAM(IDC_REGEX_QUICK_FULL_HELP, BN_CLICKED), reinterpret_cast<LPARAM>(fullHelpButton));
     DispatchMessages(messageLoop);
-    if (::IsWindow(popupWindow) || inserts != 1 || fullHelp != 1) return false;
+    if (::IsWindow(popupWindow) || inserts != 2 || fullHelp != 1) return false;
 
     if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
     ::PostMessage(::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT), WM_KEYDOWN, VK_F1, 0);
     DispatchMessages(messageLoop);
-    if (::IsWindow(popupWindow) || inserts != 1 || fullHelp != 2) return false;
+    if (::IsWindow(popupWindow) || inserts != 2 || fullHelp != 2) return false;
 
     int outsideClicks = 0;
     WNDCLASS windowClass = {};

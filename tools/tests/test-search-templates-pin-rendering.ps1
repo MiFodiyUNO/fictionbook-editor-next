@@ -1,0 +1,34 @@
+﻿[CmdletBinding()]
+param()
+$ErrorActionPreference = 'Stop'
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$source = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'src\fbe\SearchReplace.h')
+foreach ($token in @('PresetPinMaskResource', 'LoadImage', 'IMAGE_BITMAP', 'GetDIBits', 'maskInfo.bmiHeader.biBitCount = 1', 'maskBits[', 'ThemeManager::AccentColor()', 'ThemeManager::SecondaryTextColor()')) {
+    if ($source.IndexOf($token, [System.StringComparison]::Ordinal) -lt 0) { throw "Pin renderer misses $token." }
+}
+if ($source -match 'DrawIconEx\(|GetIconInfo\(|IMAGE_ICON|maskPixels\[index\]|0x00ffffff') { throw 'The retired ICO/RGB coverage path remains in the pin renderer.' }
+foreach ($size in 16,20,24,32) {
+    $path = Join-Path $root "src\fbe\res\icons\lucide\pin-mask-$size.bmp"
+    $bytes = [IO.File]::ReadAllBytes($path)
+    if ([BitConverter]::ToUInt16($bytes, 0) -ne 0x4d42 -or [BitConverter]::ToInt32($bytes, 18) -ne $size -or [Math]::Abs([BitConverter]::ToInt32($bytes, 22)) -ne $size) { throw "Invalid $size px pin mask." }
+    if ([BitConverter]::ToUInt16($bytes, 28) -ne 1) { throw "Pin mask $size px must be 1-bit, not color-derived." }
+    $offset = [BitConverter]::ToInt32($bytes, 10)
+    $stride = [int](([Math]::Floor(($size + 31) / 32)) * 4)
+    $foregroundCount = 0; $backgroundCount = 0
+    # This is the same off-screen BGRA composition contract as DrawPresetPinGlyph:
+    # bit 1 selects the themed glyph, bit 0 keeps the button surface.
+    $surface = New-Object byte[] ($size * $size * 4)
+    for ($y = 0; $y -lt $size; ++$y) {
+        for ($x = 0; $x -lt $size; ++$x) {
+            $sourceRow = $size - 1 - $y
+            $covered = ($bytes[$offset + $sourceRow * $stride + [int]($x / 8)] -band (0x80 -shr ($x % 8))) -ne 0
+            $pixel = 4 * ($y * $size + $x)
+            if ($covered) { $surface[$pixel] = 215; $surface[$pixel + 1] = 120; $surface[$pixel + 2] = 0; ++$foregroundCount }
+            else { $surface[$pixel] = 245; $surface[$pixel + 1] = 245; $surface[$pixel + 2] = 245; ++$backgroundCount }
+            $surface[$pixel + 3] = 255
+        }
+    }
+    $coverage = $foregroundCount / ($size * $size)
+    if ($foregroundCount -le 0 -or $backgroundCount -le 0 -or $coverage -lt 0.03 -or $coverage -gt 0.55) { throw "Pin coverage for $size px is not a visible glyph: $coverage." }
+}
+Write-Host 'Search templates pin rendering smoke passed.'

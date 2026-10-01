@@ -1,44 +1,38 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
-$dialog = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpDialog.cpp')
-$runtimeLocalization = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\RuntimeLocalization.cpp')
+$dialog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpDialog.cpp')
+$runtimeLocalization = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'src\fbe\RuntimeLocalization.cpp')
 if ($runtimeLocalization -notmatch '\{ IDD_REGEX_HELP, IDC_REGEX_HELP_CLOSE, L"fbe\.dialog\.idd_regex_help\.close" \}') { throw 'Regex Help Close button is not bound to its resource ID.' }
 if ($dialog -notmatch 'FbeApplyRuntimeDialogLocalization\(m_hWnd, IDD_REGEX_HELP\)') { throw 'Regex Help does not apply runtime dialog localization.' }
-$expected = @{ 'en-US' = 'Close'; 'ru-RU' = 'Закрыть' }
-foreach ($key in @('fbe.regex_help.design.advanced', 'fbe.regex_help.source.text.detail')) {
+foreach ($key in @('fbe.regex_help.design.caption', 'fbe.regex_help.source.caption',
+    'fbe.regex_help.heading.engine', 'fbe.regex_help.heading.unicode_ucp', 'fbe.regex_help.heading.characters',
+    'fbe.regex_help.heading.classes', 'fbe.regex_help.heading.anchors', 'fbe.regex_help.heading.quantifiers',
+    'fbe.regex_help.heading.groups', 'fbe.regex_help.heading.lookaround', 'fbe.regex_help.heading.advanced',
+    'fbe.regex_help.heading.syntax', 'fbe.regex_help.heading.replacement', 'fbe.regex_help.heading.examples',
+    'fbe.regex_help.heading.limitations', 'fbe.regex_help.example.source_digits', 'fbe.regex_help.example.source_spaces',
+    'fbe.regex_help.example.source_capture', 'fbe.regex_help.example.design_spaces', 'fbe.regex_help.example.design_punctuation',
+    'fbe.regex_help.example.design_word')) {
     foreach ($language in $catalog.targetLanguages) {
         if ([string]::IsNullOrWhiteSpace([string]$catalog.strings.$key.translations.$language)) { throw "Missing $key translation for $language." }
     }
+    if ($key -like 'fbe.regex_help.heading.*' -and $dialog.IndexOf($key, [System.StringComparison]::Ordinal) -lt 0) { throw "Localized heading $key is not used by Regex Help." }
 }
-foreach ($syntax in @('\K', '\G', '(?<name>...)', '\k<name>', '(?|...)', '(?(1)yes|no)', '(?1)', '(?&name)', '(*SKIP)(*FAIL)')) {
-    if ($catalog.strings.'fbe.regex_help.design.advanced'.translations.'en-US'.IndexOf($syntax, [System.StringComparison]::Ordinal) -lt 0) { throw "Design Help omits compile-tested PCRE2 syntax $syntax." }
+$activeHelpKeys = [System.Collections.Generic.HashSet[string]]::new()
+foreach ($match in [regex]::Matches($dialog, 'L"(fbe\.regex_help\.(?:heading|body|example)\.[^"]*)"')) {
+    [void] $activeHelpKeys.Add($match.Groups[1].Value)
 }
-if ($catalog.strings.'fbe.regex_help.source.text.detail'.translations.'en-US' -notmatch 'SCFIND_REGEXP \| SCFIND_CXX11REGEX') { throw 'Source Help must name its confirmed Scintilla C++11 mode.' }
-foreach ($property in $catalog.strings.psobject.Properties | Where-Object { $_.Name -like 'fbe.regex_help.*' }) {
+foreach ($key in $activeHelpKeys) {
     foreach ($language in $catalog.targetLanguages) {
-        if (([string]$property.Value.translations.$language).Contains('\\r\\n')) { throw "Regex Help $($property.Name)/$language contains literal \\r\\n." }
+        if ([string]::IsNullOrWhiteSpace([string]$catalog.strings.$key.translations.$language)) { throw "Missing active Help translation $key for $language." }
     }
+}foreach ($token in @('struct HelpBlock', 'BuildHelpBlocks', 'AddQuickReferenceSyntax', 'Scintilla regular expressions in its documented C++11 mode. This is not PCRE2.', 'No UCP, Unicode property classes, lookbehind, \\K, \\G, branch reset, PCRE2 verbs', 'Unicode and UCP', 'Lookaround and inline options', 'Advanced PCRE2', 'Replacement in FBE')) {
+    if ($dialog.IndexOf($token, [System.StringComparison]::Ordinal) -lt 0) { throw "Regex Help structure misses $token." }
 }
-foreach ($obsolete in @('fbe.regex_help.design.text.detail', 'fbe.regex_help.source.advanced')) {
-    if ($null -ne $catalog.strings.$obsolete) { throw "Obsolete Regex Help key remains in the catalog: $obsolete." }
-}
-foreach ($language in $catalog.targetLanguages) {
-    $activeDesign = [string]$catalog.strings.'fbe.regex_help.design.advanced'.translations.$language
-    $activeSource = [string]$catalog.strings.'fbe.regex_help.source.text.detail'.translations.$language
-    if ($language -ne 'en-US' -and $activeDesign.Contains('\\')) { throw "Design Help $language still contains doubled regex backslashes." }
-    if ($activeSource.Split("`r`n`r`n").Count -lt 11) { throw "Source Help $language does not retain the complete section structure." }
-}$source = $catalog.strings.'fbe.regex_help.source.text.detail'.translations.'en-US'
-foreach ($section in @('Engine', 'Supported syntax', 'Classes', 'Anchors', 'Quantifiers', 'Groups and alternatives', 'Back-references', 'Replacement', 'Examples', 'Limitations')) {
-    if ($source.IndexOf($section, [System.StringComparison]::Ordinal) -lt 0) { throw "Source Help omits section $section." }
-}
-$design = $catalog.strings.'fbe.regex_help.design.advanced'.translations.'en-US'
-foreach ($section in @('Escaping and classes', 'Unicode and UCP', 'Anchors', 'Quantifiers', 'Groups, named groups and alternatives', 'Lookaround', 'Inline options', 'Advanced PCRE2', 'Replacement in FBE', 'Examples', 'Limitations')) {
-    if ($design.IndexOf($section, [System.StringComparison]::Ordinal) -lt 0) { throw "Design Help omits section $section." }
-}
-if ($dialog -match 'detail \+= L"\\r\\n\\r\\n" \+ advanced') { throw 'Design Help still concatenates the duplicate advanced mini-manual.' }
+if ($dialog -match 'ClassifyHelpLine|section ==') { throw 'Regex Help still derives formatting from paragraph position.' }
+$expected = @{ 'en-US' = 'Close'; 'ru-RU' = 'Закрыть' }
 foreach ($language in $expected.Keys) {
     if ($catalog.strings.'fbe.dialog.idd_regex_help.close'.translations.$language -ne $expected[$language]) { throw "Incorrect catalog close caption for $language." }
 }
