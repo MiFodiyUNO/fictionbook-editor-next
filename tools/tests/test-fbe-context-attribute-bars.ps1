@@ -1,4 +1,4 @@
-﻿<# Guards the UI-only boundary of contextual attribute bars. #>
+<# Guards the UI-only boundary of contextual attribute bars. #>
 [CmdletBinding()]
 param()
 
@@ -9,6 +9,7 @@ $barsSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\ui\Context
 $controlsHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\ui\ContextAttributeControls.h')
 $mainHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.h')
 $mainSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
+$mainRuntimeUi = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\ui\MainFrameRuntimeUi.inl')
 $project = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBE.vcxproj')
 
 function Require([string]$text, [string]$pattern, [string]$description) {
@@ -74,5 +75,35 @@ foreach($accessor in @('IdBox', 'IdEdit', 'IdCaption', 'HrefEdit', 'HrefCaption'
 foreach($item in @('ui\ContextAttributeBars.cpp', 'ui\ContextAttributeControls.cpp', 'ui\ContextAttributeBars.h', 'ui\ContextAttributeControls.h')) {
     if(-not $project.Contains($item)) { throw "FBE project must include $item." }
 }
+
+$catalog = Get-Content -Raw -LiteralPath (Join-Path $root 'localization\app-ui\catalog.json') -Encoding UTF8 | ConvertFrom-Json
+$contextKeys = @(
+    'fbe.context_attribute.tooltip.id', 'fbe.context_attribute.tooltip.href', 'fbe.context_attribute.tooltip.section_id', 'fbe.context_attribute.tooltip.image_title',
+    'fbe.context_attribute.tooltip.table_id', 'fbe.context_attribute.tooltip.table_style', 'fbe.context_attribute.tooltip.cell_id', 'fbe.context_attribute.tooltip.cell_style',
+    'fbe.context_attribute.tooltip.colspan', 'fbe.context_attribute.tooltip.rowspan', 'fbe.context_attribute.tooltip.row_align', 'fbe.context_attribute.tooltip.cell_align', 'fbe.context_attribute.tooltip.cell_valign',
+    'fbe.context_attribute.align.left', 'fbe.context_attribute.align.right', 'fbe.context_attribute.align.center',
+    'fbe.context_attribute.valign.top', 'fbe.context_attribute.valign.middle', 'fbe.context_attribute.valign.bottom'
+)
+foreach($key in $contextKeys) {
+    $entry = $catalog.seedStrings.PSObject.Properties[$key].Value
+    if($null -eq $entry) { throw "Context attribute localization key is missing: $key" }
+    foreach($language in @($catalog.targetLanguages)) {
+        if([string]::IsNullOrWhiteSpace([string]$entry.translations.PSObject.Properties[$language].Value)) { throw "Context attribute localization is missing $language translation for $key" }
+    }
+}
+Require $barsHeader 'class\s+ContextAttributeTooltips' 'context-owned tooltip manager'
+Require $barsSource 'TTS_ALWAYSTIP' 'always-on context tooltip control'
+Require $barsSource 'TTM_DELTOOLW' 'tooltip rectangles are replaced after layout'
+Require $barsSource 'RECT tooltipRect = \{ left, 0, left \+ captionWidth \+ fieldWidth, rowHeight \}' 'tooltip covers the complete caption/control pair'
+Require $barsSource 'tooltips\.UpdateArea\(' 'tooltip area is updated during localization/layout'
+Require $barsSource 'RebuildTableTokenCatalog\(m_rowAlignBox, kAlignTokens\)' 'row alignment display values are localized'
+Require $barsSource 'RebuildTableTokenCatalog\(m_alignBox, kAlignTokens\)' 'cell alignment display values are localized'
+Require $barsSource 'RebuildTableTokenCatalog\(m_valignBox, kVAlignTokens\)' 'vertical alignment display values are localized'
+Require $barsSource 'SelectedTableToken\(m_rowAlignBox, kAlignTokens\)' 'row alignment returns canonical token'
+Require $barsSource 'SelectedTableToken\(m_alignBox, kAlignTokens\)' 'cell alignment returns canonical token'
+Require $barsSource 'SelectedTableToken\(m_valignBox, kVAlignTokens\)' 'vertical alignment returns canonical token'
+Require $barsSource 'const CString selected = SelectedTableToken\(box, tokens\)' 'language rebuild retains the selected canonical token'
+if($barsSource -match 'SelectString\(-1, s\.(rowAlign|align|valign)\)' -or $barsSource -match 'TextOf\(m_(rowAlignBox|alignBox|valignBox)\)') { throw 'Localized ComboBox display text must not be written into FB2 attributes.' }
+Require $mainRuntimeUi 'm_contextAttributeBars\.UpdateLocalization\(\)' 'runtime language refresh rebuilds context tooltips and ComboBox display text'
 
 Write-Host 'Context attribute bars boundary contract passed.'

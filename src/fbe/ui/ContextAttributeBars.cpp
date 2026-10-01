@@ -4,7 +4,33 @@
 #include "../ThemeManager.h"
 #include "../toolbars/ToolbarFactory.h"
 #include "../resource.h"
+#include "../RuntimeLocalization.h"
 #include <map>
+
+void ContextAttributeTooltips::Initialize(HWND owner)
+{
+	m_owner = owner;
+	m_control.Create(owner, NULL, NULL, WS_POPUP | TTS_ALWAYSTIP);
+	m_control.Activate(TRUE);
+	m_control.SetDelayTime(TTDT_INITIAL, 500);
+	m_control.SetMaxTipWidth(400);
+}
+
+void ContextAttributeTooltips::UpdateArea(UINT_PTR id, const RECT& rect, LPCWSTR key, LPCWSTR fallback)
+{
+	if(m_owner == NULL || !::IsWindow(m_owner) || !m_control.IsWindow()) return;
+	TTTOOLINFOW tool = {}; tool.cbSize = sizeof(tool); tool.uFlags = TTF_SUBCLASS; tool.hwnd = m_owner; tool.uId = id; tool.rect = rect;
+	if(m_texts.find(id) != m_texts.end()) ::SendMessage(m_control, TTM_DELTOOLW, 0, reinterpret_cast<LPARAM>(&tool));
+	CString& text = m_texts[id]; text = FbeLoadRuntimeStringByKey(key, fallback);
+	tool.lpszText = const_cast<LPWSTR>(text.GetString());
+	::SendMessage(m_control, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&tool));
+}
+
+void ContextAttributeTooltips::Destroy()
+{
+	if(m_control.IsWindow()) m_control.DestroyWindow();
+	m_texts.clear(); m_owner = NULL;
+}
 
 namespace
 {
@@ -40,6 +66,45 @@ void AddAttributePairSlots(HWND, LPCWSTR, ContextAttributeFieldWidth, HFONT)
 }
 
 CString TextOf(const CWindow& window) { CString text; window.GetWindowText(text); return text; }
+
+struct LocalizedTableToken { LPCWSTR token; LPCWSTR key; LPCWSTR fallback; };
+const LocalizedTableToken kAlignTokens[] = {
+	{ L"", NULL, L"" },
+	{ L"left", L"fbe.context_attribute.align.left", L"left" },
+	{ L"right", L"fbe.context_attribute.align.right", L"right" },
+	{ L"center", L"fbe.context_attribute.align.center", L"center" }
+};
+const LocalizedTableToken kVAlignTokens[] = {
+	{ L"", NULL, L"" },
+	{ L"top", L"fbe.context_attribute.valign.top", L"top" },
+	{ L"middle", L"fbe.context_attribute.valign.middle", L"middle" },
+	{ L"bottom", L"fbe.context_attribute.valign.bottom", L"bottom" }
+};
+
+template <size_t Count>
+CString SelectedTableToken(const CComboBox& box, const LocalizedTableToken (&tokens)[Count])
+{
+	const int selected = box.GetCurSel();
+	return selected >= 0 && selected < static_cast<int>(Count) ? CString(tokens[selected].token) : CString();
+}
+
+template <size_t Count>
+void SelectTableToken(CComboBox& box, const LocalizedTableToken (&tokens)[Count], const CString& token)
+{
+	for(int index = 0; index < static_cast<int>(Count); ++index)
+		if(token == tokens[index].token) { box.SetCurSel(index); return; }
+	box.SetCurSel(0);
+}
+
+template <size_t Count>
+void RebuildTableTokenCatalog(CComboBox& box, const LocalizedTableToken (&tokens)[Count])
+{
+	const CString selected = SelectedTableToken(box, tokens);
+	box.ResetContent();
+	for(size_t index = 0; index < Count; ++index)
+		box.AddString(tokens[index].key != NULL ? FbeLoadRuntimeStringByKey(tokens[index].key, tokens[index].fallback) : CString());
+	SelectTableToken(box, tokens, selected);
+}
 
 const UINT_PTR kContextAttributeThemeSubclassId = 0x46424152; // "FBAR"
 const UINT_PTR kContextAttributeBoxThemeSubclassId = 0x46424258; // "FBBX"
@@ -245,6 +310,7 @@ bool ContextAttributeBars::Create(HWND parent)
 	m_tableBar = ::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, barStyle, 0, 0, 100, 100, parent, NULL, _Module.GetModuleInstance(), NULL);
 	m_tableBar2 = ::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, barStyle, 0, 0, 100, 100, parent, NULL, _Module.GetModuleInstance(), NULL);
 	if(!m_linksBar || !m_tableBar || !m_tableBar2) { Destroy(); return false; }
+	m_linksTooltips.Initialize(m_linksBar); m_tableTooltips.Initialize(m_tableBar); m_table2Tooltips.Initialize(m_tableBar2);
 	ToolbarFactory::SetDialogFontForToolbarRow(m_linksBar); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar2);
 	::SendMessage(m_linksBar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0); ::SendMessage(m_tableBar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0); ::SendMessage(m_tableBar2, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
 	::SendMessage(m_linksBar, TB_SETDRAWTEXTFLAGS, DT_CALCRECT, DT_CALCRECT); ::SendMessage(m_tableBar, TB_SETDRAWTEXTFLAGS, DT_CALCRECT, DT_CALCRECT); ::SendMessage(m_tableBar2, TB_SETDRAWTEXTFLAGS, DT_CALCRECT, DT_CALCRECT);
@@ -252,12 +318,10 @@ bool ContextAttributeBars::Create(HWND parent)
 	if(!AddCaption(m_idCaption, m_linksBar, 0, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_hrefCaption, m_linksBar, 2, IDS_TB_CAPT_HREF, ContextAttributeFieldWidth::Long, font) || !AddCaption(m_sectionCaption, m_linksBar, 4, IDS_TB_CAPT_SECTION_ID, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_imageTitleCaption, m_linksBar, 6, IDS_TB_CAPT_IMAGE_TITLE, ContextAttributeFieldWidth::Long, font) || !AddCaption(m_tableIdCaption, m_tableBar, 0, IDS_TB_CAPT_TABLE_ID, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_tableStyleCaption, m_tableBar, 2, IDS_TB_CAPT_TABLE_STYLE, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_cellIdCaption, m_tableBar, 4, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_cellStyleCaption, m_tableBar, 6, IDS_TB_CAPT_STYLE, ContextAttributeFieldWidth::Medium, font) || !AddCaption(m_colspanCaption, m_tableBar2, 0, IDS_TB_CAPT_COLSPAN, ContextAttributeFieldWidth::Short, font) || !AddCaption(m_rowspanCaption, m_tableBar2, 2, IDS_TB_CAPT_ROWSPAN, ContextAttributeFieldWidth::Short, font) || !AddCaption(m_rowAlignCaption, m_tableBar2, 4, IDS_TB_CAPT_TR_ALIGN, ContextAttributeFieldWidth::Dropdown, font) || !AddCaption(m_alignCaption, m_tableBar2, 6, IDS_TB_CAPT_TD_ALIGN, ContextAttributeFieldWidth::Dropdown, font) || !AddCaption(m_valignCaption, m_tableBar2, 8, IDS_TB_CAPT_TD_VALIGN, ContextAttributeFieldWidth::Dropdown, font)) { Destroy(); return false; }
 	const DWORD common = WS_CHILD | WS_VISIBLE | CBS_AUTOHSCROLL;
 	if(!AddBox(m_linksBar, 1, m_idBox, m_id, common, IDC_ID, font) || !AddBox(m_linksBar, 3, m_hrefBox, m_href, common | WS_VSCROLL | CBS_DROPDOWN | CBS_SORT, IDC_HREF, font) || !AddBox(m_linksBar, 5, m_sectionBox, m_section, common, IDC_SECTION, font) || !AddBox(m_linksBar, 7, m_imageTitleBox, m_imageTitle, common, IDC_IMAGE_TITLE, font) || !AddBox(m_tableBar, 1, m_tableIdBox, m_tableId, common, IDC_IDT, font) || !AddBox(m_tableBar, 3, m_tableStyleBox, m_tableStyle, common, IDC_STYLET, font) || !AddBox(m_tableBar, 5, m_cellIdBox, m_cellId, common, IDC_ID, font) || !AddBox(m_tableBar, 7, m_cellStyleBox, m_cellStyle, common, IDC_STYLE, font) || !AddBox(m_tableBar2, 1, m_colspanBox, m_colspan, common, IDC_COLSPAN, font) || !AddBox(m_tableBar2, 3, m_rowspanBox, m_rowspan, common, IDC_ROWSPAN, font) || !AddBox(m_tableBar2, 5, m_rowAlignBox, m_rowAlign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGNTR, font) || !AddBox(m_tableBar2, 7, m_alignBox, m_align, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGN, font) || !AddBox(m_tableBar2, 9, m_valignBox, m_valign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_VALIGN, font)) { Destroy(); return false; }
-	for(int i = 0; i != 4; ++i) { static const wchar_t* align[] = { L"", L"left", L"right", L"center" }; m_rowAlignBox.InsertString(i, align[i]); m_alignBox.InsertString(i, align[i]); }
-	static const wchar_t* valign[] = { L"", L"top", L"middle", L"bottom" }; for(int i = 0; i != 4; ++i) m_valignBox.InsertString(i, valign[i]);
 	UpdateMetrics(); ApplyTheme(); return true;
 }
 
-void ContextAttributeBars::Destroy() { if(m_linksBar) ::DestroyWindow(m_linksBar); if(m_tableBar) ::DestroyWindow(m_tableBar); if(m_tableBar2) ::DestroyWindow(m_tableBar2); g_contextAttributeBoxNativeHeights.clear(); m_linksBar = m_tableBar = m_tableBar2 = NULL; }
+void ContextAttributeBars::Destroy() { m_linksTooltips.Destroy(); m_tableTooltips.Destroy(); m_table2Tooltips.Destroy(); if(m_linksBar) ::DestroyWindow(m_linksBar); if(m_tableBar) ::DestroyWindow(m_tableBar); if(m_tableBar2) ::DestroyWindow(m_tableBar2); g_contextAttributeBoxNativeHeights.clear(); m_linksBar = m_tableBar = m_tableBar2 = NULL; }
 void ContextAttributeBars::ApplyBoxTheme(CComboBox& box) { ApplyContextAttributeBoxTheme(box); }
 void ContextAttributeBars::ApplyTheme()
 {
@@ -301,11 +365,31 @@ void ContextAttributeBars::NormalizeRebarBands(CReBarCtrl& rebar)
 }
 void ContextAttributeBars::UpdateLocalization()
 {
-	struct Binding { CCustomStatic* caption; CWindow* editor; UINT textId; ContextAttributeFieldWidth width; };
-	const Binding links[] = { { &m_idCaption, &m_idBox, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium }, { &m_hrefCaption, &m_hrefBox, IDS_TB_CAPT_HREF, ContextAttributeFieldWidth::Long }, { &m_sectionCaption, &m_sectionBox, IDS_TB_CAPT_SECTION_ID, ContextAttributeFieldWidth::Medium }, { &m_imageTitleCaption, &m_imageTitleBox, IDS_TB_CAPT_IMAGE_TITLE, ContextAttributeFieldWidth::Long } };
-	const Binding table[] = { { &m_tableIdCaption, &m_tableIdBox, IDS_TB_CAPT_TABLE_ID, ContextAttributeFieldWidth::Medium }, { &m_tableStyleCaption, &m_tableStyleBox, IDS_TB_CAPT_TABLE_STYLE, ContextAttributeFieldWidth::Medium }, { &m_cellIdCaption, &m_cellIdBox, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium }, { &m_cellStyleCaption, &m_cellStyleBox, IDS_TB_CAPT_STYLE, ContextAttributeFieldWidth::Medium } };
-	const Binding table2[] = { { &m_colspanCaption, &m_colspanBox, IDS_TB_CAPT_COLSPAN, ContextAttributeFieldWidth::Short }, { &m_rowspanCaption, &m_rowspanBox, IDS_TB_CAPT_ROWSPAN, ContextAttributeFieldWidth::Short }, { &m_rowAlignCaption, &m_rowAlignBox, IDS_TB_CAPT_TR_ALIGN, ContextAttributeFieldWidth::Dropdown }, { &m_alignCaption, &m_alignBox, IDS_TB_CAPT_TD_ALIGN, ContextAttributeFieldWidth::Dropdown }, { &m_valignCaption, &m_valignBox, IDS_TB_CAPT_TD_VALIGN, ContextAttributeFieldWidth::Dropdown } };
-	const auto rebuild = [](HWND toolbar, const Binding* bindings, size_t count)
+	RebuildTableTokenCatalog(m_rowAlignBox, kAlignTokens);
+	RebuildTableTokenCatalog(m_alignBox, kAlignTokens);
+	RebuildTableTokenCatalog(m_valignBox, kVAlignTokens);
+
+	struct Binding { CCustomStatic* caption; CWindow* editor; UINT textId; ContextAttributeFieldWidth width; UINT_PTR tooltipId; LPCWSTR tooltipKey; LPCWSTR tooltipFallback; };
+	const Binding links[] = {
+		{ &m_idCaption, &m_idBox, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium, 1, L"fbe.context_attribute.tooltip.id", L"Identifier of the current structural element (id attribute)." },
+		{ &m_hrefCaption, &m_hrefBox, IDS_TB_CAPT_HREF, ContextAttributeFieldWidth::Long, 2, L"fbe.context_attribute.tooltip.href", L"Address or internal link of the current element (href)." },
+		{ &m_sectionCaption, &m_sectionBox, IDS_TB_CAPT_SECTION_ID, ContextAttributeFieldWidth::Medium, 3, L"fbe.context_attribute.tooltip.section_id", L"Identifier of the current section (<section>)." },
+		{ &m_imageTitleCaption, &m_imageTitleBox, IDS_TB_CAPT_IMAGE_TITLE, ContextAttributeFieldWidth::Long, 4, L"fbe.context_attribute.tooltip.image_title", L"Caption or title text of the current image." }
+	};
+	const Binding table[] = {
+		{ &m_tableIdCaption, &m_tableIdBox, IDS_TB_CAPT_TABLE_ID, ContextAttributeFieldWidth::Medium, 1, L"fbe.context_attribute.tooltip.table_id", L"Identifier of the current table." },
+		{ &m_tableStyleCaption, &m_tableStyleBox, IDS_TB_CAPT_TABLE_STYLE, ContextAttributeFieldWidth::Medium, 2, L"fbe.context_attribute.tooltip.table_style", L"Value of the style attribute of the current table." },
+		{ &m_cellIdCaption, &m_cellIdBox, IDS_TB_CAPT_ID, ContextAttributeFieldWidth::Medium, 3, L"fbe.context_attribute.tooltip.cell_id", L"Identifier of the current table cell." },
+		{ &m_cellStyleCaption, &m_cellStyleBox, IDS_TB_CAPT_STYLE, ContextAttributeFieldWidth::Medium, 4, L"fbe.context_attribute.tooltip.cell_style", L"Value of the style attribute of the current table cell." }
+	};
+	const Binding table2[] = {
+		{ &m_colspanCaption, &m_colspanBox, IDS_TB_CAPT_COLSPAN, ContextAttributeFieldWidth::Short, 1, L"fbe.context_attribute.tooltip.colspan", L"Number of columns occupied by the current cell." },
+		{ &m_rowspanCaption, &m_rowspanBox, IDS_TB_CAPT_ROWSPAN, ContextAttributeFieldWidth::Short, 2, L"fbe.context_attribute.tooltip.rowspan", L"Number of rows occupied by the current cell." },
+		{ &m_rowAlignCaption, &m_rowAlignBox, IDS_TB_CAPT_TR_ALIGN, ContextAttributeFieldWidth::Dropdown, 3, L"fbe.context_attribute.tooltip.row_align", L"Horizontal alignment of the current table row." },
+		{ &m_alignCaption, &m_alignBox, IDS_TB_CAPT_TD_ALIGN, ContextAttributeFieldWidth::Dropdown, 4, L"fbe.context_attribute.tooltip.cell_align", L"Horizontal alignment of the current table cell." },
+		{ &m_valignCaption, &m_valignBox, IDS_TB_CAPT_TD_VALIGN, ContextAttributeFieldWidth::Dropdown, 5, L"fbe.context_attribute.tooltip.cell_valign", L"Vertical alignment of the current table cell." }
+	};
+	const auto rebuild = [](HWND toolbar, ContextAttributeTooltips& tooltips, const Binding* bindings, size_t count)
 	{
 		if(!::IsWindow(toolbar)) return;
 		::SendMessage(toolbar, WM_SETREDRAW, FALSE, 0);
@@ -327,6 +411,8 @@ void ContextAttributeBars::UpdateLocalization()
 			const int controlTop = (rowHeight - controlHeight) / 2;
 			::SetWindowPos(bindings[index].caption->m_hWnd, NULL, left, captionTop, captionWidth, captionHeight, SWP_NOACTIVATE | SWP_NOZORDER);
 			::SetWindowPos(bindings[index].editor->m_hWnd, NULL, left + captionWidth, controlTop, fieldWidth, controlHeight, SWP_NOACTIVATE | SWP_NOZORDER);
+			RECT tooltipRect = { left, 0, left + captionWidth + fieldWidth, rowHeight };
+			tooltips.UpdateArea(bindings[index].tooltipId, tooltipRect, bindings[index].tooltipKey, bindings[index].tooltipFallback);
 			left += captionWidth + fieldWidth;
 			if(index + 1 < count) left += AttributePairGap(toolbar);
 		}
@@ -334,12 +420,29 @@ void ContextAttributeBars::UpdateLocalization()
 		::SendMessage(toolbar, WM_SETREDRAW, TRUE, 0);
 		::RedrawWindow(toolbar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 	};
-	rebuild(m_linksBar, links, _countof(links)); rebuild(m_tableBar, table, _countof(table)); rebuild(m_tableBar2, table2, _countof(table2));
+	rebuild(m_linksBar, m_linksTooltips, links, _countof(links));
+	rebuild(m_tableBar, m_tableTooltips, table, _countof(table));
+	rebuild(m_tableBar2, m_table2Tooltips, table2, _countof(table2));
 }
+
 void ContextAttributeBars::SetLinkState(const LinkAttributeState& s) { m_id.SetWindowText(s.id); m_href.SetWindowText(s.href); m_section.SetWindowText(s.section); m_imageTitle.SetWindowText(s.imageTitle); }
 LinkAttributeState ContextAttributeBars::GetLinkState() const { LinkAttributeState s; s.id = TextOf(m_id); s.href = TextOf(m_href); s.section = TextOf(m_section); s.imageTitle = TextOf(m_imageTitle); return s; }
-void ContextAttributeBars::SetTableState(const TableAttributeState& s) { m_tableId.SetWindowText(s.tableId); m_tableStyle.SetWindowText(s.tableStyle); m_cellId.SetWindowText(s.id); m_cellStyle.SetWindowText(s.style); m_colspan.SetWindowText(s.colspan); m_rowspan.SetWindowText(s.rowspan); m_rowAlignBox.SelectString(-1, s.rowAlign); m_alignBox.SelectString(-1, s.align); m_valignBox.SelectString(-1, s.valign); }
-TableAttributeState ContextAttributeBars::GetTableState() const { TableAttributeState s; s.tableId=TextOf(m_tableId); s.tableStyle=TextOf(m_tableStyle); s.id=TextOf(m_cellId); s.style=TextOf(m_cellStyle); s.colspan=TextOf(m_colspan); s.rowspan=TextOf(m_rowspan); s.rowAlign=TextOf(m_rowAlignBox); s.align=TextOf(m_alignBox); s.valign=TextOf(m_valignBox); return s; }
+void ContextAttributeBars::SetTableState(const TableAttributeState& s)
+{
+	m_tableId.SetWindowText(s.tableId); m_tableStyle.SetWindowText(s.tableStyle); m_cellId.SetWindowText(s.id); m_cellStyle.SetWindowText(s.style); m_colspan.SetWindowText(s.colspan); m_rowspan.SetWindowText(s.rowspan);
+	SelectTableToken(m_rowAlignBox, kAlignTokens, s.rowAlign);
+	SelectTableToken(m_alignBox, kAlignTokens, s.align);
+	SelectTableToken(m_valignBox, kVAlignTokens, s.valign);
+}
+
+TableAttributeState ContextAttributeBars::GetTableState() const
+{
+	TableAttributeState s; s.tableId=TextOf(m_tableId); s.tableStyle=TextOf(m_tableStyle); s.id=TextOf(m_cellId); s.style=TextOf(m_cellStyle); s.colspan=TextOf(m_colspan); s.rowspan=TextOf(m_rowspan);
+	s.rowAlign=SelectedTableToken(m_rowAlignBox, kAlignTokens);
+	s.align=SelectedTableToken(m_alignBox, kAlignTokens);
+	s.valign=SelectedTableToken(m_valignBox, kVAlignTokens);
+	return s;
+}
 
 namespace
 {
