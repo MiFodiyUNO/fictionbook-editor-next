@@ -53,12 +53,14 @@ assert(ImagesInfo.length==2 && ImagesInfo[0].id=='renamed.jpg', 'rename must reb
 SaveBinary(first); assert(saved=='fbw-internal:#renamed.jpg', 'Save must use the renamed binary ID');
 first.all.id.value='other.jpg'; window.event={srcElement:first.all.id}; OnBinaryChange();
 assert(first.all.id.value=='renamed.jpg' && messages.length==1, 'duplicate ID must be rejected and restored');
-var rejectedIds=['','1starts-digit','contains space','bad!symbol'];
-for(var rejected=0; rejected<rejectedIds.length;rejected++){first.all.id.value=rejectedIds[rejected]; window.event={srcElement:first.all.id}; OnBinaryChange(); assert(first.all.id.value=='renamed.jpg', 'invalid ID must be rejected and restored: '+rejectedIds[rejected]);}
+var rejectedIds=['','1starts-digit','contains space','bad!symbol','-starts-dash','.starts-dot'];
+for(var rejected=0;rejected<rejectedIds.length;rejected++){var previousCover=covers[0].value;var previousHref=references[0].href;first.all.id.value=rejectedIds[rejected]; window.event={srcElement:first.all.id}; OnBinaryChange(); assert(first.all.id.value=='renamed.jpg' && covers[0].value==previousCover && references[0].href==previousHref, 'invalid ID must restore ID, references and cover: '+rejectedIds[rejected]);}
+first.all.id.value='_cover-1.2'; window.event={srcElement:first.all.id}; OnBinaryChange();
+assert(first.all.id.value=='_cover-1.2' && covers[0].value=='#_cover-1.2', 'underscore-start XML ID with dash and dot must be accepted');
 first.all.id.value='\u041e\u0431\u043b\u043e\u0436\u043a\u0430_1-2.jpg'; window.event={srcElement:first.all.id}; OnBinaryChange();
 assert(first.all.id.value=='\u041e\u0431\u043b\u043e\u0436\u043a\u0430_1-2.jpg' && covers[0].value=='#\u041e\u0431\u043b\u043e\u0436\u043a\u0430_1-2.jpg', 'Unicode XML ID must be accepted and cover selection restored after list rebuild');
 first.all.id.value='renamed.jpg'; window.event={srcElement:first.all.id}; OnBinaryChange();
-Remove(first); assert(binaries.length==2 && messages.length==6, 'used binary must not be deleted');
+Remove(first); assert(binaries.length==2 && messages.length==8, 'used binary must not be deleted');
 first.all.type.value='application/octet-stream'; window.event={srcElement:first.all.type}; OnBinaryChange();
 assert(first.innerHTML.indexOf('id="show"')==-1 && first.innerHTML.indexOf('id="save"')==-1 && first.innerHTML.indexOf('id="dims"')==-1 && first.all.id.onchange==OnBinaryChange && first.all.type.onchange==OnBinaryChange && ImagesInfo.length==1 && ImagesInfo[0].id=='other.jpg', 'image to non-image must remove image controls and retain handlers');
 first.all.type.value='image/png'; window.event={srcElement:first.all.type}; OnBinaryChange();

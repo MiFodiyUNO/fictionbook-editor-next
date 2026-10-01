@@ -199,6 +199,19 @@ function IsBinaryReferenceValue(value, id)
  return value == "#"+id || value == "fbw-internal:#"+id;
 }
 
+function SetBinaryReference(element, name, value)
+{
+ try
+ {
+  if(typeof(element.setAttribute)=="function" || typeof(element.setAttribute)=="unknown")
+  {
+   element.setAttribute(name, value);
+   return;
+  }
+ }
+ catch(e) {}
+ try { element[name]=value; } catch(e) {}
+}
 function UpdateBinaryReferences(oldId, newId)
 {
  var elements=document.getElementsByTagName("*");
@@ -209,16 +222,14 @@ function UpdateBinaryReferences(oldId, newId)
   if(href == null && element.href) href=element.href;
   if(IsBinaryReferenceValue(href, oldId))
   {
-   if(element.setAttribute) element.setAttribute("href", "#"+newId);
-   else element.href="#"+newId;
+   SetBinaryReference(element, "href", "#"+newId);
   }
 
   var src=element.getAttribute ? element.getAttribute("src") : null;
   if(src == null && element.src) src=element.src;
   if(IsBinaryReferenceValue(src, oldId))
   {
-   if(element.setAttribute) element.setAttribute("src", "fbw-internal:#"+newId);
-   element.src="fbw-internal:#"+newId;
+   SetBinaryReference(element, "src", "fbw-internal:#"+newId);
   }
  }
 
@@ -260,9 +271,9 @@ function BinaryIsReferenced(id)
  return false;
 }
 
-function OnBinaryChange()
+function OnBinaryChange(inputOverride)
 {
- var input=window.event ? window.event.srcElement : null;
+ var input=inputOverride || (window.event ? window.event.srcElement : null);
  var binary=input ? input.parentNode : null;
  if(!input || !binary) { RebuildImagesInfo(); FillLists(); return; }
 

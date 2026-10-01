@@ -679,6 +679,38 @@
 		}
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"binary-rename-runtime"))
+	{
+		MSHTML::IHTMLDocument2Ptr document(m_doc ? m_doc->m_body.Document() : NULL);
+		MSHTML::IHTMLWindow2Ptr window(document ? document->parentWindow : NULL);
+		const wchar_t* const renameScript =
+			L"(function(){var bins=document.all.binobj.getElementsByTagName('DIV');if(!bins||bins.length<2)throw new Error('binaries');"
+			L"var id=null,other=null;for(var b=0;b<bins.length;b++){if(bins[b].all.id.value=='cover-old.png')id=bins[b].all.id;else other=bins[b].all.id;}if(!id||!other)throw new Error('cover binary');"
+			L"id.value='cover-renamed.png';OnBinaryChange(id);var ok=id.value=='cover-renamed.png';var elements=document.getElementsByTagName('*');for(var i=0;i<elements.length;i++){"
+			L"var h=elements[i].getAttribute?elements[i].getAttribute('href'):null;var s=elements[i].getAttribute?elements[i].getAttribute('src'):null;if(h=='#cover-old.png'||s=='fbw-internal:#cover-old.png')ok=false;}"
+			L"var lists=document.getElementsByTagName('SELECT');var selected=0;for(var j=0;j<lists.length;j++)if(lists[j].value=='#cover-renamed.png')selected++;"
+			L"var originalMsgBox=MsgBox,blocked=0;MsgBox=function(){blocked++;};other.value='cover-renamed.png';OnBinaryChange(other);var duplicate=(other.value!='cover-renamed.png');Remove(id.parentNode);var deletion=false;for(var d=0;d<bins.length;d++)if(bins[d].all.id==id)deletion=true;MsgBox=originalMsgBox;"
+			L"document.title=(ok&&selected>=2&&duplicate&&deletion&&blocked>=2)?'binary-rename-pass':('binary-rename-fail-'+(ok?1:0)+'-'+selected+'-'+duplicate+'-'+deletion+'-'+blocked);})();";
+		const HRESULT scriptResult = window ? window->execScript(_bstr_t(renameScript), _bstr_t(L"JScript")) : E_NOINTERFACE;
+		const bool domRenamed = SUCCEEDED(scriptResult) && document && CString(static_cast<LPCWSTR>(document->title)) == L"binary-rename-pass";
+		bool sourceRoundTrip = false;
+		if (domRenamed)
+		{
+			ShowView(SOURCE);
+			const sptr_t sourceLength = m_source.SendMessage(SCI_GETLENGTH);
+			std::vector<char> source(static_cast<size_t>(sourceLength) + 1);
+			m_source.SendMessage(SCI_GETTEXT, sourceLength + 1, reinterpret_cast<LPARAM>(source.data()));
+			sourceRoundTrip = IsSourceActive() && strstr(source.data(), "cover-renamed.png") != NULL;
+			ShowView(BODY);
+			sourceRoundTrip = sourceRoundTrip && !IsSourceActive();
+		}
+		const bool saved = domRenamed && sourceRoundTrip && m_doc->Save();
+		CStringA report;
+		report.Format("dom_rename=%d\r\nbody_source_roundtrip=%d\r\nsaved=%d\r\nscript_hr=0x%08lX\r\ntitle=%S\r\n", domRenamed ? 1 : 0, sourceRoundTrip ? 1 : 0, saved ? 1 : 0, static_cast<unsigned long>(scriptResult), document ? static_cast<LPCWSTR>(document->title) : L"");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		if (domRenamed && sourceRoundTrip && saved && written == static_cast<DWORD>(report.GetLength())) PostMessage(WM_CLOSE); else ::PostQuitMessage(1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"binary-roundtrip"))
 	{
 		const ULONGLONG start = ::GetTickCount64();

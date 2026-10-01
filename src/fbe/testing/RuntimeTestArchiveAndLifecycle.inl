@@ -174,9 +174,16 @@
 			selectionRoundTripDiagnostics.AppendFormat("%S=%d/%d/%d/%d/%d/%d;", elementId, sourceSelection, sourceContainsExpected, beforeMatches, afterMatches, exactRoundTrip, !IsSourceActive());
 			return sourceSelection && sourceContainsExpected && !IsSourceActive() && beforeMatches && afterMatches && exactRoundTrip;
 		};
+		const bool titleSelection = roundTripBodySelection(L"body-source-title", L"TITLE_BEGIN", L"TITLE_END", L"TITLE_BEGIN title selection TITLE_END", false);
+		const bool annotationSelection = roundTripBodySelection(L"body-source-annotation", L"ANNOTATION_BEGIN", L"ANNOTATION_END", L"ANNOTATION_BEGIN annotation selection ANNOTATION_END", false);
+		const bool titleCaretSelection = roundTripBodySelection(L"body-source-title", L"TITLE_BEGIN", L"TITLE_BEGIN", L"", true);
+
 		const bool unicodeInlineSelection = roundTripBodySelection(L"body-source-unicode", L"UNICODE_BEGIN", L"UNICODE_END", unicodeMarker, false);
+		const bool inlineSelection = roundTripBodySelection(L"body-source-inline", L"PREFIX", L"SUFFIX", L"PREFIX", false);
 		const bool repeatedTextSelection = roundTripBodySelection(L"body-source-repeat", L"REPEAT_TOKEN", L"REPEAT_TOKEN_REPEAT_END", L"REPEAT_TOKEN middle REPEAT_TOKEN_REPEAT_END", false);
 		const bool tagBoundarySelection = roundTripBodySelection(L"body-source-boundary", L"BOUNDARY_BEGIN", L"BOUNDARY_END", L"BOUNDARY_BEGIN", false);
+		const bool paragraphPairSelection = roundTripBodySelection(L"body-source-pair", L"P_TO_P_BEGIN", L"P_TO_P_END", L"P_TO_P_BEGIN first paragraph", false);
+		const bool nestedSectionSelection = roundTripBodySelection(L"body-source-nested", L"NESTED_BEGIN", L"NESTED_END", L"NESTED_BEGIN nested section NESTED_END", false);
 		const bool collapsedCaretSelection = roundTripBodySelection(L"body-source-caret", L"CARET_UNICODE", L"CARET_UNICODE", L"", true);
 		selectBodyRange(L"body-source-unicode", L"UNICODE_BEGIN", L"UNICODE_END", false);
 		ShowView(SOURCE);
@@ -220,9 +227,9 @@
 		const bool invalidPreserved = invalidRejected && IsSourceActive() && m_doc == originalDocument &&
 			m_source.SendMessage(SCI_GETLENGTH) > 0 && m_source.SendMessage(SCI_GETSELECTIONSTART) >= 0 && m_source.SendMessage(SCI_GETSELECTIONEND) >= 0;
 		CStringA report;
-		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\nunicode_inline_selection=%d\nrepeated_text_selection=%d\ntag_boundary_selection=%d\ncollapsed_caret_selection=%d\nbody_to_source_selection=%d\ndescription_to_source_no_selection=%d\nselection_diagnostics=%s\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0, unicodeInlineSelection, repeatedTextSelection, tagBoundarySelection, collapsedCaretSelection, bodyToSourceTransfersSelection, descriptionToSourceSkipsSelection, static_cast<LPCSTR>(selectionRoundTripDiagnostics));
+		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\ntitle_selection=%d\ntitle_caret_selection=%d\nannotation_selection=%d\nunicode_inline_selection=%d\ninline_selection=%d\nrepeated_text_selection=%d\ntag_boundary_selection=%d\nparagraph_pair_selection=%d\nnested_section_selection=%d\ncollapsed_caret_selection=%d\nbody_to_source_selection=%d\ndescription_to_source_no_selection=%d\nselection_diagnostics=%s\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0, titleSelection, titleCaretSelection, annotationSelection, unicodeInlineSelection, inlineSelection, repeatedTextSelection, tagBoundarySelection, paragraphPairSelection, nestedSectionSelection, collapsedCaretSelection, bodyToSourceTransfersSelection, descriptionToSourceSkipsSelection, static_cast<LPCSTR>(selectionRoundTripDiagnostics));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved && unicodeInlineSelection && repeatedTextSelection && tagBoundarySelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection ? 0 : 1);
+		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved && titleSelection && titleCaretSelection && annotationSelection && unicodeInlineSelection && inlineSelection && repeatedTextSelection && tagBoundarySelection && paragraphPairSelection && nestedSectionSelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"source-xml-declaration-encoding-runtime"))
