@@ -160,7 +160,7 @@ legacy-инициализации MSHTML и проверяет, что восс�
 `docs/test-contours.md`: перед cleanup-ревизией `tools/tests` и перед
 выборочным прогоном shell/regression-сценариев лучше сверяться именно с ней.
 
-В `third_party/pcre2` подключён официальный исходный код `PCRE2 10.48`.
+В `third_party/pcre2` подключён официальный исходный код `PCRE2 10.49`.
 Скрипт `tools/build/build-pcre2.ps1` собирает статическую x86-библиотеку
 `pcre2-16` через CMake и выкладывает её в `build/pcre2/install/<Configuration>`.
 Скрипт `tools/tests/test-pcre2.ps1` проверяет эту сборку на базовых fixture-кейсах.

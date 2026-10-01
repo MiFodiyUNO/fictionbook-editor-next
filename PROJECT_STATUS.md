@@ -87,7 +87,7 @@
 
 - Репозиторий перенесён в современную структуру `src/runtime/third_party/tools/packaging/docs`.
 - Основное приложение собирается с Visual Studio 2026.
-- Выполнена миграция режима «Дизайн» с PCRE 7.9 на PCRE2 10.47.
+- Выполнена миграция режима «Дизайн» с PCRE 7.9 на PCRE2 10.49.
 - Обновлены Scintilla до 5.6.4 и Lexilla до 5.5.1; добавлены regression-тесты.
 - Обновлён Hunspell, устранено выявленное падение орфографии в `suggestmgr.cxx`.
 - Механизм версионирования синхронизирован с `update.xml`.
@@ -131,7 +131,7 @@
 - `https://github.com/sensboston/fictionbookeditor` — исторический исходный репозиторий; допустим только как read-only upstream/reference, публиковать изменения в него нельзя.
 - `https://github.com/evpobr/fictionbookeditor` — дополнительный upstream/reference для `ExportHTML` и возможной сверки `FBV`.
 - `https://github.com/hunspell/hunspell` — источник Hunspell.
-- `third_party/pcre2` — исходники PCRE2 10.47.
+- `third_party/pcre2` — исходники PCRE2 10.49.
 - `third_party/scintilla` — исходники Scintilla 5.6.7.
 - `third_party/lexilla` — исходники Lexilla 5.5.4.
 - `third_party/hunspell` — интегрированные исходники Hunspell 1.7.4.
@@ -184,7 +184,7 @@
 
 ## Поиск, регулярные выражения и редактор кода
 
-- Режим «Дизайн» переведён с PCRE 7.9 на PCRE2 10.47.
+- Режим «Дизайн» переведён с PCRE 7.9 на PCRE2 10.49.
 - Основная сборка, runtime, setup и portable-пакет очищены от обязательной `pcre.dll`.
 - Legacy PCRE оставлен только для сравнительных тестов.
 - Сохранён контракт `AU::IRegExp2`; runtime идёт напрямую через PCRE2.
@@ -424,7 +424,7 @@
 - Формат документов: FictionBook 2 XML (`.fb2`).
 - Основная архитектура приложения: Win32.
 - Shell DLL: Win32 и x64.
-- PCRE2: 10.47.
+- PCRE2: 10.49.
 - Scintilla: 5.6.7.
 - Lexilla: 5.5.4.
 - NSIS UAC plugin: 0.2.4c.
