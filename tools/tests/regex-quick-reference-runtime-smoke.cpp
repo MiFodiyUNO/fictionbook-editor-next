@@ -15,10 +15,12 @@ namespace ThemeManager
 void ApplyToWindow(HWND) {}
 COLORREF TextColor() { return RGB(0, 0, 0); }
 COLORREF ControlColor() { return RGB(255, 255, 255); }
+COLORREF BorderColor() { return RGB(96, 96, 96); }
 COLORREF SeparatorColor() { return RGB(192, 192, 192); }
 COLORREF SecondaryTextColor() { return RGB(96, 96, 96); }
 COLORREF SelectionBackgroundColor() { return RGB(0, 120, 215); }
 COLORREF SelectionTextColor() { return RGB(255, 255, 255); }
+HBRUSH WindowBrush() { static HBRUSH window = ::CreateSolidBrush(RGB(255, 255, 255)); return window; }
 HBRUSH Brush(ThemeColorRole role)
 {
     static HBRUSH control = ::CreateSolidBrush(ControlColor());
@@ -130,6 +132,11 @@ bool TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return false;
     const HWND left = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT);
     const HWND right = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_RIGHT);
+    // The first row is a category heading; hover on the next row must select
+    // a real entry without inserting it and clear the other column.
+    ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(8, 22));
+    DispatchMessages(messageLoop);
+    if (::SendMessage(left, LB_GETCURSEL, 0, 0) <= 0 || ::SendMessage(right, LB_GETCURSEL, 0, 0) != LB_ERR || inserts != 1) return false;
     ::PostMessage(left, WM_KEYDOWN, VK_RIGHT, 0);
     DispatchMessages(messageLoop);
     if (::GetFocus() != right) return false;

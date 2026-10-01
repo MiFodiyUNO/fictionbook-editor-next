@@ -192,6 +192,23 @@ bool IsComboBox(HWND window)
 	return IsClass(window, WC_COMBOBOXW) || IsClass(window, WC_COMBOBOXEXW);
 }
 
+bool IsEditableComboInput(HWND control, UINT message)
+{
+	if(control == NULL) return message == WM_CTLCOLOREDIT;
+	if(message == WM_CTLCOLOREDIT)
+		return (::GetWindowLongPtrW(control, GWL_STYLE) & ES_READONLY) == 0;
+	if(message != WM_CTLCOLORLISTBOX) return false;
+	const HWND combo = ::GetParent(control);
+	if(!IsComboBox(combo)) return false;
+	return (::GetWindowLongPtrW(combo, GWL_STYLE) & CBS_DROPDOWNLIST) != CBS_DROPDOWNLIST;
+}
+
+bool IsPaletteControlEnabled(HWND control)
+{
+	if(control == NULL || ::IsWindowEnabled(control) == FALSE) return false;
+	const HWND combo = ::GetParent(control);
+	return !IsComboBox(combo) || ::IsWindowEnabled(combo) != FALSE;
+}
 bool IsComboDropList(HWND window)
 {
 	// The list opened by a ComboBox is a top-level popup with this private
@@ -400,7 +417,7 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		// dialogs, so keep them on the owning window background.
 		HDC dc = reinterpret_cast<HDC>(wParam);
 		HWND control = reinterpret_cast<HWND>(lParam);
-		const bool enabled = !control || ::IsWindowEnabled(control) != FALSE;
+		const bool enabled = control == NULL || IsPaletteControlEnabled(control);
 		::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
 		::SetBkColor(dc, ThemeManager::WindowColor());
 		return reinterpret_cast<LRESULT>(ThemeManager::WindowBrush());
@@ -409,10 +426,11 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 	{
 		HDC dc = reinterpret_cast<HDC>(wParam);
 		HWND control = reinterpret_cast<HWND>(lParam);
-		const bool enabled = !control || ::IsWindowEnabled(control) != FALSE;
+		const bool enabled = control == NULL || IsPaletteControlEnabled(control);
+		const bool input = enabled && IsEditableComboInput(control, message);
 		::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
-		::SetBkColor(dc, ThemeManager::ControlColor());
-		return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
+		::SetBkColor(dc, input ? ThemeManager::WindowColor() : ThemeManager::ControlColor());
+		return reinterpret_cast<LRESULT>(input ? ThemeManager::WindowBrush() : ThemeManager::ControlBrush());
 	}
 	return ::DefSubclassProc(window, message, wParam, lParam);
 }

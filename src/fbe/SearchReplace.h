@@ -136,6 +136,23 @@ public:
         return &m_panelPresets[static_cast<size_t>(item.lParam)];
     }
 
+    CString PresetPreviewText(const FbeSearchPresets::SearchPreset* preset) const
+    {
+        if (!preset) return CString();
+        CString preview = preset->description;
+        CString find; find.Format(FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.find", L"Find: %s"), static_cast<LPCWSTR>(MakePresetPreviewValue(preset->findText, 168)));
+        if(!preview.IsEmpty()) preview += L"\r\n\r\n";
+        preview += find;
+        if(preset->hasReplacement) {
+            const CString replacement = preset->replacementText.IsEmpty()
+                ? FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.empty", L"<empty>")
+                : MakePresetPreviewValue(preset->replacementText, 168);
+            CString replace; replace.Format(FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.replace", L"Replace: %s"), static_cast<LPCWSTR>(replacement));
+            preview += L"\r\n" + replace;
+        }
+        return preview;
+    }
+
     void UpdatePresetActions()
     {
         const FbeSearchPresets::SearchPreset* preset = SelectedPreset();
@@ -149,23 +166,7 @@ public:
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_UPDATE), custom);
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_RENAME), custom);
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_DELETE), custom);
-        CString description;
-        if (preset)
-        {
-            description = preset->description;
-            const CString findLabel = FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.find", L"Find: %s");
-            CString operation; operation.Format(findLabel, static_cast<LPCWSTR>(MakePresetPreviewValue(preset->findText, 168)));
-            if(!description.IsEmpty()) description += L"\r\n\r\n";
-            description += operation;
-            if(preset->hasReplacement) {
-                const CString replacement = preset->replacementText.IsEmpty()
-                    ? FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.empty", L"<empty>")
-                    : MakePresetPreviewValue(preset->replacementText, 168);
-                CString line; line.Format(FbeLoadRuntimeStringByKey(L"fbe.search_preset.preview.replace", L"Replace: %s"), static_cast<LPCWSTR>(replacement));
-                description += L"\r\n" + line;
-            }
-        }
-        ::SetWindowText(GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), description);
+        ::SetWindowText(GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), PresetPreviewText(preset));
     }
 
     void RefreshPresetPanel(const CString& wantedId = CString(), bool selectUserRoot = false)
@@ -215,6 +216,33 @@ public:
         int totalHeight;
     };
 
+    int PreviewHeightForCurrentSelection(HWND dialog, int contentWidth, int lineHeight) const
+    {
+        const CString preview = PresetPreviewText(SelectedPreset());
+        if(preview.IsEmpty()) return 0;
+        RECT bounds = { 0, 0, (std::max)(1, contentWidth), 0 };
+        HDC dc = ::GetDC(dialog);
+        HFONT font = reinterpret_cast<HFONT>(::SendMessage(const_cast<FRBase*>(this)->GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), WM_GETFONT, 0, 0));
+        HFONT previous = dc && font ? static_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+        if(dc) ::DrawTextW(dc, preview, preview.GetLength(), &bounds, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+        if(previous) ::SelectObject(dc, previous);
+        if(dc) ::ReleaseDC(dialog, dc);
+        const int measured = (std::max)(lineHeight * 2, static_cast<int>(bounds.bottom - bounds.top));
+        return (std::min)(lineHeight * 4, measured);
+    }
+
+    int LocalizedButtonWidth(HWND button, LPCWSTR key, LPCWSTR fallback, int minimum, int maximum) const
+    {
+        const CString text = FbeLoadRuntimeStringByKey(key, fallback);
+        HDC dc = ::GetDC(button);
+        HFONT font = reinterpret_cast<HFONT>(::SendMessage(button, WM_GETFONT, 0, 0));
+        HFONT previous = dc && font ? static_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+        SIZE extent = {}; if(dc) ::GetTextExtentPoint32W(dc, text, text.GetLength(), &extent);
+        if(previous) ::SelectObject(dc, previous);
+        if(dc) ::ReleaseDC(button, dc);
+        const int padding = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(button));
+        return (std::max)(minimum, (std::min)(maximum, static_cast<int>(extent.cx) + padding));
+    }
     PresetPanelMetrics GetPresetPanelMetrics(int availableHeight = 0) const
     {
         RECT marginUnits = { 0, 0, 6, 6 };
@@ -226,7 +254,9 @@ public:
         metrics.margin = (std::max)(1, static_cast<int>(marginUnits.right));
         metrics.lineHeight = (std::max)(1, static_cast<int>(lineUnits.bottom));
         metrics.treeHeight = (std::max)(metrics.lineHeight * 6, static_cast<int>(treeUnits.bottom));
-        metrics.previewHeight = SelectedPreset() != NULL ? metrics.lineHeight * 2 : 0;
+        RECT client = {}; if(dialog) ::GetClientRect(dialog, &client);
+        const int previewWidth = (std::max)(metrics.lineHeight * 8, static_cast<int>(client.right - client.left) - metrics.margin * 2);
+        metrics.previewHeight = PreviewHeightForCurrentSelection(dialog, previewWidth, metrics.lineHeight);
         metrics.buttonHeight = (std::max)(metrics.lineHeight, UiMetrics::ScaleForDpi(14, UiMetrics::DpiForWindow(dialog)));
         const int fixedHeight = metrics.lineHeight + metrics.previewHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
         metrics.totalHeight = fixedHeight + metrics.treeHeight;
@@ -280,7 +310,9 @@ public:
         const int descriptionTop = treeTop + metrics.treeHeight + margin;
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), NULL, margin, descriptionTop, contentWidth, metrics.previewHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         const int buttonsTop = descriptionTop + metrics.previewHeight + margin;
-        const int applyWidth = (std::min)(contentWidth, UiMetrics::ScaleForDpi(52, UiMetrics::DpiForWindow(dialog)));
+        const int applyMinimum = (std::min)(contentWidth, UiMetrics::ScaleForDpi(48, UiMetrics::DpiForWindow(dialog)));
+        const int applyMaximum = (std::max)(applyMinimum, (std::min)(contentWidth, UiMetrics::ScaleForDpi(128, UiMetrics::DpiForWindow(dialog))));
+        const int applyWidth = LocalizedButtonWidth(GetDlgItem(IDC_FIND_PRESET_APPLY), L"fbe.search_preset.apply", L"Apply", applyMinimum, applyMaximum);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_APPLY), NULL, margin, buttonsTop, applyWidth, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_SAVE), NULL, margin + applyWidth + margin, buttonsTop, (std::max)(0, contentWidth - applyWidth - margin), metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         const int row2 = buttonsTop + metrics.buttonHeight + margin;
@@ -445,7 +477,8 @@ public:
     void DrawPresetPinGlyph(HDC dc, const RECT& target, bool pinned) const
     {
         const UINT dpi = UiMetrics::DpiForWindow(DialogWindow());
-        const int size = UiMetrics::ScaleForDpi(16, dpi);
+        const int size = (std::min)(UiMetrics::ScaleForDpi(16, dpi), (std::min)(static_cast<int>(target.right - target.left - 2), static_cast<int>(target.bottom - target.top - 2)));
+        if(size <= 0) return;
         const HICON icon = PresetPinIcon(size);
         if (icon == NULL) return;
         BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = size;
@@ -455,21 +488,28 @@ public:
         if (memory && bits)
         {
             const HGDIOBJ previous = ::SelectObject(memory, bitmap);
-            RECT image = { 0, 0, size, size }; ::FillRect(memory, &image, static_cast<HBRUSH>(::GetStockObject(WHITE_BRUSH)));
+            ::ZeroMemory(bits, static_cast<size_t>(size) * size * sizeof(DWORD));
             ::DrawIconEx(memory, 0, 0, icon, size, size, 0, NULL, DI_NORMAL);
-            const COLORREF background = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_BTNFACE) : (pinned ? ThemeManager::PressedColor() : ThemeManager::ControlColor());
-            const COLORREF foreground = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) :
+            ICONINFO iconInfo = {}; HDC maskDc = NULL; HGDIOBJ previousMask = NULL;
+            if(::GetIconInfo(icon, &iconInfo) && iconInfo.hbmMask != NULL) { maskDc = ::CreateCompatibleDC(dc); if(maskDc) previousMask = ::SelectObject(maskDc, iconInfo.hbmMask); }
+            const COLORREF surface = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_BTNFACE) : ThemeManager::ControlColor();
+            const COLORREF tint = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) :
                 (pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor());
             DWORD* pixels = static_cast<DWORD*>(bits);
             for (int index = 0; index < size * size; ++index)
             {
-                const DWORD source = pixels[index];
-                const int coverage = 255 - (static_cast<int>(source & 0xff) + static_cast<int>((source >> 8) & 0xff) + static_cast<int>((source >> 16) & 0xff)) / 3;
-                const int red = GetRValue(background) + (GetRValue(foreground) - GetRValue(background)) * coverage / 255;
-                const int green = GetGValue(background) + (GetGValue(foreground) - GetGValue(background)) * coverage / 255;
-                const int blue = GetBValue(background) + (GetBValue(foreground) - GetBValue(background)) * coverage / 255;
+                const int x = index % size, y = index / size;
+                int alpha = static_cast<int>((pixels[index] >> 24) & 0xff);
+                // Legacy ICOs may not expose alpha; use their monochrome AND mask,
+                // never RGB coverage from a white staging bitmap.
+                if(alpha == 0 && maskDc != NULL) alpha = ::GetPixel(maskDc, x, y) == RGB(255, 255, 255) ? 0 : 255;
+                const int red = GetRValue(surface) + (GetRValue(tint) - GetRValue(surface)) * alpha / 255;
+                const int green = GetGValue(surface) + (GetGValue(tint) - GetGValue(surface)) * alpha / 255;
+                const int blue = GetBValue(surface) + (GetBValue(tint) - GetBValue(surface)) * alpha / 255;
                 pixels[index] = RGB(red, green, blue);
             }
+            if(previousMask) ::SelectObject(maskDc, previousMask); if(maskDc) ::DeleteDC(maskDc);
+            if(iconInfo.hbmColor) ::DeleteObject(iconInfo.hbmColor); if(iconInfo.hbmMask) ::DeleteObject(iconInfo.hbmMask);
             const int x = target.left + ((target.right - target.left) - size) / 2;
             const int y = target.top + ((target.bottom - target.top) - size) / 2;
             ::BitBlt(dc, x, y, size, size, memory, 0, 0, SRCCOPY);

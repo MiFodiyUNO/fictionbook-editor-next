@@ -14,5 +14,6 @@ foreach($key in @('fbe.search_preset.preview.find', 'fbe.search_preset.preview.r
     $entry = $catalog.strings.$key
     if($null -eq $entry -or [string]::IsNullOrWhiteSpace($entry.translations.'en-US') -or [string]::IsNullOrWhiteSpace($entry.translations.'ru-RU')) { throw "Missing en-US/ru-RU preview localization: $key" }
 }
+foreach($token in @('PresetPreviewText', 'PreviewHeightForCurrentSelection', 'DrawTextW', 'DT_CALCRECT | DT_WORDBREAK', 'lineHeight * 4', 'ResizePresetPanelForCurrentSelection')) { if($source -notmatch [regex]::Escape($token)) { throw "Missing dynamic preview behavior: $token" } }
 if($source -notmatch 'if\s*\(preset->hasReplacement\)') { throw 'A Find dialog must retain the Replace part of a stored preset preview.' }
 Write-Host 'Search preset preview contract passed.'

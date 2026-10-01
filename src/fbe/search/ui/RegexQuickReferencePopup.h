@@ -20,6 +20,8 @@ public:
         MESSAGE_HANDLER(WM_CREATE, OnCreate)
         MESSAGE_HANDLER(WM_NCDESTROY, OnNcDestroy)
         MESSAGE_HANDLER(WM_PAINT, OnPaint)
+        MESSAGE_HANDLER(WM_MOUSEMOVE, OnMouseMove)
+        MESSAGE_HANDLER(WM_MOUSELEAVE, OnMouseLeave)
         NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipGetDispInfo)
         MESSAGE_HANDLER(WM_KEYDOWN, OnKeyDown)
         MESSAGE_HANDLER(WM_KILLFOCUS, OnKillFocus)
@@ -34,6 +36,8 @@ private:
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnMouseMove(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnMouseLeave(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnToolTipGetDispInfo(int, LPNMHDR, BOOL&);
     LRESULT OnKeyDown(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnKillFocus(UINT, WPARAM, LPARAM, BOOL&);
@@ -48,6 +52,8 @@ private:
     void DrawListItem(const DRAWITEMSTRUCT& draw, const std::vector<int>& rows);
     void MoveColumn(bool right);
     bool MoveSelection(HWND listWindow, int direction);
+    bool UpdateHoverSelection(HWND listWindow, POINT point);
+    void ClearOtherSelection(HWND listWindow);
     int FirstEntryRow(const std::vector<int>& rows) const;
     CString Caption() const;
     CString CategoryCaption(FbeSearchPresets::RegexQuickReferenceCategory category) const;
