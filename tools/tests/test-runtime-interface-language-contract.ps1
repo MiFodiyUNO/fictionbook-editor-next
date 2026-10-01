@@ -109,7 +109,6 @@ foreach ($pattern in @(
     "RefreshBundledPluginMenuTexts",
     "FillMenuWithHkeys(m_MenuBar.GetMenu())",
 	"m_MenuBar.SetButtonInfo(index, &buttonInfo)",
-	"TB_DELETEBUTTON",
     "m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS)",
     "m_document_tree.RefreshLocalizedTitle()",
     "RefreshLocalizedMenuCaptions()",
