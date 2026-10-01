@@ -107,7 +107,7 @@
 - Страница компонентов установщика сохраняет широкое дерево выбора и имеет
   увеличенное поле описания; тексты сокращены для русской, английской,
   украинской и fallback-локализаций.
-- Созданы modern property handler, FBE-specific property schema и experimental thumbnail provider.
+- Созданы modern property handler, FBE-specific property schema и завершённый modern FB2 thumbnail provider.
 - Создан широкий набор автоматических smoke/regression-проверок.
 - `CHANGELOG.md` приведён к формату Keep a Changelog.
 - Пожелания пользователей из Google Groups включены в `docs/todo.md`.
@@ -148,7 +148,7 @@
 
 - `FBE.sln` — основное решение Visual Studio.
 - `src/fbe` — главное приложение `FBE.exe`, редактор, UI, поиск/замена, орфография, обновления, восстановление и диагностика.
-- `src/fbshell` — modern property handler и experimental thumbnail provider для `.fb2`.
+- `src/fbshell` — modern property handler и завершённый WIC-based thumbnail provider для `.fb2`.
 - `src/fbv` — локально восстановленные и уже модернизированные исходники `FBV.exe` на `MSXML6`.
 - `src/export-html` — модуль `ExportHTML.dll`.
 - `src/locales` — русская и украинская resource DLL.
@@ -255,7 +255,7 @@
 - Обычная иконка `.fb2` задаётся через `DefaultIcon` из `FBE.exe`.
 - Для shell-команды `Validate` используется отдельный language-neutral модуль `FBVVerbResources.dll` и спутники `*.mui`, чтобы подпись пункта меню переключалась вместе с языком интерфейса Windows.
 - Legacy `ColumnProvider`, `ContextMenu` и `IconExtractor` не входят в стандартный modern-проект.
-- Experimental thumbnail provider читает PNG/JPEG/BMP-обложки, масштабирует их под запрошенный размер и обрабатывает негативные сценарии.
+- Modern thumbnail provider читает PNG/JPEG/BMP-обложки через WIC, уменьшает их с `WICBitmapInterpolationModeFant` без upscale, сохраняет alpha и обрабатывает негативные сценарии мягким отказом.
 - Добавлены скрипты регистрации, отката, диагностики, сброса `thumbcache`/`iconcache` и адресного прогрева thumbnail cache.
 - Добавлены автоматические тесты COM activation, shell API, property schema, install/uninstall и работы с fixture-файлами.
 - Полная thumbnail-матрица подтверждена сценариями `test-fb2-shell-thumbnail-matrix.ps1` и forced dump-проверками на реальных книгах: прямой COM-контур, `CoCreateInstance`, shell API, forced extraction и fallback-отказы на битых/неполных `.fb2` воспроизводимо работают.
@@ -281,10 +281,10 @@
 - Clean-room и installer smoke подтвердили, что обычный `setup.exe` ставит `FBShell.dll`, `FBShell64.dll`, `FBE.Sequence.propdesc`, регистрирует shell-строки `InfoTip` / `TileInfo` / `Details` / `PreviewDetails` и возвращает shell-команду `Validate` после установки.
 - Для `Validate` реализован отдельный MUI-контур: вместо чтения строки из `FBV.exe` используется language-neutral модуль `FBVVerbResources.dll` со спутниками `*.mui`; `SHLoadIndirectString` для `@...\FBVVerbResources.dll,-109;v2` возвращает корректную русскую строку без кракозябр.
 - Административный smoke `tools/tests/test-fbe-specific-installer.ps1` подтверждает end-to-end регистрацию `Validate\Command`, `Icon` и `MUIVerb`, а также корректную очистку shell-verb после деинсталляции.
-- Experimental thumbnail provider переведён на tight-scaling без
-  искусственной квадратной подложки; forced dump на реальной книге подтвердил,
-  что прежний баг с маленькой обложкой в центре большого белого квадрата
-  устранён.
+- Modern thumbnail provider завершён на WIC-pipeline `decoder -> frame ->
+  scaler -> format converter -> 32-bit HBITMAP`; tight-scaling без
+  искусственной квадратной подложки, запрет upscale и сохранение alpha
+  подтверждены fixture-матрицей.
 - Сводный сценарий `test-fb2-shell-thumbnail-matrix.ps1` проходит весь
   автоматический контур shell-miniatures, включая прямой COM,
   `CoCreateInstance`, shell API, forced extraction и negative cases.
@@ -334,7 +334,7 @@
 
 - Что принято: обычная иконка `.fb2` задаётся `DefaultIcon`; обложки реализуются отдельным modern thumbnail provider.
 - Почему принято: legacy `IconExtractor` зависит от устаревших bundled `zlib 1.1.4`, `libpng 1.2.8`, `libjpeg 6b` и загружает рискованный код в Explorer.
-- Последствия: legacy image stack не возвращать в стандартную сборку; thumbnail provider доводить отдельно.
+- Последствия: legacy image stack не возвращать в стандартную сборку; provider завершён. Возможная постобработка обложек — отдельная необязательная задача.
 
 ## Validate
 
@@ -438,7 +438,7 @@
 - FBE-specific property schema: `packaging/property-schema/FBE.Sequence.propdesc`.
 - Стандартные свойства Windows: `System.Author`, `System.Title`, `System.Language`.
 - Собственные свойства: `FBE.Genre`, `FBE.Sequence`, `FBE.Keywords`, `FBE.DocumentId`, `FBE.DocumentVersion`, `FBE.DocumentDate`.
-- Thumbnail provider реализуется через modern Windows Shell contract с `IInitializeWithStream` и thumbnail handler ShellEx.
+- Thumbnail provider реализован через modern Windows Shell contract с `IInitializeWithStream`, thumbnail handler ShellEx и завершённый WIC-pipeline.
 - Property handler регистрируется через CLSID и `PropertySystem\PropertyHandlers`.
 - Shell in-process DLL обязана совпадать с разрядностью Explorer.
 - Кэш Explorer нужно учитывать при любых ручных тестах.

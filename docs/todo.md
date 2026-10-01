@@ -869,17 +869,10 @@ ew[]/delete` и ранние `return` с потерей cleanup;
 - [x] Проверить актуальность встроенных `zlib`, `libpng`, `libjpeg` в `src\fbshell`.
 - [x] Вывести legacy `IconExtractor` из стандартной сборки `FBShell`, оставив его только как opt-in build-флаг.
 - [x] Удалить legacy `IconExtractor`, `ImageLoader` и встроенные `zlib/libpng/libjpeg` из дерева `src\fbshell`, потому что modern thumbnail provider уже использует новый `Fb2CoverImage`-контур.
-- [ ] Вернуться сильно позже к отдельной задаче `cover extraction` / thumbnail provider вместо старого `IconExtractor`.
-  - [ ] Выделить отдельный внутренний reader обложки `.fb2` без зависимости
-        от legacy `IconExtractor`.
-  - [ ] Добавить smoke-тест на `.fb2` с валидной JPEG/PNG-обложкой и на
-        битый/неполный `coverpage`.
-  - [ ] Подготовить modern thumbnail provider поверх отдельного
-        COM-класса и `IInitializeWithStream`.
-  - [ ] Для декодирования обложек использовать современный системный
-        image-стек Windows вместо bundled `zlib/libpng/libjpeg`.
-  - [ ] Подготовить отдельную ручную GUI-проверку thumbnail-сценария до
-        любых разговоров о возврате этого контура в стандартную поставку.
+- [x] Завершить `cover extraction` / modern thumbnail provider вместо legacy
+      `IconExtractor`: reader `Fb2CoverImage`, отдельный COM-класс с
+      `IInitializeWithStream`, WIC-декодирование и shell-регистрация входят в
+      штатный контур.
 - [x] Вывести legacy `ColumnProvider`, `ContextMenu` и `IconExtractor` из активного проекта `FBShell`, чтобы modern DLL не зависела от мёртвого shell-контура.
 - [x] Добавить отдельный per-user скрипт восстановления shell-регистрации
       `.fb2` (`DefaultIcon`, `InfoTip`, `TileInfo`, `Details`, `Edit`,
@@ -993,10 +986,15 @@ ew[]/delete` и ранние `return` с потерей cleanup;
 Текущий статус thumbnail provider:
 
 - [x] Внутренний reader обложки `Fb2CoverImage.*`.
-- [x] Внутренний decoder обложки через локальный `ATL::CImage`
-      `Fb2CoverThumbnail.*`.
+- [x] WIC-pipeline `IWICBitmapDecoder -> IWICBitmapFrameDecode ->
+      IWICBitmapScaler (Fant) -> IWICFormatConverter -> 32-bit HBITMAP` в
+      `Fb2CoverThumbnail.*`: сохраняет пропорции, не делает upscale и
+      сохраняет alpha.
 - [x] COM-класс thumbnail provider в `src/fbshell`.
 - [x] Автоматические smoke-проверки COM-контура для `png`, `jpeg`, `bmp`.
+- [x] Проверки размеров `32/64/128/256/512`, реального downscale, запрета
+      upscale и типов `WTSAT_RGB` / `WTSAT_ARGB`, включая реальные пиксели
+      alpha PNG.
 - [x] Автоматические negative-сценарии:
       битая base64-обложка, отсутствие `coverpage`, отсутствие нужного
       `binary`, `E_POINTER`, повторный `Initialize`.
@@ -1007,8 +1005,9 @@ ew[]/delete` и ранние `return` с потерей cleanup;
       реальных книгах: обычные и большие значки, fallback-иконка для
       битых/неполных `.fb2`, правая панель сведений и повторная проверка
       после сброса shell-кэшей.
-- [ ] Когда-нибудь отдельно вернуться только если понадобится именно
-      содержательная постобработка обложек, а не исправление shell-provider.
+- [ ] Необязательное будущее улучшение: содержательная постобработка обложек
+      (например, trim белых полей), если она потребуется для preview/details;
+      это не дефект и не часть thumbnail provider.
 
 ## Пожелания из Google Groups
 

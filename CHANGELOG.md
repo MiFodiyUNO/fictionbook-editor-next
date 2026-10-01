@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Завершён modern FB2 thumbnail provider: WIC-pipeline
+  `IWICBitmapDecoder -> IWICBitmapFrameDecode -> IWICBitmapScaler (Fant) ->
+  IWICFormatConverter -> 32-bit HBITMAP` заменил thumbnail-путь на
+  `ATL::CImage`/`StretchBlt`. Provider сохраняет пропорции и alpha, не делает
+  upscale, возвращает `WTSAT_ARGB` для прозрачного PNG и `WTSAT_RGB` для
+  непрозрачных PNG/JPEG/BMP. Автоматические provider/shell matrix smoke,
+  Release regression и ручной Explorer smoke завершены; основная задача
+  thumbnails закрыта.
 - Добавлена встроенная библиотека шаблонов Find/Replace, пользовательские persistent-шаблоны и контекстная regex-справка для PCRE2 Design и Scintilla Source.
 
 - Обновлены vendor-зависимости: Scintilla до 5.6.7, Lexilla до 5.5.4,

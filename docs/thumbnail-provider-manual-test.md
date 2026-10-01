@@ -1,15 +1,16 @@
 # Ручная проверка thumbnail provider
 
-Этот документ нужен для управляемой GUI-проверки thumbnail
-provider для `.fb2`, который читает встроенную обложку книги и отдаёт её в
-Проводник как миниатюру.
+Этот документ фиксирует завершённую GUI-проверку thumbnail provider для `.fb2`,
+который читает встроенную обложку книги и отдаёт её в Проводник как миниатюру.
 
 ## Что уже есть в проекте
 
 К моменту этой проверки уже готовы:
 
 - внутренний reader обложки: `src/common/fb2/Fb2CoverImage.*`;
-- внутренний decoder изображения обложки через локальный `ATL::CImage`:
+- WIC-pipeline декодирования и масштабирования обложки
+  `IWICBitmapDecoder -> IWICBitmapFrameDecode -> IWICBitmapScaler (Fant) ->
+  IWICFormatConverter -> 32-bit HBITMAP`:
   `src/common/fb2/Fb2CoverThumbnail.*`;
 - COM-класс thumbnail provider:
   `src/fbshell/Fb2ThumbnailProvider.*`.
@@ -134,8 +135,9 @@ cache внутри shell thumbnail-контура. Для такого случ�
 - `image/jpeg` / `image/jpg`
 - `image/bmp`
 
-На текущем шаге это уже подтверждено автоматическими smoke-тестами, но
-финальное GUI-подтверждение в Проводнике ещё нужно зафиксировать руками.
+Это подтверждено автоматическими smoke-тестами и финальным GUI-smoke в
+Проводнике: крупные и очень крупные значки, несколько FB2, повторное открытие
+папки и обновление вида прошли без падения `explorer.exe`.
 
 ### 5. Файлы без доступной обложки
 
@@ -151,13 +153,15 @@ cache внутри shell thumbnail-контура. Для такого случ�
 
 ## Что уже покрыто автоматически
 
-До GUI-проверки уже автоматически подтверждены:
+Автоматически подтверждены, а GUI-smoke дополнительно завершён:
 
 - COM-сценарий `IStream -> thumbnail provider -> HBITMAP`;
 - системная COM-активация зарегистрированного thumbnail provider;
 - shell API `IShellItemImageFactory` на валидных fixture `png/jpeg/bmp`;
 - принудительное извлечение через `IThumbnailCache` на валидных fixture;
-- корректные обложки `png`, `jpeg`, `bmp`;
+- корректные обложки `png`, `jpeg`, `bmp`, включая PNG с реальной alpha;
+- размеры `32/64/128/256/512`, пропорциональный downscale без upscale и
+  корректные `WTSAT_RGB` / `WTSAT_ARGB`;
 - мягкий отказ на битой base64-обложке;
 - мягкий отказ при отсутствии `coverpage`;
 - мягкий отказ при отсутствии нужного `binary`;
