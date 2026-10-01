@@ -227,7 +227,6 @@
 #define IDI_ICON1                       255
 #define IDI_OLDICON                     255
 #define IDI_FIND_PRESETS_PIN            267
-#define IDI_FIND_PRESETS_PIN_OFF        268
 #define IDB_TABLE_INSERT_ROW_ABOVE       1204
 #define IDB_TABLE_INSERT_ROW_BELOW       1205
 #define IDB_TABLE_INSERT_COLUMN_LEFT     1206

@@ -33,10 +33,10 @@ foreach($id in @('IDC_REGEX_QUICK_LEFT', 'IDC_REGEX_QUICK_RIGHT', 'IDC_REGEX_QUI
 }
 if($popup -match 'm_caption\.Create[\s\S]*?, 0, [1234]\)' -or $popup -match 'm_fullHelp\.Create[\s\S]*?, 0, [1234]\)') { throw 'Popup caption or Full Help still uses a standard dialog ID.' }
 if($popupHeader -notmatch 'IDC_REGEX_QUICK_FULL_HELP, OnFullHelp') { throw 'Full Help control must dispatch through its unique ID.' }
-foreach($token in @('ScaleForDpi(560, dpi)', 'ScaleForDpi(360, dpi)', 'workMargin', 'info.rcWork.right - info.rcWork.left', 'info.rcWork.bottom - info.rcWork.top')) {
+foreach($token in @('ScaleForDpi(560, dpi)', 'DesiredPopupHeight(dpi)', 'workMargin', 'info.rcWork.right - info.rcWork.left', 'info.rcWork.bottom - info.rcWork.top')) {
     if($popup -notmatch [regex]::Escape($token)) { throw "Popup must use the available monitor work area for its expanded geometry: $token" }
 }
-foreach($token in @('TOOLTIPS_CLASS', 'TTF_IDISHWND | TTF_SUBCLASS', 'TTN_GETDISPINFOW', 'DescriptionIsTruncated', 'TTM_ADDTOOLW', 'displaySyntax), static_cast<LPCWSTR>(description)')) {
+foreach($token in @('DesiredPopupHeight', 'rowHeight', 'ThemeManager::Brush(THEME_COLOR_SEPARATOR)', 'WM_PAINT', 'TOOLTIPS_CLASS', 'TTF_IDISHWND | TTF_SUBCLASS', 'TTN_GETDISPINFOW', 'DescriptionIsTruncated', 'TTM_ADDTOOLW', 'displaySyntax), static_cast<LPCWSTR>(description)')) {
     if($popup -notmatch [regex]::Escape($token) -and $popupHeader -notmatch [regex]::Escape($token)) { throw "Missing truncated-description tooltip behavior: $token" }
 }
 Write-Host 'Regex quick-reference popup contract passed.'

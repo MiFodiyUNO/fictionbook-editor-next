@@ -18,15 +18,21 @@ $visibilityHandler = $source.Substring($visibleStart, $visibleEnd - $visibleStar
 if ($visibilityHandler -match 'SetSearchTemplatesPanelPinned') { throw 'Unexpected implicit pin reset in visibility setter.' }
 Require 'struct PresetPanelMetrics' 'shared preset panel metrics'
 Require 'GetPresetPanelMetrics\(int availableHeight = 0\)' 'adaptive metrics function'
-Require 'metrics\.treeHeight = \(std::max\)\(metrics\.lineHeight \* 4' 'four-row minimum tree'
+Require 'metrics\.treeHeight = \(std::max\)\(metrics\.lineHeight \* 6' 'dense six-row default tree'
+Require 'SelectedPreset\(\) != NULL \? metrics\.lineHeight \* 2 : 0' 'preview is absent without a selected preset'
+Require 'UiMetrics::ScaleForDpi\(52, UiMetrics::DpiForWindow\(dialog\)\)' 'compact Apply button with remaining Save width'
+Require 'row2Width = \(std::max\)\(0, \(contentWidth - margin \* 2\) / 3\)' 'equal second-row actions'
 Require 'm_presetPanelHeight = GetPresetPanelMetrics\(availablePanelHeight\)\.totalHeight' 'monitor constrained expanded height'
-Require 'UiMetrics::ScaleForDpi\(22, UiMetrics::DpiForWindow\(dialog\)\)' 'DPI-aware compact pin size'
+Require 'UiMetrics::ScaleForDpi\(18, UiMetrics::DpiForWindow\(dialog\)\)' 'DPI-aware compact pin size'
 foreach ($control in @('IDC_FIND_PRESET_APPLY','IDC_FIND_PRESET_SAVE','IDC_FIND_PRESET_UPDATE','IDC_FIND_PRESET_RENAME','IDC_FIND_PRESET_DELETE')) { Require ("SetWindowPos\(GetDlgItem\(" + $control + '\)') "layout for $control" }
-foreach ($asset in @('src\fbe\res\icons\lucide\pin.svg','src\fbe\res\icons\lucide\pin-off.svg','src\fbe\res\icons\lucide\pin.ico','src\fbe\res\icons\lucide\pin-off.ico','src\fbe\res\icons\lucide\LICENSE.txt')) { if (-not (Test-Path (Join-Path $root $asset))) { throw "Missing asset $asset" } }
-if ($resources -notmatch 'IDI_FIND_PRESETS_PIN\s+ICON' -or $resources -notmatch 'IDI_FIND_PRESETS_PIN_OFF\s+ICON') { throw 'Native pin icon resources are missing.' }
+foreach ($asset in @('src\fbe\res\icons\lucide\pin.svg','src\fbe\res\icons\lucide\pin.ico','src\fbe\res\icons\lucide\LICENSE.txt')) { if (-not (Test-Path (Join-Path $root $asset))) { throw "Missing asset $asset" } }
+if ($resources -notmatch 'IDI_FIND_PRESETS_PIN\s+ICON' -or $resources -match 'IDI_FIND_PRESETS_PIN_OFF\s+ICON') { throw 'Pin must have one production icon resource.' }
 if ($source -match '::Ellipse\(draw->hDC|::Rectangle\(draw->hDC|::LineTo\(draw->hDC, center') { throw 'Unexpected manual pin drawing.' }
 Require 'LoadImage\([\s\S]*?IDI_FIND_PRESETS_PIN[\s\S]*?IMAGE_ICON' 'pin HICON loader'
-Require 'DrawIconEx\(' 'DrawIconEx pin rendering'
+Require 'DrawIconEx\(' 'pin alpha-mask rendering'
+Require 'ThemeManager::AccentColor\(\)' 'pinned accent glyph'
+Require 'ThemeManager::SecondaryTextColor\(\)' 'unpinned secondary glyph'
+if ($source -match 'IDI_FIND_PRESETS_PIN_OFF') { throw 'Pin-off icon remains a production dependency.' }
 Require 'UiMetrics::ScaleForDpi\(16, dpi\)' 'DPI-aware pin glyph rectangle'
 if ($source -match 'DrawState|DSS_MONO') { throw 'Pin glyph must not use monochrome DrawState rendering.' }
 $pin = $catalog.strings.'fbe.search_preset.pin'.translations

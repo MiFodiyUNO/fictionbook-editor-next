@@ -19,6 +19,7 @@ public:
     BEGIN_MSG_MAP(RegexQuickReferencePopup)
         MESSAGE_HANDLER(WM_CREATE, OnCreate)
         MESSAGE_HANDLER(WM_NCDESTROY, OnNcDestroy)
+        MESSAGE_HANDLER(WM_PAINT, OnPaint)
         NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipGetDispInfo)
         MESSAGE_HANDLER(WM_KEYDOWN, OnKeyDown)
         MESSAGE_HANDLER(WM_KILLFOCUS, OnKillFocus)
@@ -32,6 +33,7 @@ public:
 private:
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnToolTipGetDispInfo(int, LPNMHDR, BOOL&);
     LRESULT OnKeyDown(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnKillFocus(UINT, WPARAM, LPARAM, BOOL&);
@@ -42,6 +44,7 @@ private:
     LRESULT OnFullHelp(WORD, WORD, HWND, BOOL&);
     void Activate();
     void AddRows(CListBox& list, std::vector<int>& rows, const std::vector<int>& indexes);
+    int DesiredPopupHeight(UINT dpi) const;
     void DrawListItem(const DRAWITEMSTRUCT& draw, const std::vector<int>& rows);
     void MoveColumn(bool right);
     bool MoveSelection(HWND listWindow, int direction);

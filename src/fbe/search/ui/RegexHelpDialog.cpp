@@ -35,19 +35,20 @@ CString HelpText(FbeSearchPresets::SearchUiContext context)
 
 enum class HelpLineKind { Title, Heading, Body, Syntax, Example, Note };
 
-HelpLineKind ClassifyHelpLine(const CString& line, size_t index, bool beginsBlock)
+HelpLineKind ClassifyHelpLine(size_t index, bool beginsBlock, int section, FbeSearchPresets::SearchUiContext context)
 {
-    // Help catalog entries use explicit blank-line-separated blocks: the first
-    // line is the title and each later block begins with a heading.  This keeps
-    // formatting locale-neutral and deliberately does not infer code from
-    // characters such as a backslash or a square bracket.
+    // The catalog has an explicit blank-line-separated structure.  Formatting
+    // follows the section position, never a guess based on regex punctuation.
     if (index == 0) return HelpLineKind::Title;
-    if (!line.IsEmpty() && beginsBlock) return HelpLineKind::Heading;
-    if (line.Left(8) == L"Example:" || line.Left(9) == L"Пример:") return HelpLineKind::Example;
-    if (line.Left(12) == L"Limitations:" || line.Left(13) == L"Ограничения:") return HelpLineKind::Note;
-    return HelpLineKind::Body;
+    if (beginsBlock) return HelpLineKind::Heading;
+    const int examples = context == FbeSearchPresets::SearchUiContext::Source ? 9 : 14;
+    const int limitations = examples + 1;
+    if (section == examples) return HelpLineKind::Example;
+    if (section == limitations) return HelpLineKind::Note;
+    return section >= 2 ? HelpLineKind::Syntax : HelpLineKind::Body;
 }
-void ApplyParagraphHeadingStyle(HWND text, const CString& help)
+
+void ApplyParagraphHeadingStyle(HWND text, const CString& help, FbeSearchPresets::SearchUiContext context)
 {
     std::vector<CString> lines;
     std::vector<int> starts;
@@ -60,15 +61,31 @@ void ApplyParagraphHeadingStyle(HWND text, const CString& help)
     }
     CHARFORMAT2 heading = {}; heading.cbSize = sizeof(heading); heading.dwMask = CFM_BOLD; heading.dwEffects = CFE_BOLD;
     CHARFORMAT2 title = heading; title.dwMask |= CFM_SIZE; title.yHeight = 220;
-    PARAFORMAT2 paragraph = {}; paragraph.cbSize = sizeof(paragraph); paragraph.dwMask = PFM_SPACEBEFORE | PFM_SPACEAFTER; paragraph.dySpaceBefore = 100; paragraph.dySpaceAfter = 40;
+    CHARFORMAT2 syntax = {}; syntax.cbSize = sizeof(syntax); syntax.dwMask = CFM_FACE; ::lstrcpynW(syntax.szFaceName, L"Consolas", LF_FACESIZE);
+    PARAFORMAT2 headingParagraph = {}; headingParagraph.cbSize = sizeof(headingParagraph); headingParagraph.dwMask = PFM_SPACEBEFORE | PFM_SPACEAFTER; headingParagraph.dySpaceBefore = 100; headingParagraph.dySpaceAfter = 40;
+    PARAFORMAT2 exampleParagraph = {}; exampleParagraph.cbSize = sizeof(exampleParagraph); exampleParagraph.dwMask = PFM_STARTINDENT | PFM_SPACEAFTER; exampleParagraph.dxStartIndent = 180; exampleParagraph.dySpaceAfter = 40;
+    int section = 0;
     for (size_t index = 0; index < lines.size(); ++index)
     {
         const bool beginsBlock = index > 0 && lines[index - 1].IsEmpty();
-        const HelpLineKind kind = ClassifyHelpLine(lines[index], index, beginsBlock);
-        if (kind != HelpLineKind::Title && kind != HelpLineKind::Heading) continue;
+        if (beginsBlock) ++section;
+        const HelpLineKind kind = ClassifyHelpLine(index, beginsBlock, section, context);
+        if (lines[index].IsEmpty()) continue;
         ::SendMessage(text, EM_SETSEL, starts[index], starts[index] + lines[index].GetLength());
-        ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(kind == HelpLineKind::Title ? &title : &heading));
-        ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&paragraph));
+        if (kind == HelpLineKind::Title || kind == HelpLineKind::Heading)
+        {
+            ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(kind == HelpLineKind::Title ? &title : &heading));
+            ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&headingParagraph));
+        }
+        else if (kind == HelpLineKind::Syntax || kind == HelpLineKind::Example)
+        {
+            ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&syntax));
+            if (kind == HelpLineKind::Example) ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&exampleParagraph));
+        }
+        else if (kind == HelpLineKind::Note)
+        {
+            ::SendMessage(text, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&headingParagraph));
+        }
     }
     ::SendMessage(text, EM_SETSEL, 0, 0); ::SendMessage(text, EM_SCROLLCARET, 0, 0);
 }
@@ -127,7 +144,7 @@ private:
         CHARFORMAT2 body = {}; body.cbSize = sizeof(body); body.dwMask = CFM_COLOR; body.crTextColor = ThemeManager::TextColor();
         ::SendMessage(text, EM_SETSEL, 0, -1);
         ::SendMessage(text, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&body));
-        ApplyParagraphHeadingStyle(text, help);
+        ApplyParagraphHeadingStyle(text, help, m_context);
     }
     void CaptureLayoutMetrics()
     {

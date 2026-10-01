@@ -8,7 +8,7 @@ $runtimeLocalization = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\R
 if ($runtimeLocalization -notmatch '\{ IDD_REGEX_HELP, IDC_REGEX_HELP_CLOSE, L"fbe\.dialog\.idd_regex_help\.close" \}') { throw 'Regex Help Close button is not bound to its resource ID.' }
 if ($dialog -notmatch 'FbeApplyRuntimeDialogLocalization\(m_hWnd, IDD_REGEX_HELP\)') { throw 'Regex Help does not apply runtime dialog localization.' }
 $expected = @{ 'en-US' = 'Close'; 'ru-RU' = 'Закрыть' }
-foreach ($key in @('fbe.regex_help.design.advanced', 'fbe.regex_help.source.advanced')) {
+foreach ($key in @('fbe.regex_help.design.advanced', 'fbe.regex_help.source.text.detail')) {
     foreach ($language in $catalog.targetLanguages) {
         if ([string]::IsNullOrWhiteSpace([string]$catalog.strings.$key.translations.$language)) { throw "Missing $key translation for $language." }
     }
@@ -16,13 +16,21 @@ foreach ($key in @('fbe.regex_help.design.advanced', 'fbe.regex_help.source.adva
 foreach ($syntax in @('\K', '\G', '(?<name>...)', '\k<name>', '(?|...)', '(?(1)yes|no)', '(?1)', '(?&name)', '(*SKIP)(*FAIL)')) {
     if ($catalog.strings.'fbe.regex_help.design.advanced'.translations.'en-US'.IndexOf($syntax, [System.StringComparison]::Ordinal) -lt 0) { throw "Design Help omits compile-tested PCRE2 syntax $syntax." }
 }
-if ($catalog.strings.'fbe.regex_help.source.advanced'.translations.'en-US' -notmatch 'SCFIND_REGEXP \| SCFIND_CXX11REGEX') { throw 'Source Help must name its confirmed Scintilla C++11 mode.' }
+if ($catalog.strings.'fbe.regex_help.source.text.detail'.translations.'en-US' -notmatch 'SCFIND_REGEXP \| SCFIND_CXX11REGEX') { throw 'Source Help must name its confirmed Scintilla C++11 mode.' }
 foreach ($property in $catalog.strings.psobject.Properties | Where-Object { $_.Name -like 'fbe.regex_help.*' }) {
     foreach ($language in $catalog.targetLanguages) {
         if (([string]$property.Value.translations.$language).Contains('\\r\\n')) { throw "Regex Help $($property.Name)/$language contains literal \\r\\n." }
     }
 }
-$source = $catalog.strings.'fbe.regex_help.source.text.detail'.translations.'en-US'
+foreach ($obsolete in @('fbe.regex_help.design.text.detail', 'fbe.regex_help.source.advanced')) {
+    if ($null -ne $catalog.strings.$obsolete) { throw "Obsolete Regex Help key remains in the catalog: $obsolete." }
+}
+foreach ($language in $catalog.targetLanguages) {
+    $activeDesign = [string]$catalog.strings.'fbe.regex_help.design.advanced'.translations.$language
+    $activeSource = [string]$catalog.strings.'fbe.regex_help.source.text.detail'.translations.$language
+    if ($language -ne 'en-US' -and $activeDesign.Contains('\\')) { throw "Design Help $language still contains doubled regex backslashes." }
+    if ($activeSource.Split("`r`n`r`n").Count -lt 11) { throw "Source Help $language does not retain the complete section structure." }
+}$source = $catalog.strings.'fbe.regex_help.source.text.detail'.translations.'en-US'
 foreach ($section in @('Engine', 'Supported syntax', 'Classes', 'Anchors', 'Quantifiers', 'Groups and alternatives', 'Back-references', 'Replacement', 'Examples', 'Limitations')) {
     if ($source.IndexOf($section, [System.StringComparison]::Ordinal) -lt 0) { throw "Source Help omits section $section." }
 }

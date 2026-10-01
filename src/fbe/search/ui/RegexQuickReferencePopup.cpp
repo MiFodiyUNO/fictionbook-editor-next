@@ -11,13 +11,14 @@ LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     RECT client = {}; GetClientRect(&client);
     const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
     const int gap = UiMetrics::ScaleForDpi(6, dpi);
+    const int dividerWidth = UiMetrics::ScaleForDpi(1, dpi);
     const int captionHeight = UiMetrics::ScaleForDpi(18, dpi);
     const int buttonHeight = UiMetrics::ScaleForDpi(22, dpi);
     m_caption.Create(m_hWnd, CRect(gap, gap, client.right - gap, gap + captionHeight), Caption(), WS_CHILD | WS_VISIBLE, 0, IDC_REGEX_QUICK_CAPTION);
     const int middle = client.right / 2;
     const DWORD listStyle = WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | LBS_OWNERDRAWFIXED | LBS_HASSTRINGS;
-    m_left.Create(m_hWnd, CRect(gap, gap + captionHeight, middle - gap / 2, client.bottom - buttonHeight - gap * 2), NULL, listStyle, 0, IDC_REGEX_QUICK_LEFT);
-    m_right.Create(m_hWnd, CRect(middle + gap / 2, gap + captionHeight, client.right - gap, client.bottom - buttonHeight - gap * 2), NULL, listStyle, 0, IDC_REGEX_QUICK_RIGHT);
+    m_left.Create(m_hWnd, CRect(gap, gap + captionHeight, middle - dividerWidth, client.bottom - buttonHeight - gap * 2), NULL, listStyle, 0, IDC_REGEX_QUICK_LEFT);
+    m_right.Create(m_hWnd, CRect(middle + dividerWidth, gap + captionHeight, client.right - gap, client.bottom - buttonHeight - gap * 2), NULL, listStyle, 0, IDC_REGEX_QUICK_RIGHT);
     m_fullHelp.Create(m_hWnd, CRect(gap, client.bottom - buttonHeight - gap, client.right - gap, client.bottom - gap), FbeLoadRuntimeStringByKey(L"fbe.regex_quick.full_help", L"Full help..."), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDC_REGEX_QUICK_FULL_HELP);
     const HFONT font = UiMetrics::DialogFont();
     m_monospaceFont = ::CreateFontW(-::MulDiv(9, static_cast<int>(dpi), 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
@@ -30,7 +31,7 @@ LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     SIZE extent = {}; int widest = 0;
     for (size_t index = 0; index < m_entries.size(); ++index) { ::GetTextExtentPoint32(dc, m_entries[index].displaySyntax, m_entries[index].displaySyntax.GetLength(), &extent); widest = (std::max)(widest, static_cast<int>(extent.cx)); }
     if (old) ::SelectObject(dc, old); ::ReleaseDC(m_hWnd, dc);
-    const int listWidth = (std::max)(1, middle - gap * 3 / 2);
+    const int listWidth = (std::max)(1, middle - gap - dividerWidth);
     m_syntaxColumnWidth = (std::max)(listWidth * 25 / 100, (std::min)(listWidth * 38 / 100, widest + gap * 2));
     std::vector<int> leftIndexes, rightIndexes;
     for(size_t index = 0; index < m_entries.size(); ++index) {
@@ -149,9 +150,9 @@ LRESULT RegexQuickReferencePopup::OnToolTipGetDispInfo(int, LPNMHDR header, BOOL
     const std::vector<int>* rows = list == m_left ? &m_leftRows : list == m_right ? &m_rightRows : NULL;
     if (rows == NULL) return 0;
     POINT point = {}; ::GetCursorPos(&point); ::ScreenToClient(list, &point);
-    BOOL outside = FALSE; const int row = static_cast<int>(::SendMessage(list, LB_ITEMFROMPOINT, 0, MAKELPARAM(point.x, point.y)));
     const LRESULT rowResult = ::SendMessage(list, LB_ITEMFROMPOINT, 0, MAKELPARAM(point.x, point.y));
-    outside = HIWORD(rowResult) != 0;
+    const int row = LOWORD(rowResult);
+    const BOOL outside = HIWORD(rowResult) != 0;
     notification->lpszText = !outside && DescriptionIsTruncated(list, row, *rows, m_tooltipText)
         ? const_cast<LPWSTR>(static_cast<LPCWSTR>(m_tooltipText)) : const_cast<LPWSTR>(L"");
     return 0;
@@ -170,7 +171,7 @@ bool RegexQuickReferencePopup::Show(HWND owner, HWND anchor, FbeSearchPresets::S
     const int maxWidth = max(1, info.rcWork.right - info.rcWork.left - workMargin * 2);
     const int maxHeight = max(1, info.rcWork.bottom - info.rcWork.top - workMargin * 2);
     const int width = min(UiMetrics::ScaleForDpi(560, dpi), maxWidth);
-    const int height = min(UiMetrics::ScaleForDpi(360, dpi), maxHeight);
+    const int height = min(DesiredPopupHeight(dpi), maxHeight);
     int x = rc.right + width <= info.rcWork.right ? rc.right : rc.left - width; int y = rc.bottom + height <= info.rcWork.bottom ? rc.bottom : rc.top - height;
     x = max(info.rcWork.left, min(x, info.rcWork.right - width)); y = max(info.rcWork.top, min(y, info.rcWork.bottom - height));
     HWND hwnd = Create(owner, CRect(x, y, x + width, y + height), NULL, WS_POPUP | WS_BORDER, WS_EX_TOOLWINDOW);
@@ -180,6 +181,48 @@ bool RegexQuickReferencePopup::Show(HWND owner, HWND anchor, FbeSearchPresets::S
     ShowWindow(SW_SHOW); UpdateWindow(); return true;
 }
 
+int RegexQuickReferencePopup::DesiredPopupHeight(UINT dpi) const
+{
+    std::vector<int> leftIndexes, rightIndexes;
+    for (size_t index = 0; index < m_entries.size(); ++index)
+    {
+        const bool characters = m_entries[index].category == FbeSearchPresets::RegexQuickReferenceCategory::Characters;
+        if (m_mode == FbeSearchPresets::RegexQuickReferenceMode::Search ? characters : index < (m_entries.size() + 1) / 2)
+            leftIndexes.push_back(static_cast<int>(index));
+        else
+            rightIndexes.push_back(static_cast<int>(index));
+    }
+    const auto countRows = [this](const std::vector<int>& indexes) {
+        int rows = 0; int previous = -1;
+        for (size_t index = 0; index < indexes.size(); ++index)
+        {
+            const int category = static_cast<int>(m_entries[indexes[index]].category);
+            if (category != previous) { ++rows; previous = category; }
+            ++rows;
+        }
+        return rows;
+    };
+    const int gap = UiMetrics::ScaleForDpi(6, dpi);
+    const int captionHeight = UiMetrics::ScaleForDpi(18, dpi);
+    const int buttonHeight = UiMetrics::ScaleForDpi(22, dpi);
+    const int rowHeight = UiMetrics::ScaleForDpi(20, dpi);
+    const int rows = (std::max)(countRows(leftIndexes), countRows(rightIndexes));
+    return gap * 3 + captionHeight + buttonHeight + rowHeight * (std::max)(1, rows);
+}
+
+LRESULT RegexQuickReferencePopup::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
+{
+    PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(m_hWnd, &paint);
+    RECT client = {}; ::GetClientRect(m_hWnd, &client);
+    const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+    const int gap = UiMetrics::ScaleForDpi(6, dpi);
+    const int captionHeight = UiMetrics::ScaleForDpi(18, dpi);
+    const int buttonHeight = UiMetrics::ScaleForDpi(22, dpi);
+    RECT separator = { client.right / 2, gap + captionHeight, client.right / 2 + UiMetrics::ScaleForDpi(1, dpi), client.bottom - buttonHeight - gap * 2 };
+    ::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+    ::EndPaint(m_hWnd, &paint);
+    return 0;
+}
 CString RegexQuickReferencePopup::Caption() const {
     const bool source = m_context == FbeSearchPresets::SearchUiContext::Source;
     const bool replacement = m_mode == FbeSearchPresets::RegexQuickReferenceMode::Replacement;

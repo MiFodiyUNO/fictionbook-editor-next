@@ -205,14 +205,6 @@ public:
         UpdatePresetActions();
     }
 
-    int PresetPanelWidth() const
-    {
-        RECT units = { 0, 0, 212, 0 };
-        const HWND dialog = DialogWindow();
-        if (dialog) ::MapDialogRect(dialog, &units);
-        return units.right;
-    }
-
     struct PresetPanelMetrics
     {
         int margin;
@@ -225,22 +217,22 @@ public:
 
     PresetPanelMetrics GetPresetPanelMetrics(int availableHeight = 0) const
     {
-        RECT marginUnits = { 0, 0, 7, 7 };
+        RECT marginUnits = { 0, 0, 6, 6 };
         RECT lineUnits = { 0, 0, 0, 12 };
-        RECT treeUnits = { 0, 0, 0, 66 };
+        RECT treeUnits = { 0, 0, 0, 72 };
         const HWND dialog = DialogWindow();
         if (dialog) { ::MapDialogRect(dialog, &marginUnits); ::MapDialogRect(dialog, &lineUnits); ::MapDialogRect(dialog, &treeUnits); }
         PresetPanelMetrics metrics = {};
         metrics.margin = (std::max)(1, static_cast<int>(marginUnits.right));
         metrics.lineHeight = (std::max)(1, static_cast<int>(lineUnits.bottom));
-        metrics.treeHeight = (std::max)(metrics.lineHeight * 4, static_cast<int>(treeUnits.bottom));
-        metrics.previewHeight = metrics.lineHeight * 3;
-        metrics.buttonHeight = metrics.lineHeight + metrics.margin;
+        metrics.treeHeight = (std::max)(metrics.lineHeight * 6, static_cast<int>(treeUnits.bottom));
+        metrics.previewHeight = SelectedPreset() != NULL ? metrics.lineHeight * 2 : 0;
+        metrics.buttonHeight = (std::max)(metrics.lineHeight, UiMetrics::ScaleForDpi(14, UiMetrics::DpiForWindow(dialog)));
         const int fixedHeight = metrics.lineHeight + metrics.previewHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
         metrics.totalHeight = fixedHeight + metrics.treeHeight;
         if (availableHeight > 0 && metrics.totalHeight > availableHeight)
         {
-            const int minimumPreview = metrics.lineHeight * 2;
+            const int minimumPreview = SelectedPreset() != NULL ? metrics.lineHeight * 2 : 0;
             int reducedFixedHeight = metrics.lineHeight + minimumPreview + metrics.buttonHeight * 2 + metrics.margin * 5;
             metrics.previewHeight = availableHeight >= reducedFixedHeight + metrics.lineHeight * 4 ? minimumPreview : metrics.previewHeight;
             reducedFixedHeight = metrics.lineHeight + metrics.previewHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
@@ -281,23 +273,47 @@ public:
         const int width = client.right - client.left;
         const int contentWidth = (std::max)(0, width - margin * 2);
         const int treeTop = panelTop + lineHeight;
-        const int pinSize = (std::min)(UiMetrics::ScaleForDpi(22, UiMetrics::DpiForWindow(dialog)), lineHeight);
+        const int pinSize = (std::min)(UiMetrics::ScaleForDpi(18, UiMetrics::DpiForWindow(dialog)), lineHeight);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_LABEL), NULL, margin, panelTop, (std::max)(0, contentWidth - pinSize - margin), lineHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_PIN), NULL, width - margin - pinSize, panelTop + (lineHeight - pinSize) / 2, pinSize, pinSize, SWP_NOZORDER | SWP_NOACTIVATE);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_TREE), NULL, margin, treeTop, contentWidth, metrics.treeHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         const int descriptionTop = treeTop + metrics.treeHeight + margin;
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), NULL, margin, descriptionTop, contentWidth, metrics.previewHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         const int buttonsTop = descriptionTop + metrics.previewHeight + margin;
-        const int half = (contentWidth - margin) / 2;
-        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_APPLY), NULL, margin, buttonsTop, half / 2, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_SAVE), NULL, margin + half / 2 + margin, buttonsTop, contentWidth - half / 2 - margin, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        const int applyWidth = (std::min)(contentWidth, UiMetrics::ScaleForDpi(52, UiMetrics::DpiForWindow(dialog)));
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_APPLY), NULL, margin, buttonsTop, applyWidth, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_SAVE), NULL, margin + applyWidth + margin, buttonsTop, (std::max)(0, contentWidth - applyWidth - margin), metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         const int row2 = buttonsTop + metrics.buttonHeight + margin;
-        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_UPDATE), NULL, margin, row2, half / 2, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_RENAME), NULL, margin + half / 2 + margin, row2, half / 2, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_DELETE), NULL, margin + half + margin, row2, half - margin, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        const int row2Width = (std::max)(0, (contentWidth - margin * 2) / 3);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_UPDATE), NULL, margin, row2, row2Width, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_RENAME), NULL, margin + row2Width + margin, row2, row2Width, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_DELETE), NULL, margin + (row2Width + margin) * 2, row2, row2Width, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         AssertPresetPanelBounds(panelTop);
     }
 
+    void ResizePresetPanelForCurrentSelection()
+    {
+        const HWND dialog = DialogWindow();
+        if (!m_templatesExpanded || !dialog || m_compactDialogHeight == 0) return;
+        const int desiredHeight = GetPresetPanelMetrics().totalHeight;
+        if (desiredHeight != m_presetPanelHeight)
+        {
+            RECT window = {}; ::GetWindowRect(dialog, &window);
+            const int width = window.right - window.left;
+            const int height = m_compactDialogHeight + desiredHeight;
+            const HMONITOR monitor = ::MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST);
+            MONITORINFO info = {}; info.cbSize = sizeof(info);
+            int left = window.left; int top = window.top;
+            if (monitor && ::GetMonitorInfo(monitor, &info))
+            {
+                left = (std::max)(static_cast<int>(info.rcWork.left), (std::min)(left, static_cast<int>(info.rcWork.right) - width));
+                top = (std::max)(static_cast<int>(info.rcWork.top), (std::min)(top, static_cast<int>(info.rcWork.bottom) - height));
+            }
+            m_presetPanelHeight = desiredHeight;
+            ::SetWindowPos(dialog, NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        LayoutPresetPanel();
+    }
     void UpdatePresetToggleCaption()
     {
         SetRuntimeText(IDC_FIND_TEMPLATES,
@@ -343,7 +359,7 @@ public:
         m_templatesExpanded = visible;
         ::CheckDlgButton(dialog, IDC_FIND_PRESETS_PIN, _Settings.SearchTemplatesPanelPinned() ? BST_CHECKED : BST_UNCHECKED);
         UpdatePresetToggleCaption();
-        if (visible) { LayoutPresetPanel(); RefreshPresetPanel(); }
+        if (visible) { RefreshPresetPanel(); ResizePresetPanelForCurrentSelection(); }
     }
 
     FbeSearchPresets::SearchPreset CurrentPreset(const CString& name) const
@@ -420,30 +436,56 @@ public:
         ::SetFocus(GetDlgItem(IDC_TEXT));
     }
 
-    HICON PresetPinIcon(bool pinned, int size) const
+    HICON PresetPinIcon(int size) const
     {
-        return reinterpret_cast<HICON>(::LoadImage(::GetModuleHandle(NULL),
-            MAKEINTRESOURCE(pinned ? IDI_FIND_PRESETS_PIN : IDI_FIND_PRESETS_PIN_OFF), IMAGE_ICON,
+        return reinterpret_cast<HICON>(::LoadImage(::GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_FIND_PRESETS_PIN), IMAGE_ICON,
             size, size, LR_DEFAULTCOLOR));
     }
 
+    void DrawPresetPinGlyph(HDC dc, const RECT& target, bool pinned) const
+    {
+        const UINT dpi = UiMetrics::DpiForWindow(DialogWindow());
+        const int size = UiMetrics::ScaleForDpi(16, dpi);
+        const HICON icon = PresetPinIcon(size);
+        if (icon == NULL) return;
+        BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = size;
+        info.bmiHeader.biHeight = -size; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
+        void* bits = NULL; const HBITMAP bitmap = ::CreateDIBSection(dc, &info, DIB_RGB_COLORS, &bits, NULL, 0);
+        const HDC memory = bitmap ? ::CreateCompatibleDC(dc) : NULL;
+        if (memory && bits)
+        {
+            const HGDIOBJ previous = ::SelectObject(memory, bitmap);
+            RECT image = { 0, 0, size, size }; ::FillRect(memory, &image, static_cast<HBRUSH>(::GetStockObject(WHITE_BRUSH)));
+            ::DrawIconEx(memory, 0, 0, icon, size, size, 0, NULL, DI_NORMAL);
+            const COLORREF background = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_BTNFACE) : (pinned ? ThemeManager::PressedColor() : ThemeManager::ControlColor());
+            const COLORREF foreground = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) :
+                (pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor());
+            DWORD* pixels = static_cast<DWORD*>(bits);
+            for (int index = 0; index < size * size; ++index)
+            {
+                const DWORD source = pixels[index];
+                const int coverage = 255 - (static_cast<int>(source & 0xff) + static_cast<int>((source >> 8) & 0xff) + static_cast<int>((source >> 16) & 0xff)) / 3;
+                const int red = GetRValue(background) + (GetRValue(foreground) - GetRValue(background)) * coverage / 255;
+                const int green = GetGValue(background) + (GetGValue(foreground) - GetGValue(background)) * coverage / 255;
+                const int blue = GetBValue(background) + (GetBValue(foreground) - GetBValue(background)) * coverage / 255;
+                pixels[index] = RGB(red, green, blue);
+            }
+            const int x = target.left + ((target.right - target.left) - size) / 2;
+            const int y = target.top + ((target.bottom - target.top) - size) / 2;
+            ::BitBlt(dc, x, y, size, size, memory, 0, 0, SRCCOPY);
+            ::SelectObject(memory, previous); ::DeleteDC(memory);
+        }
+        if (bitmap) ::DeleteObject(bitmap);
+        ::DestroyIcon(icon);
+    }
     LRESULT OnDrawItem(UINT, WPARAM, LPARAM data, BOOL&)
     {
         const DRAWITEMSTRUCT* draw = reinterpret_cast<const DRAWITEMSTRUCT*>(data);
         if (!draw || draw->CtlID != IDC_FIND_PRESETS_PIN) return 0;
         const bool pinned = _Settings.SearchTemplatesPanelPinned();
-        const bool hot = (draw->itemState & ODS_HOTLIGHT) != 0;
-        ::FillRect(draw->hDC, &draw->rcItem, ThemeManager::ControlBrush());
-        const UINT dpi = UiMetrics::DpiForWindow(draw->hwndItem);
-        const int iconSize = UiMetrics::ScaleForDpi(16, dpi);
-        const HICON icon = PresetPinIcon(pinned, iconSize);
-        if (icon != NULL)
-        {
-            const int x = draw->rcItem.left + ((draw->rcItem.right - draw->rcItem.left) - iconSize) / 2;
-            const int y = draw->rcItem.top + ((draw->rcItem.bottom - draw->rcItem.top) - iconSize) / 2;
-            ::DrawIconEx(draw->hDC, x, y, icon, iconSize, iconSize, 0, NULL, DI_NORMAL);
-            ::DestroyIcon(icon);
-        }
+        const COLORREF surface = pinned && !ThemeManager::IsHighContrast() ? ThemeManager::PressedColor() : ThemeManager::ControlColor();
+        const HBRUSH brush = ::CreateSolidBrush(surface); ::FillRect(draw->hDC, &draw->rcItem, brush); ::DeleteObject(brush);
+        DrawPresetPinGlyph(draw->hDC, draw->rcItem, pinned);
         if (draw->itemState & ODS_FOCUS) ::DrawFocusRect(draw->hDC, &draw->rcItem);
         return TRUE;
     }
@@ -519,7 +561,7 @@ public:
         if (SaveUserPresets(users)) { RefreshPresetPanel(nextId, nextId.IsEmpty()); NotifyOpenPresetPanels(); }
         return 0;
     }
-    LRESULT OnPresetChanged(int, LPNMHDR, BOOL&) { UpdatePresetActions(); return 0; }
+    LRESULT OnPresetChanged(int, LPNMHDR, BOOL&) { UpdatePresetActions(); ResizePresetPanelForCurrentSelection(); return 0; }
     LRESULT OnPresetDblClick(int, LPNMHDR, BOOL&) { ApplySelectedPreset(); return 0; }
     LRESULT OnPresetKeyDown(int, LPNMHDR header, BOOL&)
     {
