@@ -104,7 +104,6 @@ std::vector<HelpBlock> BuildHelpBlocks(FbeSearchPresets::SearchUiContext context
     AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.examples", L"Practical examples"));
     AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_spaces", L"Multiple spaces: Find [ \\t]{2,}, replace with one space."));
     AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_punctuation", L"Before punctuation: Find [ \\t]+([,;:!?]), replace with $1."));
-    AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_word", L"Repeated word: Find \\b(\\p{L}+)\\s+\\1\\b with UCP enabled."));
     AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_mixed_alphabet", L"Mixed Cyrillic/Latin: Find (?=[^\\r\\n]*[А-Яа-яЁё])(?=[^\\r\\n]*[A-Za-z])[^\\r\\n]+"));
     AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_repeated_word", L"Possible repeated word: Find \\b(\\p{L}+)\\s+\\1\\b with UCP enabled."));
     AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.design_numeric_range", L"Numeric range: Find (\\d+)\\s*[-–—]\\s*(\\d+), replace with $1–$2."));

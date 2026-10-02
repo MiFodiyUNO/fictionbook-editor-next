@@ -126,6 +126,26 @@ public:
         return reinterpret_cast<HTREEITEM>(::SendMessage(tree, TVM_INSERTITEMW, 0, reinterpret_cast<LPARAM>(&item)));
     }
 
+    static constexpr LPARAM kPresetTreeRootData = -1;
+    static constexpr LPARAM kPresetTreeCategoryBase = -100;
+
+    static LPARAM CategoryTreeData(FbeSearchPresets::SearchPresetCategory category)
+    {
+        return kPresetTreeCategoryBase - static_cast<LPARAM>(category);
+    }
+
+    static bool IsCategoryTreeData(LPARAM data)
+    {
+        const LPARAM category = kPresetTreeCategoryBase - data;
+        return data <= kPresetTreeCategoryBase && category >= 0 &&
+            category <= static_cast<LPARAM>(FbeSearchPresets::SearchPresetCategory::Diagnostics);
+    }
+
+    static FbeSearchPresets::SearchPresetCategory CategoryFromTreeData(LPARAM data)
+    {
+        return static_cast<FbeSearchPresets::SearchPresetCategory>(kPresetTreeCategoryBase - data);
+    }
+
     const FbeSearchPresets::SearchPreset* SelectedPreset() const
     {
         const HWND tree = const_cast<FRBase*>(this)->GetDlgItem(IDC_FIND_PRESETS_TREE);
@@ -191,18 +211,22 @@ public:
             if (users[index].context == SearchContext() && (!IsReplaceDialog() || users[index].hasReplacement))
                 m_panelPresets.push_back(users[index]);
 
-        // Refreshing after a user action must not reopen every category. The
-        // order of category children follows the same sorted map as insertion.
+        // Category order follows the first preset in the catalog, not enum order.
+        // Preserve expansion by the category value carried by each real tree node.
         std::map<int, bool> expandedCategories;
-        for (size_t index = 0; index < builtIns.size(); ++index)
-            expandedCategories[static_cast<int>(builtIns[index].category)] = false;
-        HTREEITEM oldCategory = TreeView_GetChild(tree, TreeView_GetRoot(tree));
-        for (std::map<int, bool>::iterator category = expandedCategories.begin(); category != expandedCategories.end() && oldCategory; ++category, oldCategory = TreeView_GetNextSibling(tree, oldCategory))
-            category->second = (TreeView_GetItemState(tree, oldCategory, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
+        const HTREEITEM previousBuiltInRoot = TreeView_GetRoot(tree);
+        for (HTREEITEM categoryItem = previousBuiltInRoot ? TreeView_GetChild(tree, previousBuiltInRoot) : NULL;
+             categoryItem; categoryItem = TreeView_GetNextSibling(tree, categoryItem))
+        {
+            TVITEM categoryInfo = {}; categoryInfo.mask = TVIF_PARAM; categoryInfo.hItem = categoryItem;
+            if (TreeView_GetItem(tree, &categoryInfo) && IsCategoryTreeData(categoryInfo.lParam))
+                expandedCategories[static_cast<int>(CategoryFromTreeData(categoryInfo.lParam))] =
+                    (TreeView_GetItemState(tree, categoryItem, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
+        }
         ::SendMessage(tree, WM_SETREDRAW, FALSE, 0);
         ::SendMessage(tree, TVM_DELETEITEM, 0, reinterpret_cast<LPARAM>(TVI_ROOT));
         const HTREEITEM builtInRoot = InsertPresetTreeItem(tree, TVI_ROOT,
-            FbeLoadRuntimeStringByKey(L"fbe.search_preset.built_in", L"Built-in"), -1);
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.built_in", L"Built-in"), kPresetTreeRootData);
         std::map<int, HTREEITEM> categories;
         HTREEITEM desired = NULL;
         for (size_t index = 0; index < builtIns.size(); ++index)
@@ -212,14 +236,14 @@ public:
             if (!categoryItem)
             {
                 categoryItem = InsertPresetTreeItem(tree, builtInRoot,
-                    FbeSearchPresets::GetPresetCategoryName(builtIns[index].category), -2);
+                    FbeSearchPresets::GetPresetCategoryName(builtIns[index].category), CategoryTreeData(builtIns[index].category));
             }
             HTREEITEM item = InsertPresetTreeItem(tree, categoryItem, builtIns[index].name, static_cast<LPARAM>(index));
             if(!wantedId.IsEmpty() && builtIns[index].id == wantedId) desired = item;
         }
         const size_t builtInCount = builtIns.size();
         const HTREEITEM userRoot = InsertPresetTreeItem(tree, TVI_ROOT,
-            FbeLoadRuntimeStringByKey(L"fbe.search_preset.user", L"User"), -1);
+            FbeLoadRuntimeStringByKey(L"fbe.search_preset.user", L"User"), kPresetTreeRootData);
         for (size_t index = builtInCount; index < m_panelPresets.size(); ++index)
         {
             HTREEITEM item = InsertPresetTreeItem(tree, userRoot, m_panelPresets[index].name, static_cast<LPARAM>(index));
@@ -228,7 +252,12 @@ public:
         TreeView_Expand(tree, builtInRoot, TVE_EXPAND);
         TreeView_Expand(tree, userRoot, TVE_EXPAND);
         for (std::map<int, HTREEITEM>::const_iterator category = categories.begin(); category != categories.end(); ++category)
-            if (expandedCategories[category->first]) TreeView_Expand(tree, category->second, TVE_EXPAND);        if(!desired && selectUserRoot) desired = userRoot;
+        {
+            const std::map<int, bool>::const_iterator expanded = expandedCategories.find(category->first);
+            if (expanded != expandedCategories.end() && expanded->second)
+                TreeView_Expand(tree, category->second, TVE_EXPAND);
+        }
+        if(!desired && selectUserRoot) desired = userRoot;
         // Built-in categories start collapsed. Restore only the category needed
         // for a selected preset, keeping a large catalog immediately readable.
         if(desired) {

@@ -16,23 +16,33 @@ std::string Utf8(const CString& value) {
     if (bytes) ::WideCharToMultiByte(CP_UTF8, 0, value, value.GetLength(), &result[0], bytes, NULL, NULL);
     return result;
 }
-bool Matches(HWND editor, const CString& pattern, const char* subject) {
+int SearchFlags(const FbeSearchPresets::SearchPreset& preset) {
+    int flags = SCFIND_REGEXP | SCFIND_CXX11REGEX;
+    if (preset.matchCase) flags |= SCFIND_MATCHCASE;
+    if (preset.wholeWord) flags |= SCFIND_WHOLEWORD;
+    return flags;
+}
+// Mirrors BuildScintillaSearchFlags() for the preset flags used on the production Source path.
+bool Matches(HWND editor, const FbeSearchPresets::SearchPreset& preset, const char* subject) {
+    const CString& pattern = preset.findText;
     const std::string regex = Utf8(pattern);
     ::SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(subject));
     ::SendMessage(editor, SCI_SETTARGETSTART, 0, 0);
     ::SendMessage(editor, SCI_SETTARGETEND, ::SendMessage(editor, SCI_GETLENGTH, 0, 0), 0);
-    ::SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_MATCHCASE | SCFIND_CXX11REGEX, 0);
+    ::SendMessage(editor, SCI_SETSEARCHFLAGS, SearchFlags(preset), 0);
     return ::SendMessage(editor, SCI_SEARCHINTARGET, regex.size(), reinterpret_cast<LPARAM>(regex.c_str())) >= 0;
 }
 struct Fixture { const char* positive; const char* negative; };
-bool Replaces(HWND editor, const CString& pattern, const CString& replacement, const char* subject, const char* expected) {
+bool Replaces(HWND editor, const FbeSearchPresets::SearchPreset& preset, const char* subject, const char* expected) {
+    const CString& pattern = preset.findText;
+    const CString& replacement = preset.replacementText;
     const std::string regex = Utf8(pattern), replacementUtf8 = Utf8(replacement);
     ::SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(subject));
     ::SendMessage(editor, SCI_SETTARGETSTART, 0, 0);
     ::SendMessage(editor, SCI_SETTARGETEND, ::SendMessage(editor, SCI_GETLENGTH, 0, 0), 0);
-    ::SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_MATCHCASE | SCFIND_CXX11REGEX, 0);
+    ::SendMessage(editor, SCI_SETSEARCHFLAGS, SearchFlags(preset), 0);
     if (::SendMessage(editor, SCI_SEARCHINTARGET, regex.size(), reinterpret_cast<LPARAM>(regex.c_str())) < 0) return false;
-    ::SendMessage(editor, SCI_REPLACETARGET, replacementUtf8.size(), reinterpret_cast<LPARAM>(replacementUtf8.c_str()));
+    ::SendMessage(editor, SCI_REPLACETARGETRE, replacementUtf8.size(), reinterpret_cast<LPARAM>(replacementUtf8.c_str()));
     const sptr_t length = ::SendMessage(editor, SCI_GETLENGTH, 0, 0);
     std::string actual(static_cast<size_t>(length) + 1, '\0');
     ::SendMessage(editor, SCI_GETTEXT, actual.size(), reinterpret_cast<LPARAM>(&actual[0]));
@@ -78,23 +88,29 @@ int wmain() {
     if (!editor) return 2;
     ::SendMessage(editor, SCI_SETCODEPAGE, SC_CP_UTF8, 0);    std::vector<FbeSearchPresets::SearchPreset> presets;
     FbeSearchPresets::GetBuiltInPresets(FbeSearchPresets::SearchUiContext::Source, false, presets);
+    size_t safeReplacePresetCount = 0;
     for (size_t i = 0; i < presets.size(); ++i) {
         const std::map<std::wstring, Fixture>::const_iterator fixture = kFixtures.find(static_cast<LPCWSTR>(presets[i].id));
         const bool hasFixture = fixture != kFixtures.end();
-        const bool positive = hasFixture && Matches(editor, presets[i].findText, fixture->second.positive);
-        const bool negative = hasFixture && Matches(editor, presets[i].findText, fixture->second.negative);
+        const bool positive = hasFixture && Matches(editor, presets[i], fixture->second.positive);
+        const bool negative = hasFixture && Matches(editor, presets[i], fixture->second.negative);
         const bool noteOrders = presets[i].id != L"source_note_link" ||
-            (Matches(editor, presets[i].findText, "<a type=\"note\" l:href=\"#note1\">x</a>") &&
-             Matches(editor, presets[i].findText, "<a l:href=\"#note1\" type=\"note\">x</a>") &&
-             Matches(editor, presets[i].findText, "<a type=\"note\" xlink:href=\"#note1\">x</a>") &&
-             Matches(editor, presets[i].findText, "<a xlink:href=\"#note1\" type=\"note\">x</a>"));
+            (Matches(editor, presets[i], "<a type=\"note\" l:href=\"#note1\">x</a>") &&
+             Matches(editor, presets[i], "<a l:href=\"#note1\" type=\"note\">x</a>") &&
+             Matches(editor, presets[i], "<a type=\"note\" xlink:href=\"#note1\">x</a>") &&
+             Matches(editor, presets[i], "<a xlink:href=\"#note1\" type=\"note\">x</a>"));
         const std::map<std::wstring, ReplacementFixture>::const_iterator replacement = kReplacementFixtures.find(static_cast<LPCWSTR>(presets[i].id));
+        if (presets[i].hasReplacement) ++safeReplacePresetCount;
+        const bool noteNegatives = presets[i].id != L"source_note_link" ||
+            (!Matches(editor, presets[i], "<a l:href=\"#note1\">x</a>") &&
+             !Matches(editor, presets[i], "<a type=\"link\" l:href=\"#note1\">x</a>") &&
+             !Matches(editor, presets[i], "<a type=\"note\" href=\"https://example.test\">x</a>"));
         const bool replacementOk = !presets[i].hasReplacement ||
-            (replacement != kReplacementFixtures.end() && Replaces(editor, presets[i].findText, presets[i].replacementText, replacement->second.input, replacement->second.expected));
-        if (!hasFixture || !positive || negative || !noteOrders || !replacementOk) {
+            (replacement != kReplacementFixtures.end() && Replaces(editor, presets[i], replacement->second.input, replacement->second.expected));
+        if (!hasFixture || !positive || negative || !noteOrders || !noteNegatives || !replacementOk) {
             std::wcerr << L"Source Scintilla fixture failed: " << static_cast<LPCWSTR>(presets[i].id) << L" positive=" << positive << L" negative=" << negative << L" noteOrders=" << noteOrders << L" replacement=" << replacementOk << std::endl; return 3;
         }
     }
-    if (kFixtures.size() != presets.size() || kReplacementFixtures.size() != 3) return 4;
+    if (kFixtures.size() != presets.size() || kReplacementFixtures.size() != safeReplacePresetCount) return 4;
     ::DestroyWindow(editor); ::FreeLibrary(lexilla); ::FreeLibrary(scintilla); return 0;
 }

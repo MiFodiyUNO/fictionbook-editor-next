@@ -292,13 +292,21 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-search-preset-store.ps1") -PlatformToolset $PlatformToolset
 & (Join-Path $repoRoot "tools\tests\test-search-preset-catalog.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-search-preset-localization.ps1")
+& (Join-Path $repoRoot "tools\tests\test-search-preset-design-fixtures.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+& (Join-Path $repoRoot "tools\tests\test-search-preset-source-scintilla.ps1") -PlatformToolset $PlatformToolset
+& (Join-Path $repoRoot "tools\tests\test-search-preset-preview.ps1")
+& (Join-Path $repoRoot "tools\tests\test-search-preset-live-refresh.ps1")
+& (Join-Path $repoRoot "tools\tests\test-search-templates-panel-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-search-templates-pin-rendering.ps1")
+& (Join-Path $repoRoot "tools\tests\test-search-templates-open-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-regex-help-formatting.ps1")
+& (Join-Path $repoRoot "tools\tests\test-regex-help-runtime-localization.ps1")
+& (Join-Path $repoRoot "tools\tests\test-regex-help-escape.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-runtime.ps1") -PlatformToolset $PlatformToolset
 & (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-popup.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-insertion.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-localization.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-preset-live-refresh.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-preset-preview.ps1")
 & (Join-Path $repoRoot "tools\tests\test-search-preset-nbsp.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-find-replace-selection-seed.ps1")
 & (Join-Path $repoRoot "tools\tests\test-pcre2.ps1") @pcre2TestArguments

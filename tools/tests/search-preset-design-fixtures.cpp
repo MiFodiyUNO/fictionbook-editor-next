@@ -33,7 +33,7 @@ struct FbeMatch
     std::vector<CString> submatches;
 };
 
-// Mirrors FBEview.cpp:GetReplStr for the replacement syntax used by Find/Replace.
+// Test mirror of production replacement grammar; changes in FBEview.cpp:GetReplStr must require synchronized fixture update.
 // PCRE2 supplies only matching; replacement expansion deliberately follows FBE.
 struct ReplacementRun
 {
@@ -110,8 +110,12 @@ CString GetReplStr(const CString& rstr, const FbeMatch& match)
     return result;
 }
 bool Match(const SearchPreset& preset, LPCWSTR subject, CString* replacementResult = NULL) {
- int error=0; PCRE2_SIZE offset=0; const uint32_t flags=PCRE2_UTF|(preset.unicodeProperties?PCRE2_UCP:0);
- pcre2_code* code=pcre2_compile((PCRE2_SPTR)(LPCWSTR)preset.findText,preset.findText.GetLength(),flags,&error,&offset,NULL); if(!code)return false;
+ int error=0; PCRE2_SIZE offset=0;
+ CString pattern(preset.findText);
+ if (preset.wholeWord) pattern = L"(?<![\\p{L}\\p{N}_])(?:" + pattern + L")(?![\\p{L}\\p{N}_])";
+ uint32_t flags=PCRE2_UTF|PCRE2_MULTILINE|(preset.matchCase?0:PCRE2_CASELESS);
+ if (preset.unicodeProperties) flags|=PCRE2_UCP;
+ pcre2_code* code=pcre2_compile((PCRE2_SPTR)(LPCWSTR)pattern,pattern.GetLength(),flags,&error,&offset,NULL); if(!code)return false;
  pcre2_match_data* data=pcre2_match_data_create_from_pattern(code,NULL); int result=data?pcre2_match(code,(PCRE2_SPTR)subject,wcslen(subject),0,0,data,NULL):PCRE2_ERROR_NOMEMORY;
  if (result >= 0 && replacementResult)
  {
@@ -146,5 +150,7 @@ bool Match(const SearchPreset& preset, LPCWSTR subject, CString* replacementResu
  }
  if(data)pcre2_match_data_free(data); pcre2_code_free(code); return result>=0;
 }
+const wchar_t* const kFinalPunctuationPositive[] = { L"Текст", L"Текст»", L"Текст)", L"Текст]", L"Текст}", NULL };
+const wchar_t* const kFinalPunctuationNegative[] = { L"Текст.", L"Текст!", L"Текст?", L"Текст…", L"«Текст!»", L"«Текст?»", L"(Текст.)", L"[Текст!]", NULL };
 }
-int wmain(){std::vector<SearchPreset> presets;FbeSearchPresets::GetBuiltInPresets(FbeSearchPresets::SearchUiContext::Design,false,presets);for(size_t i=0;i<presets.size();++i){std::map<std::wstring,Fixture>::const_iterator it=kFixtures.find((LPCWSTR)presets[i].id);if(it==kFixtures.end()||!Match(presets[i],it->second.positive)||Match(presets[i],it->second.negative)){std::wcerr<<L"Design fixture failed: "<<(LPCWSTR)presets[i].id<<std::endl;return 1;}if(presets[i].hasReplacement){CString output;if(!it->second.output||!Match(presets[i],it->second.positive,&output)||output!=it->second.output){std::wcerr<<L"Design replacement failed: "<<(LPCWSTR)presets[i].id<<std::endl;return 2;}}}return kFixtures.size()==presets.size()?0:3;}
+int wmain(){std::vector<SearchPreset> presets;FbeSearchPresets::GetBuiltInPresets(FbeSearchPresets::SearchUiContext::Design,false,presets);for(size_t i=0;i<presets.size();++i){std::map<std::wstring,Fixture>::const_iterator it=kFixtures.find((LPCWSTR)presets[i].id);if(it==kFixtures.end()||!Match(presets[i],it->second.positive)||Match(presets[i],it->second.negative)){std::wcerr<<L"Design fixture failed: "<<(LPCWSTR)presets[i].id<<std::endl;return 1;} if(presets[i].id==L"design_paragraph_missing_final_punctuation"){for(size_t n=0;kFinalPunctuationPositive[n];++n)if(!Match(presets[i],kFinalPunctuationPositive[n]))return 4;for(size_t n=0;kFinalPunctuationNegative[n];++n)if(Match(presets[i],kFinalPunctuationNegative[n]))return 5;}if(presets[i].hasReplacement){CString output;if(!it->second.output||!Match(presets[i],it->second.positive,&output)||output!=it->second.output){std::wcerr<<L"Design replacement failed: "<<(LPCWSTR)presets[i].id<<std::endl;return 2;}}}return kFixtures.size()==presets.size()?0:3;}

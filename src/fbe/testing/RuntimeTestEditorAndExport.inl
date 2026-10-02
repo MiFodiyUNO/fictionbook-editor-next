@@ -699,20 +699,47 @@
 				if (TreeView_GetChild(tree, category)) return true;
 			return false;
 		};
-				auto preservesCategoryState = [](FRBase* panel, HWND tree) -> bool
-		{
-			HTREEITEM builtIn = tree ? TreeView_GetRoot(tree) : NULL;
-			HTREEITEM firstCategory = builtIn ? TreeView_GetChild(tree, builtIn) : NULL;
-			HTREEITEM secondCategory = firstCategory ? TreeView_GetNextSibling(tree, firstCategory) : NULL;
-			if (!panel || !firstCategory || !secondCategory) return false;
-			TreeView_Expand(tree, firstCategory, TVE_EXPAND);
-			panel->RefreshPresetPanel();
-			builtIn = TreeView_GetRoot(tree); firstCategory = builtIn ? TreeView_GetChild(tree, builtIn) : NULL;
-			secondCategory = firstCategory ? TreeView_GetNextSibling(tree, firstCategory) : NULL;
-			return firstCategory && secondCategory &&
-				(TreeView_GetItemState(tree, firstCategory, TVIS_EXPANDED) & TVIS_EXPANDED) != 0 &&
-				(TreeView_GetItemState(tree, secondCategory, TVIS_EXPANDED) & TVIS_EXPANDED) == 0;
-		};struct PinProbe { int foreground; int background; COLORREF tint; bool drawn; };
+		auto preservesCategoryState = [](FRBase* panel, HWND tree) -> bool
+        {
+            HTREEITEM builtIn = tree ? TreeView_GetRoot(tree) : NULL;
+            HTREEITEM selected = NULL;
+            HTREEITEM fallback = NULL;
+            int categories = 0;
+            for (HTREEITEM category = builtIn ? TreeView_GetChild(tree, builtIn) : NULL;
+                 category; category = TreeView_GetNextSibling(tree, category))
+            {
+                TVITEM item = {}; item.mask = TVIF_PARAM; item.hItem = category;
+                if (!TreeView_GetItem(tree, &item) || !FRBase::IsCategoryTreeData(item.lParam)) continue;
+                ++categories;
+                fallback = category;
+                const FbeSearchPresets::SearchPresetCategory value = FRBase::CategoryFromTreeData(item.lParam);
+                if (value == FbeSearchPresets::SearchPresetCategory::Proofreading ||
+                    value == FbeSearchPresets::SearchPresetCategory::DashesNumbers)
+                    selected = category;
+            }
+            if (!selected) selected = fallback;
+            if (!panel || !selected || categories < 3) return false;
+            for (HTREEITEM category = TreeView_GetChild(tree, builtIn); category; category = TreeView_GetNextSibling(tree, category))
+                TreeView_Expand(tree, category, category == selected ? TVE_EXPAND : TVE_COLLAPSE);
+            TVITEM selectedItem = {}; selectedItem.mask = TVIF_PARAM; selectedItem.hItem = selected;
+            if (!TreeView_GetItem(tree, &selectedItem)) return false;
+            const FbeSearchPresets::SearchPresetCategory expected = FRBase::CategoryFromTreeData(selectedItem.lParam);
+            panel->RefreshPresetPanel();
+            builtIn = TreeView_GetRoot(tree);
+            bool expectedExpanded = false;
+            bool otherExpanded = false;
+            for (HTREEITEM category = builtIn ? TreeView_GetChild(tree, builtIn) : NULL;
+                 category; category = TreeView_GetNextSibling(tree, category))
+            {
+                TVITEM item = {}; item.mask = TVIF_PARAM; item.hItem = category;
+                if (!TreeView_GetItem(tree, &item) || !FRBase::IsCategoryTreeData(item.lParam)) continue;
+                const bool expanded = (TreeView_GetItemState(tree, category, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
+                if (FRBase::CategoryFromTreeData(item.lParam) == expected) expectedExpanded = expanded;
+                else otherExpanded = otherExpanded || expanded;
+            }
+            return expectedExpanded && !otherExpanded;
+        };
+        struct PinProbe { int foreground; int background; COLORREF tint; bool drawn; };
 		auto probePin = [](FRBase* panel, bool pinned) -> PinProbe
 		{
 			PinProbe probe = {}; if (!panel) return probe;

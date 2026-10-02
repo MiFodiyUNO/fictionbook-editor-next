@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -13,9 +13,16 @@ Require 'GetPresetCategoryName' 'built-in templates are grouped by localized cat
 Require 'SearchPresetSafety::ReviewOnly' 'review-only templates have an explicit safety state'
 if ($source -match 'for\(std::map<int, HTREEITEM>::const_iterator category.*?TVE_EXPAND') { throw 'Built-in categories must start collapsed.' }
 Require 'if\(parent && parent != userRoot\) TreeView_Expand\(tree, parent, TVE_EXPAND\)' 'selected preset category is expanded on restore'
+Require 'kPresetTreeRootData = -1' 'distinct root tree-node data'
+Require 'kPresetTreeCategoryBase = -100' 'distinct category tree-node data range'
+Require 'CategoryTreeData\(FbeSearchPresets::SearchPresetCategory category\)' 'category tree-node encoder'
+Require 'IsCategoryTreeData\(LPARAM data\)' 'category tree-node discriminator'
+Require 'CategoryFromTreeData\(LPARAM data\)' 'category tree-node decoder'
 Require 'std::map<int, bool> expandedCategories' 'category expansion state is retained during panel refresh'
-Require 'TreeView_GetItemState\(tree, oldCategory, TVIS_EXPANDED\)' 'category expansion state is read before rebuilding the tree'
-Require 'if \(expandedCategories\[category->first\]\) TreeView_Expand\(tree, category->second, TVE_EXPAND\)' 'previously expanded categories are restored without opening every category'
+Require 'TVIF_PARAM; categoryInfo\.hItem = categoryItem' 'category identity is read before rebuilding the tree'
+Require 'CategoryFromTreeData\(categoryInfo\.lParam\)' 'category state is keyed by category data, not tree position'
+Require 'expandedCategories\.find\(category->first\)' 'previously expanded categories are restored by category identity'
+Require 'CategoryTreeData\(builtIns\[index\]\.category\)' 'built-in category nodes receive encoded category data'
 Require 'preset->builtIn && preset->safety == FbeSearchPresets::SearchPresetSafety::ReviewOnly' 'ReviewOnly warning limited to built-ins'
 Require 'item\.lParam < 0' 'Tree root and category nodes cannot resolve to a preset'
 Require 'EnableWindow\(GetDlgItem\(IDC_FIND_PRESET_APPLY\), preset != NULL\)' 'Apply is disabled for Tree root and category nodes'

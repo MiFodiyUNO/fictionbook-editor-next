@@ -15,7 +15,7 @@ foreach ($key in @('fbe.regex_help.design.caption', 'fbe.regex_help.source.capti
     'fbe.regex_help.heading.limitations', 'fbe.regex_help.example.source_digits', 'fbe.regex_help.example.source_spaces',
     'fbe.regex_help.example.source_capture', 'fbe.regex_help.example.source_empty_paragraph', 'fbe.regex_help.example.source_external_link',
     'fbe.regex_help.example.source_undefined_reference', 'fbe.regex_help.example.source_note_link', 'fbe.regex_help.example.source_html_artifact',
-    'fbe.regex_help.example.design_spaces', 'fbe.regex_help.example.design_punctuation', 'fbe.regex_help.example.design_word',
+    'fbe.regex_help.example.design_spaces', 'fbe.regex_help.example.design_punctuation',
     'fbe.regex_help.example.design_mixed_alphabet', 'fbe.regex_help.example.design_repeated_word',
     'fbe.regex_help.example.design_numeric_range', 'fbe.regex_help.example.design_initials')) {    foreach ($language in $catalog.targetLanguages) {
         if ([string]::IsNullOrWhiteSpace([string]$catalog.strings.$key.translations.$language)) { throw "Missing $key translation for $language." }
@@ -35,7 +35,8 @@ foreach ($key in $activeHelpKeys) {
 }
 foreach ($key in @('fbe.regex_help.example.source_empty_paragraph', 'fbe.regex_help.example.source_external_link', 'fbe.regex_help.example.source_undefined_reference', 'fbe.regex_help.example.source_note_link', 'fbe.regex_help.example.source_html_artifact', 'fbe.regex_help.example.design_mixed_alphabet', 'fbe.regex_help.example.design_repeated_word', 'fbe.regex_help.example.design_numeric_range', 'fbe.regex_help.example.design_initials')) {
     if ($dialog.IndexOf($key, [System.StringComparison]::Ordinal) -lt 0) { throw "Regex Help does not render practical example $key." }
-}if ($dialog -match 'ClassifyHelpLine|section ==') { throw 'Regex Help still derives formatting from paragraph position.' }
+}if ($dialog -match 'fbe\.regex_help\.example\.design_word') { throw 'Regex Help still contains the duplicate repeated-word example.' }
+if ($dialog -match 'ClassifyHelpLine|section ==') { throw 'Regex Help still derives formatting from paragraph position.' }
 $expected = @{ 'en-US' = 'Close'; 'ru-RU' = 'Закрыть' }
 foreach ($language in $expected.Keys) {
     if ($catalog.strings.'fbe.dialog.idd_regex_help.close'.translations.$language -ne $expected[$language]) { throw "Incorrect catalog close caption for $language." }
