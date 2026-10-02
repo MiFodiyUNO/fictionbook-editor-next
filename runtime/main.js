@@ -168,32 +168,42 @@ function BinaryIdExists(id, exceptBinary)
  return false;
 }
 
-// Keep this UTF-16 code-unit subset exactly aligned with FbeBinary::NormalizeXmlId.
+// Keep XML NCName BMP and supplementary ranges exactly aligned with FbeBinary::NormalizeXmlId.
 // JScript ES3 cannot query Unicode character categories, so both layers use this
 // explicit common subset and never disagree about an editable binary ID.
 function IsBinaryXmlLetterCodeUnit(code)
 {
  return (code>=65 && code<=90) || (code>=97 && code<=122) ||
-  (code>=0x00c0 && code<=0x02ff) || (code>=0x0370 && code<=0x1fff) ||
+  (code>=0x00c0 && code<=0x00d6) || (code>=0x00d8 && code<=0x00f6) ||
+  (code>=0x00f8 && code<=0x02ff) || (code>=0x0370 && code<=0x037d) ||
+  (code>=0x037f && code<=0x1fff) || (code>=0x200c && code<=0x200d) ||
   (code>=0x2070 && code<=0x218f) || (code>=0x2c00 && code<=0x2fef) ||
   (code>=0x3001 && code<=0xd7ff) || (code>=0xf900 && code<=0xfdcf) ||
   (code>=0xfdf0 && code<=0xfffd);
+}
+
+function IsBinaryXmlSupplementaryPair(id, index)
+{
+ var high=id.charCodeAt(index), low=id.charCodeAt(index+1);
+ return high>=0xd800 && high<=0xdb7f && low>=0xdc00 && low<=0xdfff;
 }
 
 function IsBinaryXmlId(id)
 {
  id=String(id || "");
  if(id=="") return false;
- var first=id.charCodeAt(0);
- if(first!=95 && !IsBinaryXmlLetterCodeUnit(first)) return false;
- for(var i=1; i<id.length; ++i)
+ var index=0, first=id.charCodeAt(0);
+ if(IsBinaryXmlSupplementaryPair(id, 0)) index=2;
+ else if(first!=95 && !IsBinaryXmlLetterCodeUnit(first)) return false;
+ for(var i=index; i<id.length; ++i)
  {
+  if(IsBinaryXmlSupplementaryPair(id, i)) { ++i; continue; }
   var value=id.charCodeAt(i);
-  if(value!=45 && value!=46 && value!=95 && !(value>=48 && value<=57) && !IsBinaryXmlLetterCodeUnit(value)) return false;
+  if(value!=45 && value!=46 && value!=95 && !(value>=48 && value<=57) && value!=0x00b7 &&
+   !(value>=0x0300 && value<=0x036f) && !(value>=0x203f && value<=0x2040) && !IsBinaryXmlLetterCodeUnit(value)) return false;
  }
  return true;
 }
-
 function IsBinaryReferenceValue(value, id)
 {
  return value == "#"+id || value == "fbw-internal:#"+id;
