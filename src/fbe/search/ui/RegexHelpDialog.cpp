@@ -74,7 +74,7 @@ std::vector<HelpBlock> BuildHelpBlocks(FbeSearchPresets::SearchUiContext context
         AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_note_link", L"Note link: Find <a(?=[^>]*type=\\\"note\\\")[^>]*>"));
         AddHelpBlock(blocks, HelpLineKind::Example, LocalizedHelpText(L"fbe.regex_help.example.source_html_artifact", L"HTML import artifact: Find </?(?:font|span|div)\\b[^>]*>"));
         AddHelpBlock(blocks, HelpLineKind::Heading, LocalizedHelpText(L"fbe.regex_help.heading.limitations", L"Limitations"));
-        AddHelpBlock(blocks, HelpLineKind::Note, LocalizedHelpText(L"fbe.regex_help.body.source.limitations", L"No UCP, Unicode property classes, lookbehind, \\K, \\G, branch reset, PCRE2 verbs, or FBE Design replacement formatting."));
+        AddHelpBlock(blocks, HelpLineKind::Note, LocalizedHelpText(L"fbe.regex_help.body.source.limitations", L"Source search uses Scintilla C++11 regular expressions line by line: a pattern cannot match across line boundaries. \\r\\n, \\n and \\x0D/\\x0A do not cross lines because MatchOnLines is used. No UCP, Unicode property classes, lookbehind, \\K, \\G, branch reset, PCRE2 verbs, or FBE Design replacement formatting."));
         return blocks;
     }
 
