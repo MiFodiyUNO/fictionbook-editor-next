@@ -52,6 +52,17 @@ foreach($fragment in @('void SetSpan(', 'cell->setAttribute(fbName, attributeVal
     if($gridSource -notlike "*$fragment*") { throw "Span metadata и HTML layout не синхронизированы: $fragment" }
 }
 
+$mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
+foreach($fragment in @('FbeTable::SetSpan(sc, L"fbcolspan", L"colspan"', 'FbeTable::SetSpan(sc, L"fbrowspan", L"rowspan"', 'sc->removeAttribute(L"fbalign", 0); sc->removeAttribute(L"align", 0);', 'sc->removeAttribute(L"fbvalign", 0); sc->removeAttribute(L"valign", 0);', 'm_doc->m_body.BeginUndoUnit(L"change table attribute")')) {
+    if(-not $mainFrameSource.Contains($fragment)) { throw "Context attribute bar does not preserve atomic synchronization: $fragment" }
+}
+
+foreach($cssPath in @((Join-Path $repoRoot 'runtime\main.css'), (Join-Path $repoRoot 'runtime\main_fast.css'))) {
+    $css = Get-Content -Raw -LiteralPath $cssPath
+    foreach($fragment in @('th[valign="middle"]', 'td[valign="middle"]', 'vertical-align: middle;', 'th[valign="bottom"]', 'td[valign="bottom"]', 'vertical-align: bottom;')) {
+        if(-not $css.Contains($fragment)) { throw "Table CSS does not apply valign: $cssPath / $fragment" }
+    }
+}
 foreach($fragment in @('TagAt(', 'TagAt(grid, rowIndex, col,', 'TagAt(grid, row, before ? column : column - 1, fallbackTag)')) {
     if($structuralSource -notlike "*$fragment*") { throw "Новые ячейки таблицы не наследуют тип локального соседа: $fragment" }
 }

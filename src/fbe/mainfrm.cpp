@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "structure/BodyStructuralEditor.h"
 #include "structure/StructuralTrace.h"
+#include "table/TableGrid.h"
 #include "document\DocumentLifecycleController.h"
 #include "document\DocumentLoader.h"
 #include "document\DocumentOpenSource.h"
@@ -1843,8 +1844,12 @@ BOOL CMainFrame::OnIdle()
 		enableBody(ID_EDIT_CODE, 8192); UISetCheck(ID_EDIT_CODE, (bodyState & 16384) != 0);
 		UIEnable(ID_INSERT_TABLE, view.InsertTable(true));
 		const bool tableCell = (bool)m_selection_context.tableCell;
+		FbeTable::Grid tableGrid;
+		const bool hasTableGrid = tableCell && FbeTable::BuildGrid(FbeTable::FindTableElement(m_selection_context.tableCell), tableGrid);
 		const WORD tableCommands[] = { ID_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_BELOW, ID_TABLE_DELETE_ROW, ID_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_DELETE_COLUMN, ID_TABLE_TOGGLE_HEADER_CELL, ID_TABLE_MAKE_HEADER_CELLS, ID_TABLE_MAKE_NORMAL_CELLS };
 		for (size_t index = 0; index < _countof(tableCommands); ++index) UIEnable(tableCommands[index], tableCell);
+		UIEnable(ID_TABLE_DELETE_ROW, hasTableGrid && tableGrid.rows.size() > 1);
+		UIEnable(ID_TABLE_DELETE_COLUMN, hasTableGrid && tableGrid.columns > 1);
 		UIEnable(ID_GOTO_FOOTNOTE, view.GoToFootnote(true) || view.GoToReference(true));
 		UIEnable(ID_GOTO_REFERENCE, view.GoToReference(true));
 		enableBody(ID_EDIT_MERGE, 2048); enableBody(ID_EDIT_REMOVE_OUTER_SECTION, 4096);
@@ -2063,6 +2068,10 @@ BOOL CMainFrame::OnIdle()
 	for (size_t index = 0; index < _countof(tableCommands); ++index) {
 		UIEnable(tableCommands[index], tableCommandEnabled);
 	}
+	FbeTable::Grid tableGrid;
+	const bool hasTableGrid = tableCommandEnabled && FbeTable::BuildGrid(FbeTable::FindTableElement(m_selection_context.tableCell), tableGrid);
+	UIEnable(ID_TABLE_DELETE_ROW, hasTableGrid && tableGrid.rows.size() > 1);
+	UIEnable(ID_TABLE_DELETE_COLUMN, hasTableGrid && tableGrid.columns > 1);
 	}
 
 	// update UI
@@ -5150,6 +5159,11 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
   if (m_ignore_cb_changes)
     return 0;
 
+  const bool tableAttributeChange = wID == IDC_COLSPAN || wID == IDC_ROWSPAN || wID == IDC_ALIGNTR || wID == IDC_ALIGN || wID == IDC_VALIGN;
+  const bool tableUndoStarted = tableAttributeChange && m_doc;
+  if (tableUndoStarted)
+    m_doc->m_body.BeginUndoUnit(L"change table attribute");
+
   try {
 	RebuildSelectionContext();
 	const LinkAttributeState linkState = m_contextAttributeBars.GetLinkState();
@@ -5259,7 +5273,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 		MSHTML::IHTMLElementPtr		sc(m_doc->m_body.SelectionsColspanB(colspan));
 		if (sc){
 			CString	    newsColspan(tableState.colspan);
-			sc->setAttribute(L"fbcolspan",_variant_t((const wchar_t *)newsColspan),0);
+			FbeTable::SetSpan(sc, L"fbcolspan", L"colspan", _wtol(newsColspan));
 		}
 		else
 			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
@@ -5269,7 +5283,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 		MSHTML::IHTMLElementPtr		sc(m_doc->m_body.SelectionsRowspanB(rowspan));
 		if (sc){
 			CString	    newsRowspan(tableState.rowspan);
-			sc->setAttribute(L"fbrowspan",_variant_t((const wchar_t *)newsRowspan),0);
+			FbeTable::SetSpan(sc, L"fbrowspan", L"rowspan", _wtol(newsRowspan));
 		}
 		else
 			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
@@ -5279,7 +5293,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 		MSHTML::IHTMLElementPtr		sc(m_doc->m_body.SelectionsAlignTRB(alignTR));
 		if (sc){
 			CString	    newsAlignTR(tableState.rowAlign);
-			sc->setAttribute(L"fbalign",_variant_t((const wchar_t *)newsAlignTR),0);
+			if (newsAlignTR.IsEmpty()) { sc->removeAttribute(L"fbalign", 0); sc->removeAttribute(L"align", 0); } else { const _variant_t value((const wchar_t *)newsAlignTR); sc->setAttribute(L"fbalign", value, 0); sc->setAttribute(L"align", value, 0); }
 		}
 		else
 			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
@@ -5289,7 +5303,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 		MSHTML::IHTMLElementPtr		sc(m_doc->m_body.SelectionsAlignB(align));
 		if (sc){
 			CString	    newsAlign(tableState.align);
-			sc->setAttribute(L"fbalign",_variant_t((const wchar_t *)newsAlign),0);
+			if (newsAlign.IsEmpty()) { sc->removeAttribute(L"fbalign", 0); sc->removeAttribute(L"align", 0); } else { const _variant_t value((const wchar_t *)newsAlign); sc->setAttribute(L"fbalign", value, 0); sc->setAttribute(L"align", value, 0); }
 		}
 		else
 			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
@@ -5299,14 +5313,15 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 		MSHTML::IHTMLElementPtr		sc(m_doc->m_body.SelectionsVAlignB(valign));
 		if (sc){
 			CString	    newsVAlign(tableState.valign);
-			sc->setAttribute(L"fbvalign",_variant_t((const wchar_t *)newsVAlign),0);
+			if (newsVAlign.IsEmpty()) { sc->removeAttribute(L"fbvalign", 0); sc->removeAttribute(L"valign", 0); } else { const _variant_t value((const wchar_t *)newsVAlign); sc->setAttribute(L"fbvalign", value, 0); sc->setAttribute(L"valign", value, 0); }
 		}
 		else
 			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
   }
   catch (_com_error&) { }
-
+  if (tableUndoStarted)
+    m_doc->m_body.EndUndoUnit();
 	// Attribute edits mutate DOM.  Do not let a following command reuse any
 	// element captured before the mutation.
 	InvalidateSelectionContext();

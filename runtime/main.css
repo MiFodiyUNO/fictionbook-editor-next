@@ -184,6 +184,11 @@ div#fbw_body table.table th {
 	background-color: #E6E6E6;
 	font-weight: bold;
 }
+div#fbw_body table.table th[valign="middle"],
+div#fbw_body table.table td[valign="middle"] { vertical-align: middle; }
+div#fbw_body table.table th[valign="bottom"],
+div#fbw_body table.table td[valign="bottom"] { vertical-align: bottom; }
+
 
 div.section {
 	border-color: #008000;

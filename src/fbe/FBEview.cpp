@@ -3747,8 +3747,12 @@ bool CFBEView::MoveTableCell(bool reverse)
 
 		if (!reverse && index + 1 == cells.size())
 		{
+			Grid grid;
+			if (!FbeTable::BuildGrid(table, grid)) return false;
+			long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
+			if (rowIndex == static_cast<long>(grid.rows.size())) return false;
 			FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert table row below");
-			MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"afterEnd", FbeTable::CreateRowLike(Document(), row));
+			if (!FbeTable::InsertRow(Document(), grid, rowIndex, true, cell->tagName)) return false;
 			undo.Close();
 			NotifyTableStructureChanged(m_frame, m_hWnd);
 			FbeTable::GetCells(table, cells);

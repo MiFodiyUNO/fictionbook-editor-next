@@ -154,7 +154,7 @@ bool InsertRow(MSHTML::IHTMLDocument2Ptr document, const Grid &grid,
   return true;
 }
 bool DeleteRow(const Grid &grid, long rowIndex) {
-  if (rowIndex < 0 || rowIndex >= static_cast<long>(grid.rows.size()) ||
+  if (grid.rows.size() <= 1 || rowIndex < 0 || rowIndex >= static_cast<long>(grid.rows.size()) ||
       !grid.rows[rowIndex]->parentElement)
     return false;
   for (size_t i = 0; i < grid.cells.size(); ++i) {
@@ -207,7 +207,7 @@ bool InsertColumn(MSHTML::IHTMLDocument2Ptr document, const Grid &grid,
   return true;
 }
 bool DeleteColumn(const Grid &grid, long column) {
-  if (column < 0 || column >= grid.columns)
+  if (grid.columns <= 1 || column < 0 || column >= grid.columns)
     return false;
   std::vector<bool> handled(grid.cells.size(), false);
   for (long row = 0; row < static_cast<long>(grid.rows.size()); ++row) {

@@ -16,4 +16,11 @@ foreach ($legacy in @('struct LogicalTableCell', 'struct LogicalTableGrid', 'Bui
     if ($viewText -match [regex]::Escape($legacy)) { throw "FBEview.cpp still owns $legacy" }
 }
 
+foreach ($required in @('FbeTable::BuildGrid(table, grid)', 'FbeTable::InsertRow(Document(), grid, rowIndex, true, cell->tagName)')) {
+    if ($viewText -notmatch [regex]::Escape($required)) { throw "Tab from the final table cell does not use the logical grid: $required" }
+}
+
+foreach ($required in @('grid.rows.size() <= 1', 'grid.columns <= 1')) {
+    if ((Get-Content -Raw $editor) -notmatch [regex]::Escape($required)) { throw "Structural deletion guard is missing: $required" }
+}
 Write-Host 'PASS: table structure boundary'

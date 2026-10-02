@@ -188,6 +188,8 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-startup-validation-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structure-boundary.ps1")
+# Fast table smoke: real structural edit, live DOM Undo/Redo, Save -> reopen and XSD.
+& (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId plain -Operation insert-row-below
 & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-structural-trace-contract.ps1")
