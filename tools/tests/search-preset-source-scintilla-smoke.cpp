@@ -112,5 +112,11 @@ int wmain() {
         }
     }
     if (kFixtures.size() != presets.size() || kReplacementFixtures.size() != safeReplacePresetCount) return 4;
+    const std::vector<FbeSearchPresets::SearchPreset>::const_iterator doubleEmptyLine = std::find_if(presets.begin(), presets.end(), [](const FbeSearchPresets::SearchPreset& preset) { return preset.id == L"source_double_empty_line"; });
+    if (doubleEmptyLine == presets.end()) return 5;
+    if (!Matches(editor, *doubleEmptyLine, "<empty-line/>\t <empty-line/>") ||
+        Matches(editor, *doubleEmptyLine, "<empty-line/>\r\n<empty-line/>") ||
+        Matches(editor, *doubleEmptyLine, "<empty-line/>\n<empty-line/>") ||
+        Matches(editor, *doubleEmptyLine, "<empty-line/>\r<empty-line/>")) return 6;
     ::DestroyWindow(editor); ::FreeLibrary(lexilla); ::FreeLibrary(scintilla); return 0;
 }

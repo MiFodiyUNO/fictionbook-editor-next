@@ -37,6 +37,17 @@ foreach ($key in @('fbe.regex_help.example.source_empty_paragraph', 'fbe.regex_h
     if ($dialog.IndexOf($key, [System.StringComparison]::Ordinal) -lt 0) { throw "Regex Help does not render practical example $key." }
 }if ($dialog -match 'fbe\.regex_help\.example\.design_word') { throw 'Regex Help still contains the duplicate repeated-word example.' }
 if ($dialog -match 'ClassifyHelpLine|section ==') { throw 'Regex Help still derives formatting from paragraph position.' }
+$limitationsKey = 'fbe.regex_help.body.source.limitations'
+if ($dialog.IndexOf($limitationsKey, [System.StringComparison]::Ordinal) -lt 0) { throw 'Regex Help does not render the Source line-boundary limitations.' }
+foreach ($language in $catalog.targetLanguages) {
+    $text = [string]$catalog.strings.$limitationsKey.translations.$language
+    if ([string]::IsNullOrWhiteSpace($text)) { throw "Missing Source line-boundary limitation for $language." }
+    if ($text.IndexOf('MatchOnLines', [System.StringComparison]::Ordinal) -lt 0) { throw "Source limitation for $language does not mention MatchOnLines." }
+}
+$englishLimitations = [string]$catalog.strings.$limitationsKey.translations.'en-US'
+foreach ($token in @('line by line', 'across line boundaries', 'MatchOnLines')) {
+    if ($englishLimitations.IndexOf($token, [System.StringComparison]::Ordinal) -lt 0) { throw "English Source limitation misses: $token" }
+}
 $expected = @{ 'en-US' = 'Close'; 'ru-RU' = 'Закрыть' }
 foreach ($language in $expected.Keys) {
     if ($catalog.strings.'fbe.dialog.idd_regex_help.close'.translations.$language -ne $expected[$language]) { throw "Incorrect catalog close caption for $language." }

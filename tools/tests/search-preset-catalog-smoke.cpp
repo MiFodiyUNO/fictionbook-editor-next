@@ -106,5 +106,10 @@ int wmain()
     if (!duplicate || !duplicate->unicodeProperties || !Matches(*duplicate, L"тест тест")) return 14;
     if (!sourcePunctuation || sourcePunctuation->hasReplacement || sourcePunctuation->findText != L"[!?][!?]+") return 15;
     if (Find(source, L"design.normalize-spaces") != NULL) return 16;
+    const SearchPreset* doubleEmptyLine = Find(source, L"source_double_empty_line");
+    if (!doubleEmptyLine || doubleEmptyLine->findText != L"<empty-line/>[ \\t]*<empty-line/>") return 17;
+    if (doubleEmptyLine->description.Find(L"one Source line") < 0 || doubleEmptyLine->description.Find(L"spaces or tabs") < 0 || doubleEmptyLine->description.Find(L"line boundaries") < 0) return 18;
+    for (const wchar_t* forbidden : { L"\\r", L"\\n", L"\\s*", L"\\R" })
+        if (doubleEmptyLine->findText.Find(forbidden) >= 0) return 19;
     return 0;
 }
