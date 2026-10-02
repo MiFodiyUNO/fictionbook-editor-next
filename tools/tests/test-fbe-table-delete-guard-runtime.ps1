@@ -4,6 +4,10 @@ param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [
 $ErrorActionPreference='Stop';$FbeExe=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not(Test-Path $FbeExe)){throw "Не найден FBE: $FbeExe"}
 function Invoke-Fbe([string[]]$Arguments,[string]$Name){$p=Start-Process -FilePath $FbeExe -ArgumentList $Arguments -PassThru;if(-not $p.WaitForExit($TimeoutSeconds*1000)){Stop-Process $p -Force;throw "FBE не завершил $Name"};if($p.ExitCode){throw "FBE вернул $($p.ExitCode): $Name"}}
+$mainFrame = Get-Content -Raw -LiteralPath (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')) 'src\fbe\mainfrm.cpp')
+foreach ($contract in @('UIEnable(ID_TABLE_DELETE_ROW, hasTableGrid && tableGrid.rows.size() > 1);', 'UIEnable(ID_TABLE_DELETE_COLUMN, hasTableGrid && tableGrid.columns > 1);')) {
+    if ($mainFrame.IndexOf($contract, [System.StringComparison]::Ordinal) -lt 0) { throw "Missing disabled-state contract: $contract" }
+}
 $dir=Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-guard-'+[guid]::NewGuid().ToString('N'));New-Item -ItemType Directory -Path $dir|Out-Null
 try{foreach($case in @(@{id='one-row';table='<tr><td>A</td><td>B</td></tr>'},@{id='one-column';table='<tr><td>A</td></tr><tr><td>B</td></tr>'})){
  $fb2=Join-Path $dir ($case.id+'.fb2');$report=Join-Path $dir ($case.id+'.tsv');$text='<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>guard</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>guard-'+$case.id+'</id><version>1.0</version></document-info></description><body><section><table>'+$case.table+'</table></section></body></FictionBook>';Set-Content $fb2 $text -Encoding utf8

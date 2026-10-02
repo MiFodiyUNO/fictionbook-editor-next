@@ -28,12 +28,15 @@ function Assert-Phase($rows,[string]$Phase,[string[]]$Expected) {
 $dir=Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-attrs-'+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Path $dir | Out-Null
 try {
     $fb2=Join-Path $dir 'table-attributes.fb2'; $report=Join-Path $dir 'attributes.tsv'; $reopen=Join-Path $dir 'reopen.tsv'
-    $fixture='<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>table attributes</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>table-attributes</id><version>1.0</version></document-info></description><body><section><table><tr><td id="target" colspan="1" fbcolspan="1" rowspan="1" fbrowspan="1" align="right" fbalign="right" valign="top" fbvalign="top">target</td><td>peer</td><td>peer 2</td></tr><tr><td>tail</td><td>tail 2</td><td>tail 3</td></tr></table></section></body></FictionBook>'
+    $fixture='<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>table attributes</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>table-attributes</id><version>1.0</version></document-info></description><body><section><table><tr><td id="target" colspan="1" rowspan="1" align="right" valign="top">target</td><td>peer</td><td>peer 2</td></tr><tr><td>tail</td><td>tail 2</td><td>tail 3</td></tr></table></section></body></FictionBook>'
     Set-Content -LiteralPath $fb2 -Value $fixture -Encoding utf8
     $saved=@{}; foreach($key in 'FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_TABLE_ATTRIBUTES_REOPEN') { $saved[$key]=[Environment]::GetEnvironmentVariable($key) }
     try { $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='table-attributes'; Remove-Item Env:FBE_NEXT_TEST_TABLE_ATTRIBUTES_REOPEN -ErrorAction SilentlyContinue; Invoke-Fbe @('-b',$report,$fb2) 'table attributes' }
     finally { foreach($key in $saved.Keys) { if($null -eq $saved[$key]) { Remove-Item ("Env:"+$key) -ErrorAction SilentlyContinue } else { Set-Item ("Env:"+$key) $saved[$key] } } }
     $rows=Import-Csv -LiteralPath $report -Delimiter "`t"
+    # The FB2 fixture intentionally has no internal fb* attributes.  fb* must
+    # be materialized by the normal FB2 XSLT -> Design DOM path before editing.
+    Assert-Phase $rows 'colspan-before' @('colspan=1','fbcolspan=1','rowspan=1','fbrowspan=1','align=right','fbalign=right','valign=top','fbvalign=top')
     Assert-Phase $rows 'colspan-after' @('colspan=2','fbcolspan=2'); Assert-Phase $rows 'colspan-undo' @('colspan=1','fbcolspan=1'); Assert-Phase $rows 'colspan-redo' @('colspan=2','fbcolspan=2')
     Assert-Phase $rows 'rowspan-after' @('rowspan=2','fbrowspan=2'); Assert-Phase $rows 'rowspan-undo' @('rowspan=1','fbrowspan=1'); Assert-Phase $rows 'rowspan-redo' @('rowspan=2','fbrowspan=2')
     Assert-Phase $rows 'align-after' @('align=center','fbalign=center'); Assert-Phase $rows 'align-undo' @('align=right','fbalign=right'); Assert-Phase $rows 'align-redo' @('align=center','fbalign=center')

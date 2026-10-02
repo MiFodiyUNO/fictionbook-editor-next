@@ -4,6 +4,11 @@ param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [
 $ErrorActionPreference='Stop'; $FbeExe=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe)){throw "Не найден FBE: $FbeExe"}
 function Invoke-Fbe([string[]]$Arguments,[string]$Name) { $p=Start-Process -FilePath $FbeExe -ArgumentList $Arguments -PassThru; if(-not $p.WaitForExit($TimeoutSeconds*1000)){Stop-Process $p -Force;throw "FBE не завершил $Name"};if($p.ExitCode){throw "FBE вернул $($p.ExitCode): $Name"} }
+$viewPath = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')) 'src\fbe\FBEview.cpp'
+$view = Get-Content -Raw -LiteralPath $viewPath
+$route = 'if \(oe && oe->keyCode == VK_TAB && MoveTableCell\(oe->shiftKey == VARIANT_TRUE\)\)\s*\{\s*oe->cancelBubble = VARIANT_TRUE;\s*oe->returnValue = VARIANT_FALSE;\s*return VARIANT_FALSE;\s*\}'
+if ($view -notmatch $route) { throw 'OnKeyDown no longer routes VK_TAB / Shift+Tab through successful MoveTableCell navigation.' }
+if ($view -notmatch 'return VARIANT_TRUE;\s*\}') { throw 'OnKeyDown no longer leaves unsuccessful Tab navigation to MSHTML.' }
 $dir=Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-tab-'+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Path $dir | Out-Null
 try {
  $cases=@(
