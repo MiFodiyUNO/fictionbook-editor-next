@@ -120,6 +120,71 @@
 		if (!m_doc->Save()) { appendStructuralPhase("save-failed;phase=save;operation=Save;actual_hresult=unavailable;symbolic_hresult=unavailable"); output.Close(); ::PostQuitMessage(1); return 0; }
 		appendStructuralPhase("save-complete"); output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"table-attributes"))
+	{
+		MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr cells(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr cell(cells && cells->length ? cells->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		if (!cell || !m_doc->m_body.SelectTableLogicalRangeForTest(0, 0, 0, 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		auto attribute = [&](const wchar_t* name)
+		{
+			const _variant_t value(cell->getAttribute(name, 2));
+			if (V_VT(&value) == VT_BSTR) return CString(V_BSTR(&value));
+			if (V_VT(&value) == VT_I4) { CString number; number.Format(L"%ld", V_I4(&value)); return number; }
+			return CString();
+		};
+		auto append = [&](const char* phase)
+		{
+			CStringA row;
+			row.Format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\r\n", phase,
+				(LPCSTR)CStringA(attribute(L"colspan")), (LPCSTR)CStringA(attribute(L"fbcolspan")),
+				(LPCSTR)CStringA(attribute(L"rowspan")), (LPCSTR)CStringA(attribute(L"fbrowspan")),
+				(LPCSTR)CStringA(attribute(L"align")), (LPCSTR)CStringA(attribute(L"fbalign")),
+				(LPCSTR)CStringA(attribute(L"valign")), (LPCSTR)CStringA(attribute(L"fbvalign")));
+			DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+		};
+		auto apply = [&](WORD id, const CString& value)
+		{
+			TableAttributeState state = m_contextAttributeBars.GetTableState();
+			switch (id) { case IDC_COLSPAN: state.colspan = value; break; case IDC_ROWSPAN: state.rowspan = value; break; case IDC_ALIGN: state.align = value; break; case IDC_VALIGN: state.valign = value; break; }
+			m_contextAttributeBars.SetTableState(state); BOOL handled = FALSE; OnCbEdChange(0, id, NULL, handled);
+		};
+		CStringA header("phase\tcolspan\tfbcolspan\trowspan\tfbrowspan\talign\tfbalign\tvalign\tfbvalign\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		wchar_t reopen[4] = {};
+		if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_ATTRIBUTES_REOPEN", reopen, _countof(reopen)) == 1 && reopen[0] == L'1') { append("reopen"); output.Close(); PostMessage(WM_CLOSE); return 0; }
+		struct Change { const char* name; WORD id; const wchar_t* value; };
+		const Change changes[] = { { "colspan", IDC_COLSPAN, L"2" }, { "rowspan", IDC_ROWSPAN, L"2" }, { "align", IDC_ALIGN, L"center" }, { "valign", IDC_VALIGN, L"bottom" }, { "align-clear", IDC_ALIGN, L"" } };
+		for (const Change& change : changes) {
+			append(CStringA(change.name) + "-before"); apply(change.id, change.value); append(CStringA(change.name) + "-after");
+			BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); append(CStringA(change.name) + "-undo");
+			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); append(CStringA(change.name) + "-redo");
+		}
+		if (!m_doc->Save()) { output.Close(); ::PostQuitMessage(1); return 0; }
+		append("save-complete"); output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"table-tab"))
+	{
+		MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		std::vector<MSHTML::IHTMLElementPtr> cells; FbeTable::GetCells(table, cells);
+		if (!table || cells.empty()) { output.Close(); ::PostQuitMessage(1); return 0; }
+		auto select = [&](const MSHTML::IHTMLElementPtr& item) { MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()); range->moveToElementText(item); range->collapse(VARIANT_TRUE); range->select(); };
+		auto selectedPosition = [&]() { FbeTable::Grid grid; const MSHTML::IHTMLElementPtr selected(m_doc->m_body.SelectionStructTableCon()); const long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, selected) : -1; CStringA result; if (index >= 0) result.Format("%ld,%ld", grid.cells[index].sourceRow, grid.cells[index].startColumn); return result; };
+		CStringA before(m_doc->m_body.TableStructuralSnapshot()); select(cells.back()); const bool forward = m_doc->m_body.MoveTableCell(false); CStringA after(m_doc->m_body.TableStructuralSnapshot()), forwardPosition(selectedPosition());
+		FbeTable::GetCells(table, cells); select(cells.front()); const CStringA reverseBefore(m_doc->m_body.TableStructuralSnapshot()); const bool reverse = m_doc->m_body.MoveTableCell(true); const CStringA reverseAfter(m_doc->m_body.TableStructuralSnapshot()), reversePosition(selectedPosition());
+		CStringA header("direction\tok\tposition\tbefore\tafter\r\n"), row; DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		row.Format("forward\t%d\t%s\t%s\t%s\r\nreverse\t%d\t%s\t%s\t%s\r\n", forward ? 1 : 0, (LPCSTR)forwardPosition, (LPCSTR)before, (LPCSTR)after, reverse ? 1 : 0, (LPCSTR)reversePosition, (LPCSTR)reverseBefore, (LPCSTR)reverseAfter); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"table-delete-guard"))
+	{
+		if (!m_doc->m_body.SelectTableLogicalRangeForTest(0, 0, 0, 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		BOOL handled = FALSE; const CStringA before(m_doc->m_body.TableStructuralSnapshot());
+		m_doc->m_body.OnTableDeleteRow(0, 0, m_doc->m_body, handled); const CStringA rowAfter(m_doc->m_body.TableStructuralSnapshot());
+		m_doc->m_body.OnTableDeleteColumn(0, 0, m_doc->m_body, handled); const CStringA columnAfter(m_doc->m_body.TableStructuralSnapshot());
+		CStringA header("phase\tsnapshot\r\n"), row; DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		row.Format("before\t%s\r\nrow-after\t%s\r\ncolumn-after\t%s\r\n", (LPCSTR)before, (LPCSTR)rowAfter, (LPCSTR)columnAfter); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
 	if (IsFbeTestScenario(L"image-undo-probe"))
 	{
 		const ULONGLONG start = ::GetTickCount64();
