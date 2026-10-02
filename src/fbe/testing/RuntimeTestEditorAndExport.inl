@@ -776,7 +776,7 @@
 		const wchar_t* const renameScript =
 			L"(function(){var bins=document.all.binobj.getElementsByTagName('DIV');if(!bins||bins.length<2)throw new Error('binaries');"
 			L"var id=null,other=null;for(var b=0;b<bins.length;b++){if(bins[b].all.id.value=='cover-old.png')id=bins[b].all.id;else other=bins[b].all.id;}if(!id||!other)throw new Error('cover binary');"
-			L"id.value='cover-renamed.png';OnBinaryChange(id);var ok=id.value=='cover-renamed.png';var elements=document.getElementsByTagName('*');for(var i=0;i<elements.length;i++){"
+			L"id.value='cover-renamed.png';OnBinaryChange(id);var ok=id.value=='cover-renamed.png';var elements=document.all;for(var i=0;i<elements.length;i++){"
 			L"var h=elements[i].getAttribute?elements[i].getAttribute('href'):null;var s=elements[i].getAttribute?elements[i].getAttribute('src'):null;if(h=='#cover-old.png'||s=='fbw-internal:#cover-old.png')ok=false;}"
 			L"var lists=document.getElementsByTagName('SELECT');var selected=0;for(var j=0;j<lists.length;j++)if(lists[j].value=='#cover-renamed.png')selected++;"
 			L"var originalMsgBox=MsgBox,blocked=0;MsgBox=function(){blocked++;};other.value='cover-renamed.png';OnBinaryChange(other);var duplicate=(other.value!='cover-renamed.png');Remove(id.parentNode);var deletion=false;for(var d=0;d<bins.length;d++)if(bins[d].all.id==id)deletion=true;MsgBox=originalMsgBox;"
@@ -799,6 +799,24 @@
 		report.Format("dom_rename=%d\r\nbody_source_roundtrip=%d\r\nsaved=%d\r\nscript_hr=0x%08lX\r\ntitle=%S\r\n", domRenamed ? 1 : 0, sourceRoundTrip ? 1 : 0, saved ? 1 : 0, static_cast<unsigned long>(scriptResult), document ? static_cast<LPCWSTR>(document->title) : L"");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		if (domRenamed && sourceRoundTrip && saved && written == static_cast<DWORD>(report.GetLength())) PostMessage(WM_CLOSE); else ::PostQuitMessage(1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"binary-rename-reopen-runtime"))
+	{
+		MSHTML::IHTMLDocument2Ptr document(m_doc ? m_doc->m_body.Document() : NULL);
+		MSHTML::IHTMLWindow2Ptr window(document ? document->parentWindow : NULL);
+		const wchar_t* const verifyScript =
+			L"(function(){var bins=document.all.binobj.getElementsByTagName('DIV');var renamed=0,old=0;for(var b=0;b<bins.length;b++){var v=bins[b].all.id.value;if(v=='cover-renamed.png')renamed++;if(v=='cover-old.png')old++;}"
+			L"var ti=document.all.tiCover,sti=document.all.stiCover;var tc=ti?ti.getElementsByTagName('DIV'):null,sc=sti?sti.getElementsByTagName('DIV'):null;var covers=tc&&sc&&tc.length>0&&sc.length>0&&tc[0].all.href.value=='#cover-renamed.png'&&sc[0].all.href.value=='#cover-renamed.png';"
+			L"var elements=document.all,refs=0,oldRef=false;for(var i=0;i<elements.length;i++){var h=elements[i].getAttribute?elements[i].getAttribute('href'):null;var s=elements[i].getAttribute?elements[i].getAttribute('src'):null;if(h=='#cover-old.png'||s=='fbw-internal:#cover-old.png')oldRef=true;if(h=='#cover-renamed.png'||s=='fbw-internal:#cover-renamed.png')refs++;}"
+			L"document.title=(renamed==1&&old==0&&covers&&refs>=2&&!oldRef)?'binary-rename-reopen-pass':('binary-rename-reopen-fail-'+renamed+'-'+old+'-'+(covers?1:0)+'-'+refs+'-'+(oldRef?1:0));})();";
+		const HRESULT scriptResult = window ? window->execScript(_bstr_t(verifyScript), _bstr_t(L"JScript")) : E_NOINTERFACE;
+		const CString title = document ? static_cast<LPCWSTR>(document->title) : L"";
+		const bool passed = SUCCEEDED(scriptResult) && title == L"binary-rename-reopen-pass";
+		CStringA report;
+		report.Format("dom_reopen=%d\r\nscript_hr=0x%08lX\r\ntitle=%S\r\n", passed ? 1 : 0, static_cast<unsigned long>(scriptResult), static_cast<LPCWSTR>(title));
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		if (passed && written == static_cast<DWORD>(report.GetLength())) PostMessage(WM_CLOSE); else ::PostQuitMessage(1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"binary-roundtrip"))

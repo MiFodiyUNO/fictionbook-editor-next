@@ -1,4 +1,4 @@
-<# Guards the localized, Unicode-safe Find/Replace preview contract. #>
+﻿<# Guards the localized, Unicode-safe Find/Replace preview contract. #>
 [CmdletBinding()]
 param()
 

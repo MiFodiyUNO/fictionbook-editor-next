@@ -9,9 +9,22 @@
 // XML-name start character without transliterating the rest of the name.
 namespace FbeBinary
 {
+	// Keep this UTF-16 code-unit subset exactly aligned with runtime/main.js.
+	// JScript ES3 has no Unicode-category predicate equivalent to IsCharAlphaW;
+	// an explicit common subset prevents one layer accepting an ID the other rejects.
+	inline bool IsXmlIdUnicodeLetter(TCHAR value)
+	{
+		const UINT code = static_cast<UINT>(value);
+		return (code >= L'A' && code <= L'Z') || (code >= L'a' && code <= L'z') ||
+			(code >= 0x00c0 && code <= 0x02ff) || (code >= 0x0370 && code <= 0x1fff) ||
+			(code >= 0x2070 && code <= 0x218f) || (code >= 0x2c00 && code <= 0x2fef) ||
+			(code >= 0x3001 && code <= 0xd7ff) || (code >= 0xf900 && code <= 0xfdcf) ||
+			(code >= 0xfdf0 && code <= 0xfffd);
+	}
+
 	inline bool IsXmlIdStart(TCHAR value)
 	{
-		return value == _T('_') || ::IsCharAlphaW(value) != FALSE;
+		return value == _T('_') || IsXmlIdUnicodeLetter(value);
 	}
 
 	inline bool IsXmlIdCharacter(TCHAR value)

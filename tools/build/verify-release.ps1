@@ -246,6 +246,8 @@ foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','dele
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-save.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-save-runtime.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-binary-id-differential.ps1") -PlatformToolset $PlatformToolset
+& (Join-Path $repoRoot "tools\tests\test-fbe-binary-rename-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-image-import-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-block-image-structure-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-image-document-inserter-boundary.ps1")
@@ -376,6 +378,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-search-viewport-position.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer-behavior.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-body-source-transition-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbv-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-runtime-lang-overlay.ps1")

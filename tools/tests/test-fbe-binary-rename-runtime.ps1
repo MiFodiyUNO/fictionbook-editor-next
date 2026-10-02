@@ -26,8 +26,16 @@ try {
     foreach($path in @('//fb:title-info/fb:coverpage/fb:image','//fb:src-title-info/fb:coverpage/fb:image','//fb:body//fb:image')){foreach($image in @($xml.SelectNodes($path,$ns))){if($image.GetAttribute('href','http://www.w3.org/1999/xlink') -ne '#cover-renamed.png'){throw "Saved reference was not renamed: $path"}}}
     if($null -eq $xml.SelectSingleNode('/fb:FictionBook/fb:binary[@id="cover-renamed.png"]',$ns)){throw 'Saved binary with new ID is missing.'}
     if($xml.OuterXml -match 'cover-old\.png'){throw 'Old binary ID survived the save.'}
-    $process=Start-Process -FilePath $FbeExe -ArgumentList @('-b',$reopen,$fixture) -PassThru
-    if(-not $process.WaitForExit($TimeoutSeconds*1000)){Stop-Process -Id $process.Id -Force;throw 'FBE binary rename reopen timed out.'}
-    if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reopen)){throw 'FBE binary rename reopen failed.'}
+    try {
+        $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='binary-rename-reopen-runtime'
+        $process=Start-Process -FilePath $FbeExe -ArgumentList @('-b',$reopen,$fixture) -PassThru
+        if(-not $process.WaitForExit($TimeoutSeconds*1000)){Stop-Process -Id $process.Id -Force;throw 'FBE binary rename reopen timed out.'}
+    } finally {$env:FBE_NEXT_TEST_MODE=$oldMode;$env:FBE_NEXT_TEST_SCENARIO=$oldScenario}
+    if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reopen)){
+        $detail=if(Test-Path -LiteralPath $reopen){Get-Content -LiteralPath $reopen -Raw}else{'<report missing>'}
+        throw "FBE binary rename reopen failed: exit $($process.ExitCode). $detail"
+    }
+    $reopenRows=@{}; Get-Content -LiteralPath $reopen | ForEach-Object {$pair=$_ -split '=',2;if($pair.Count -eq 2){$reopenRows[$pair[0]]=$pair[1]}}
+    if($reopenRows.dom_reopen -ne '1'){throw "FBE binary rename reopen DOM validation failed: $(Get-Content $reopen -Raw)"}
     Write-Host 'FBE production binary rename -> Save -> reopen passed.'
 } finally {Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue}

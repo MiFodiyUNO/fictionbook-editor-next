@@ -16,12 +16,16 @@ LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     const int dividerWidth = (std::max)(1, UiMetrics::ScaleForDpi(1, dpi));
     const int captionHeight = UiMetrics::ScaleForDpi(18, dpi);
     const int buttonHeight = UiMetrics::ScaleForDpi(22, dpi);
-    m_caption.Create(m_hWnd, CRect(inset, inset, client.right - inset, inset + captionHeight), Caption(), WS_CHILD | WS_VISIBLE, 0, IDC_REGEX_QUICK_CAPTION);
+    CRect captionRect(inset, inset, client.right - inset, inset + captionHeight);
+    m_caption.Create(m_hWnd, captionRect, Caption(), WS_CHILD | WS_VISIBLE, 0, IDC_REGEX_QUICK_CAPTION);
     const int middle = client.right / 2;
     const DWORD listStyle = WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | LBS_OWNERDRAWFIXED | LBS_HASSTRINGS;
-    m_left.Create(m_hWnd, CRect(inset, inset + captionHeight, middle - dividerWidth, client.bottom - buttonHeight - inset * 2), NULL, listStyle, 0, IDC_REGEX_QUICK_LEFT);
-    m_right.Create(m_hWnd, CRect(middle + dividerWidth, inset + captionHeight, client.right - inset, client.bottom - buttonHeight - inset * 2), NULL, listStyle, 0, IDC_REGEX_QUICK_RIGHT);
-    m_fullHelp.Create(m_hWnd, CRect(inset, client.bottom - buttonHeight - inset, client.right - inset, client.bottom - inset), FbeLoadRuntimeStringByKey(L"fbe.regex_quick.full_help", L"Full help..."), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDC_REGEX_QUICK_FULL_HELP);
+    CRect leftRect(inset, inset + captionHeight, middle - dividerWidth, client.bottom - buttonHeight - inset * 2);
+    CRect rightRect(middle + dividerWidth, inset + captionHeight, client.right - inset, client.bottom - buttonHeight - inset * 2);
+    CRect fullHelpRect(inset, client.bottom - buttonHeight - inset, client.right - inset, client.bottom - inset);
+    m_left.Create(m_hWnd, leftRect, NULL, listStyle, 0, IDC_REGEX_QUICK_LEFT);
+    m_right.Create(m_hWnd, rightRect, NULL, listStyle, 0, IDC_REGEX_QUICK_RIGHT);
+    m_fullHelp.Create(m_hWnd, fullHelpRect, FbeLoadRuntimeStringByKey(L"fbe.regex_quick.full_help", L"Full help..."), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDC_REGEX_QUICK_FULL_HELP);
     const HFONT font = UiMetrics::DialogFont();
     m_monospaceFont = ::CreateFontW(-::MulDiv(9, static_cast<int>(dpi), 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, L"Consolas");
@@ -176,7 +180,8 @@ bool RegexQuickReferencePopup::Show(HWND owner, HWND anchor, FbeSearchPresets::S
     const int height = min(DesiredPopupHeight(dpi), maxHeight);
     int x = rc.right + width <= info.rcWork.right ? rc.right : rc.left - width; int y = rc.bottom + height <= info.rcWork.bottom ? rc.bottom : rc.top - height;
     x = max(info.rcWork.left, min(x, info.rcWork.right - width)); y = max(info.rcWork.top, min(y, info.rcWork.bottom - height));
-    HWND hwnd = Create(owner, CRect(x, y, x + width, y + height), NULL, WS_POPUP, WS_EX_TOOLWINDOW);
+    CRect popupRect(x, y, x + width, y + height);
+    HWND hwnd = Create(owner, popupRect, NULL, WS_POPUP, WS_EX_TOOLWINDOW);
     if(hwnd == NULL) return false;
     m_messageLoop = _Module.GetMessageLoop();
     if(m_messageLoop) m_messageLoop->AddMessageFilter(this);
